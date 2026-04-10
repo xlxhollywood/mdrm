@@ -245,16 +245,16 @@ export default function WidgetDashboard() {
         {/* ── Left Panel ── */}
         <div className="w-[300px] bg-white border-r border-border flex flex-col shrink-0 overflow-hidden">
           <div className="px-4 pt-[14px] border-b border-border">
-            <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.06em] mb-[10px]">위젯 목록</div>
+            <div className="text-[13px] font-semibold text-dark mb-[10px]">위젯 목록</div>
             <div className="flex">
               {[['all', '전체'], ...Object.entries(WIDGET_CATEGORIES).map(([k, c]) => [k, c.label])].map(([key, label]) => (
                 <div
                   key={key}
                   onClick={() => setActiveTab(key)}
-                  className={`flex-1 py-2 text-center text-[12px] font-medium cursor-pointer border-b-2 transition-colors whitespace-nowrap
+                  className={`flex-1 py-2 text-center text-[13px] cursor-pointer border-b-2 transition-colors whitespace-nowrap
                     ${activeTab === key
                       ? 'text-primary border-primary font-semibold'
-                      : 'text-muted border-transparent hover:text-primary'}`}
+                      : 'text-muted border-transparent font-normal hover:text-dark'}`}
                 >
                   {label}
                 </div>
