@@ -199,7 +199,7 @@ function FloatingToolbar() {
 }
 
 /* ── 텍스트 블록 ── */
-function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onFocusBlock, onBlurBlock, isBlockActive, allSelected }) {
+function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected }) {
   const ref = useRef(null);
   const isComposing = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -217,6 +217,24 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onFocusBlock, 
       e.preventDefault();
       onEnter(block.id);
       return;
+    }
+    if (e.key === 'Backspace' && !isComposing.current) {
+      const sel = window.getSelection();
+      if (!sel?.rangeCount || !sel.getRangeAt(0).collapsed) return;
+      const range = sel.getRangeAt(0);
+      const el = ref.current;
+      // 커서가 블록 맨 앞인지: startOffset=0 이고 startContainer가 el 자체이거나 el의 첫 텍스트노드 시작
+      const node = range.startContainer;
+      const offset = range.startOffset;
+      const atStart =
+        (node === el && offset === 0) ||
+        (node.nodeType === Node.TEXT_NODE && offset === 0 && el.firstChild === node) ||
+        isEmpty;
+      if (atStart) {
+        e.preventDefault();
+        onBackspaceAtStart?.(block.id, block.html || '');
+        return;
+      }
     }
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey && !e.metaKey && !e.ctrlKey && !isComposing.current) {
       const sel = window.getSelection();
@@ -267,7 +285,7 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onFocusBlock, 
         dir="ltr"
         data-text-id={block.id}
         data-placeholder={showPlaceholder ? '텍스트를 입력하세요...' : undefined}
-        className="flex-1 text-[13px] text-dark outline-none px-1 py-0.5"
+        className="flex-1 text-[13px] text-dark outline-none px-1 py-0.5 cursor-text"
         onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
         onBlur={() => { setIsFocused(false); onBlurBlock?.(); }}
         onDragStart={(e) => e.preventDefault()}
@@ -276,11 +294,6 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onFocusBlock, 
         onInput={(e) => onChange(block.id, e.currentTarget.innerHTML)}
         onKeyDown={handleKeyDown}
       />
-      <button
-        onClick={() => onDelete(block.id)}
-        className={`ml-2 w-5 h-5 flex items-center justify-center text-[#c0c7ce] hover:text-danger text-[14px] shrink-0 transition-opacity mt-0.5
-          ${isFocused && !isBlockActive && !allSelected ? 'opacity-100' : 'opacity-0'}`}
-      >×</button>
     </div>
   );
 }
@@ -325,7 +338,7 @@ export default function WordCanvas({
   const m   = docConfig.margins;
   const pad = `${Math.round(m.top * MM_TO_PX)}px ${Math.round(m.right * MM_TO_PX)}px ${Math.round(m.bottom * MM_TO_PX)}px ${Math.round(m.left * MM_TO_PX)}px`;
 
-  const pendingFocusRef = useRef(null);
+  const pendingFocusRef = useRef(null); // { id, position: 'start'|'end' } or string id
 
   const handleArrow = useCallback((blockId, direction, caretX = 0) => {
     let ti;
@@ -380,23 +393,134 @@ export default function WordCanvas({
   const handleEnterBlock = useCallback((blockId) => {
     const idx = docBlocks.findIndex(b => b.id === blockId);
     const newId = `text-${Date.now()}`;
-    pendingFocusRef.current = newId;
+    pendingFocusRef.current = { id: newId, position: 'start' };
     onInsertText(idx, newId);
   }, [docBlocks, onInsertText]);
 
+  const handleBackspaceAtStart = useCallback((blockId, currentHtml) => {
+    const idx = docBlocks.findIndex(b => b.id === blockId);
+    // 첫 번째 블록이면 아무것도 안 함
+    if (idx <= 0) return;
+    // 이전 텍스트 블록 찾기
+    let ti = idx - 1;
+    while (ti >= 0 && docBlocks[ti].type !== 'text') ti--;
+    if (ti < 0) return;
+
+    const prevBlock = docBlocks[ti];
+    const isEmpty = !currentHtml.replace(/<br\s*\/?>/gi, '').trim();
+
+    if (isEmpty) {
+      // 빈 블록 → 그냥 삭제, 이전 블록 끝으로 이동
+      pendingFocusRef.current = { id: prevBlock.id, position: 'end' };
+      onDeleteBlock(blockId);
+    } else {
+      // 텍스트 있음 → 이전 블록에 merge
+      const prevHtml = prevBlock.html || '';
+      // 이전 블록의 순수 텍스트 길이 (커서 위치용)
+      const tmp = document.createElement('div');
+      tmp.innerHTML = prevHtml;
+      const prevTextLen = tmp.textContent.length;
+
+      onUpdateText(prevBlock.id, prevHtml + currentHtml);
+      onDeleteBlock(blockId);
+      pendingFocusRef.current = { id: prevBlock.id, position: 'offset', charOffset: prevTextLen };
+    }
+  }, [docBlocks, onDeleteBlock, onUpdateText]);
+
   useEffect(() => {
     if (!pendingFocusRef.current) return;
-    const el = document.querySelector(`[data-text-id="${pendingFocusRef.current}"]`);
-    if (el) { el.focus(); pendingFocusRef.current = null; }
+    const pending = pendingFocusRef.current;
+    const id = typeof pending === 'string' ? pending : pending.id;
+    const position = typeof pending === 'string' ? 'start' : pending.position;
+    const el = document.querySelector(`[data-text-id="${id}"]`);
+    if (el) {
+      el.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      if (position === 'start') {
+        const r = document.createRange();
+        r.setStart(el, 0);
+        r.collapse(true);
+        sel.addRange(r);
+      } else if (position === 'end') {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        r.collapse(false);
+        sel.addRange(r);
+      } else if (position === 'offset') {
+        // 텍스트 노드를 순회하며 charOffset 위치에 커서 배치
+        let remaining = pending.charOffset;
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        let placed = false;
+        let node;
+        while ((node = walker.nextNode())) {
+          if (remaining <= node.length) {
+            const r = document.createRange();
+            r.setStart(node, remaining);
+            r.collapse(true);
+            sel.addRange(r);
+            placed = true;
+            break;
+          }
+          remaining -= node.length;
+        }
+        if (!placed) {
+          // fallback: 끝으로
+          const r = document.createRange();
+          r.selectNodeContents(el);
+          r.collapse(false);
+          sel.addRange(r);
+        }
+      }
+      pendingFocusRef.current = null;
+    }
   });
 
-  const [focusedBlockId, setFocusedBlockId] = useState(null);
-  const [activeBlockId,  setActiveBlockId]  = useState(null);
-  const [allSelected,    setAllSelected]    = useState(false);
+  // Ctrl+A 삭제 후 새 빈 블록에 포커스
+  useEffect(() => {
+    if (!pendingResetFocus.current) return;
+    if (docBlocks.length === 1 && docBlocks[0].type === 'text') {
+      const el = document.querySelector(`[data-text-id="${docBlocks[0].id}"]`);
+      if (el) { el.focus(); pendingResetFocus.current = false; }
+    }
+  });
+
+  const [hoveredBlockId,   setHoveredBlockId]   = useState(null);
+  const [activeBlockId,    setActiveBlockId]    = useState(null);
+  const [allSelected,      setAllSelected]      = useState(false);
+  const pendingResetFocus  = useRef(false);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dropIdx,     setDropIdx]     = useState(null);
-  const dragRef   = useRef(null);
-  const blockRefs = useRef([]);
+  const dragRef    = useRef(null);
+  const blockRefs  = useRef([]);
+  const paperRef   = useRef(null);
+
+  // paper 위 mousemove로 hover 블록 감지 (핸들 영역 32px 포함)
+  useEffect(() => {
+    const paper = paperRef.current;
+    if (!paper) return;
+    const onMove = (e) => {
+      let found = null;
+      for (let i = 0; i < blockRefs.current.length; i++) {
+        const el = blockRefs.current[i];
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (e.clientY >= rect.top && e.clientY <= rect.bottom &&
+            e.clientX >= rect.left - 32 && e.clientX <= rect.right) {
+          found = docBlocks[i]?.id ?? null;
+          break;
+        }
+      }
+      setHoveredBlockId(found);
+    };
+    const onLeave = () => setHoveredBlockId(null);
+    paper.addEventListener('mousemove', onMove);
+    paper.addEventListener('mouseleave', onLeave);
+    return () => {
+      paper.removeEventListener('mousemove', onMove);
+      paper.removeEventListener('mouseleave', onLeave);
+    };
+  }, [docBlocks]);
 
   const getDropIndex = useCallback((clientY) => {
     let idx = docBlocks.length;
@@ -452,6 +576,7 @@ export default function WordCanvas({
       <FloatingToolbar />
 
       <div
+        ref={paperRef}
         className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10"
         style={{ width: docW, minHeight: docH, padding: pad }}
         onClick={(e) => { onDeselectWidget(e); setActiveBlockId(null); setAllSelected(false); }}
@@ -473,6 +598,7 @@ export default function WordCanvas({
             e.preventDefault();
             setAllSelected(false);
             const allIds = docBlocks.map(b => b.id);
+            pendingResetFocus.current = true;
             onDeleteBlocksInRange(null, allIds);
             return;
           }
@@ -511,23 +637,30 @@ export default function WordCanvas({
           <React.Fragment key={block.id}>
             <div
               ref={el => blockRefs.current[i] = el}
-              className={`relative rounded-[6px] transition-all duration-100
+              className={`relative rounded-[6px] transition-all duration-100 mb-[3px]
                 ${draggingIdx === i
                   ? 'opacity-40 bg-[#e8f0fc] shadow-[0_2px_12px_rgba(53,113,206,0.18)] cursor-grabbing scale-[0.99]'
                   : allSelected || activeBlockId === block.id
                     ? 'bg-[#dce8ff]'
                     : ''}`}
             >
-              {/* 드래그 핸들 — 커서가 있는 블록에만 표시 */}
-              <div
-                onMouseDown={(e) => { e.stopPropagation(); window.getSelection()?.removeAllRanges(); handleDragHandleMouseDown(e, i, block.id); }}
-                onClick={(e) => e.stopPropagation()}
-                className={`absolute -left-6 cursor-grab active:cursor-grabbing text-muted transition-opacity select-none
-                  ${!(block.html || '').includes('<br>') ? 'top-1/2 -translate-y-1/2' : 'top-[4px]'}
-                  ${focusedBlockId === block.id || activeBlockId === block.id ? 'opacity-60 hover:opacity-100' : 'opacity-0 pointer-events-none'}`}
-              >
-                <DragHandleIcon />
-              </div>
+              {/* 드래그 핸들 — 마우스가 올라간 블록에 표시 */}
+              {(() => {
+                // 실제 텍스트가 있고 <br>도 있을 때만 multiline(top-[4px]), 나머지는 중앙정렬
+                const hasText = !!(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
+                const hasMultiLine = hasText && (block.html || '').includes('<br>');
+                return (
+                  <div
+                    onMouseDown={(e) => { e.stopPropagation(); window.getSelection()?.removeAllRanges(); handleDragHandleMouseDown(e, i, block.id); }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute -left-6 text-muted transition-opacity select-none
+                      ${hasMultiLine ? 'top-[3px]' : 'top-[calc(50%-1px)] -translate-y-1/2'}
+                      ${hoveredBlockId === block.id ? 'opacity-60 cursor-grab active:cursor-grabbing' : 'opacity-0 cursor-auto'}`}
+                  >
+                    <DragHandleIcon />
+                  </div>
+                );
+              })()}
 
               {block.type === 'text' ? (
                 <TextBlock
@@ -536,8 +669,9 @@ export default function WordCanvas({
                   onDelete={onDeleteBlock}
                   onEnter={handleEnterBlock}
                   onArrow={handleArrow}
-                  onFocusBlock={() => { setFocusedBlockId(block.id); setAllSelected(false); }}
-                  onBlurBlock={() => setFocusedBlockId(id => id === block.id ? null : id)}
+                  onBackspaceAtStart={handleBackspaceAtStart}
+                  onFocusBlock={() => setAllSelected(false)}
+                  onBlurBlock={() => {}}
                   isBlockActive={activeBlockId === block.id}
                   allSelected={allSelected}
                 />
