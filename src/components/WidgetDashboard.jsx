@@ -12,6 +12,7 @@ const findWidgetDef = (id) => allWidgets.find(w => w.id === id);
 const makeConfig = (def) => ({
   viewType: def?.viewTypes[0]?.id || null,
   periodOn: false, from: MONTH_AGO, to: TODAY, quick: null,
+  showBorder: true, showLabel: true,
 });
 
 /* ── 위젯 목록 아이템 ── */

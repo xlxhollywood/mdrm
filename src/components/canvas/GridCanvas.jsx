@@ -9,6 +9,8 @@ function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragg
   const cfg = config[instance.id] || {};
   const viewType = cfg.viewType || widgetDef.viewTypes[0]?.id;
   const showPreview = !widgetDef.hasSystemSelect || (cfg.systemIds?.length > 0);
+  const showBorder = cfg.showBorder !== false;
+  const showLabel  = cfg.showLabel  !== false;
 
   return (
     <div
@@ -20,7 +22,7 @@ function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragg
       onClick={() => !isDragging && onClick(instance.id, widgetDef)}
     >
       {showPreview
-        ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
+        ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} />
         : <WidgetPlaceholder widgetDef={widgetDef} />}
 
       {isActive && (

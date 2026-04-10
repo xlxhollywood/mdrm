@@ -28,17 +28,53 @@ function DragHandleIcon() {
   );
 }
 
-/* ── 서식 툴바 ── */
-function WordToolbar() {
-  const [fontSize,  setFontSize]  = useState(14);
-  const [textColor, setTextColor] = useState('#1a222b');
+const BLOCK_FORMATS = [
+  { icon: 'T',  label: '일반 텍스트', value: 'p',  fontSize: '13px', fontWeight: 'normal' },
+  { icon: 'H1', label: '제목 1',     value: 'h1', fontSize: '30px', fontWeight: 'bold'   },
+  { icon: 'H2', label: '제목 2',     value: 'h2', fontSize: '24px', fontWeight: 'bold'   },
+  { icon: 'H3', label: '제목 3',     value: 'h3', fontSize: '20px', fontWeight: 'bold'   },
+  { icon: 'H4', label: '제목 4',     value: 'h4', fontSize: '16px', fontWeight: 'bold'   },
+  { icon: 'H5', label: '제목 5',     value: 'h5', fontSize: '14px', fontWeight: 'bold'   },
+];
+
+/* ── 플로팅 서식 툴바 (선택 시 위에 떠오름) ── */
+function FloatingToolbar() {
+  const [pos,       setPos]       = useState(null);
+  const [blockFmt,  setBlockFmt]  = useState('p');
+  const [fmtOpen,   setFmtOpen]   = useState(false);
+  const [textColor, setTextColor] = useState('#ffffff');
   const [hlColor,   setHlColor]   = useState('#fef08a');
   const savedRangeRef = useRef(null);
 
-  const saveSelection = () => {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) savedRangeRef.current = sel.getRangeAt(0).cloneRange();
-  };
+  useEffect(() => {
+    const update = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        setPos(null);
+        setFmtOpen(false);
+        return;
+      }
+      const node = sel.anchorNode;
+      const el = node?.nodeType === 3 ? node.parentElement : node;
+      if (!el?.closest('[contenteditable]')) { setPos(null); setFmtOpen(false); return; }
+      const range = sel.getRangeAt(0);
+      const rect  = range.getBoundingClientRect();
+      if (!rect.width && !rect.height) { setPos(null); return; }
+      savedRangeRef.current = range.cloneRange();
+      const editableEl = el?.closest('[contenteditable]');
+      if (editableEl) {
+        const fs = editableEl.style.fontSize;
+        const detected = BLOCK_FORMATS.find(f => f.fontSize === fs)?.value || 'p';
+        setBlockFmt(detected);
+      }
+      setPos({ x: rect.left + rect.width / 2, y: rect.top });
+    };
+    document.addEventListener('selectionchange', update);
+    return () => document.removeEventListener('selectionchange', update);
+  }, []);
+
+  if (!pos) return null;
+
   const restoreSelection = () => {
     const r = savedRangeRef.current;
     if (!r) return;
@@ -47,95 +83,128 @@ function WordToolbar() {
     sel.addRange(r);
   };
   const exec = (cmd, val = null) => { restoreSelection(); document.execCommand(cmd, false, val); };
-
-  const applyFontSize = (px) => {
-    restoreSelection();
-    document.execCommand('fontSize', false, '7');
-    document.querySelectorAll('[contenteditable] font[size="7"]').forEach(el => {
-      const span = document.createElement('span');
-      span.style.fontSize = px + 'px';
-      el.parentNode.insertBefore(span, el);
-      while (el.firstChild) span.appendChild(el.firstChild);
-      el.parentNode.removeChild(el);
-    });
+  const mb = (fn) => (e) => { e.preventDefault(); fn(); };
+  const saveRange = () => {
+    const sel = window.getSelection();
+    if (sel?.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange();
   };
 
-  const mb = (fn) => (e) => { e.preventDefault(); fn(); };
+  const applyFmt = (fmt) => {
+    const r = savedRangeRef.current;
+    if (!r) return;
+    const node = r.startContainer;
+    const el = (node?.nodeType === 3 ? node.parentElement : node)?.closest('[contenteditable]');
+    if (el) {
+      el.style.fontSize   = fmt.fontSize;
+      el.style.fontWeight = fmt.fontWeight;
+    }
+    setBlockFmt(fmt.value);
+    setFmtOpen(false);
+  };
 
-  const ToolBtn = ({ children, title, onMD }) => (
+  const Btn = ({ children, title, onMD }) => (
     <button title={title} onMouseDown={mb(onMD)}
-      className="w-7 h-7 flex items-center justify-center rounded text-dark hover:bg-[#f0f4fa] transition-colors shrink-0">
+      className="w-7 h-7 flex items-center justify-center rounded text-[13px] text-white hover:bg-white/15 transition-colors shrink-0">
       {children}
     </button>
   );
-  const Sep = () => <div className="w-px h-4 bg-border mx-1 shrink-0" />;
+  const Sep = () => <div className="w-px h-4 bg-white/20 mx-0.5 shrink-0" />;
+
+  const currentFmt = BLOCK_FORMATS.find(f => f.value === blockFmt) || BLOCK_FORMATS[0];
 
   return (
-    <div className="w-full bg-white border-b border-border flex items-center gap-0.5 px-3 py-1.5 shadow-sm shrink-0 flex-wrap">
-      <select defaultValue="default"
-        onChange={(e) => { restoreSelection(); document.execCommand('fontName', false, e.target.value); }}
-        className="h-7 text-[11px] border border-border rounded px-1.5 text-dark bg-white outline-none focus:border-primary mr-1 shrink-0">
-        <option value="'Apple SD Gothic Neo', sans-serif">기본</option>
-        <option value="'Malgun Gothic', sans-serif">고딕</option>
-        <option value="serif">바탕</option>
-        <option value="monospace">Mono</option>
-      </select>
-
-      <div className="flex items-center gap-0.5 mr-1">
-        <button onMouseDown={mb(() => { const s = Math.max(8, fontSize-1); setFontSize(s); applyFontSize(s); })}
-          className="w-5 h-7 flex items-center justify-center rounded hover:bg-[#f0f4fa] text-dark text-[15px] shrink-0 leading-none">−</button>
-        <span className="w-8 text-center text-[11px] text-dark select-none">{fontSize}</span>
-        <button onMouseDown={mb(() => { const s = Math.min(72, fontSize+1); setFontSize(s); applyFontSize(s); })}
-          className="w-5 h-7 flex items-center justify-center rounded hover:bg-[#f0f4fa] text-dark text-[15px] shrink-0 leading-none">+</button>
+    <div
+      style={{
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y - 10,
+        transform: 'translate(-50%, -100%)',
+        zIndex: 9999,
+      }}
+      onMouseDown={(e) => e.preventDefault()}
+      className="bg-[#1a222b] rounded-[8px] shadow-[0_6px_24px_rgba(0,0,0,0.40)] flex items-center gap-0.5 px-2 py-[5px]"
+    >
+      {/* 블록 형식 커스텀 드롭다운 */}
+      <div className="relative mr-1">
+        <button
+          onMouseDown={mb(() => setFmtOpen(o => !o))}
+          className="h-6 px-2 text-[11px] bg-white/10 text-white rounded flex items-center gap-1 hover:bg-white/20 shrink-0 whitespace-nowrap"
+        >
+          <span className="font-bold text-[10px]">{currentFmt.icon}</span>
+          <span>{currentFmt.label}</span>
+          <svg width="8" height="5" viewBox="0 0 8 5" fill="none" className="shrink-0 ml-0.5">
+            <path d="M1 1l3 3 3-3" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        {fmtOpen && (
+          <div className="absolute top-full left-0 mt-1 bg-[#1a222b] border border-white/10 rounded-[6px] shadow-xl overflow-hidden min-w-[140px]">
+            {BLOCK_FORMATS.map(f => (
+              <button
+                key={f.value}
+                onMouseDown={mb(() => applyFmt(f))}
+                className={`w-full px-2 py-[6px] text-left text-white hover:bg-white/15 transition-colors flex items-center gap-2
+                  ${f.value === blockFmt ? 'bg-white/10' : ''}`}
+              >
+                <span className="w-7 h-5 flex items-center justify-center rounded bg-white/10 text-[10px] font-bold text-white shrink-0">
+                  {f.icon}
+                </span>
+                <span className="text-[12px]">{f.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <Sep />
-      <ToolBtn title="굵게"   onMD={() => exec('bold')}><strong className="text-[13px] font-bold">B</strong></ToolBtn>
-      <ToolBtn title="기울임" onMD={() => exec('italic')}><em className="text-[13px]">I</em></ToolBtn>
-      <ToolBtn title="밑줄"   onMD={() => exec('underline')}><span className="text-[13px] underline">U</span></ToolBtn>
-      <ToolBtn title="취소선" onMD={() => exec('strikeThrough')}><span className="text-[13px] line-through">S</span></ToolBtn>
+      <Btn title="굵게"   onMD={() => exec('bold')}><strong className="font-bold">B</strong></Btn>
+      <Btn title="기울임" onMD={() => exec('italic')}><em>I</em></Btn>
+      <Btn title="밑줄"   onMD={() => exec('underline')}><span className="underline">U</span></Btn>
+      <Btn title="취소선" onMD={() => exec('strikeThrough')}><span className="line-through">S</span></Btn>
       <Sep />
 
-      <label title="글자 색상" onMouseDown={saveSelection}
-        className="relative w-7 h-7 flex items-center justify-center rounded hover:bg-[#f0f4fa] cursor-pointer shrink-0">
+      {/* 글자 색상 */}
+      <label title="글자 색상" onMouseDown={saveRange}
+        className="relative w-7 h-7 flex items-center justify-center rounded hover:bg-white/15 cursor-pointer shrink-0">
         <div className="flex flex-col items-center gap-[3px] pointer-events-none">
-          <span className="text-[12px] font-bold text-dark leading-none">A</span>
-          <span className="w-[14px] h-[3px] rounded-sm" style={{ background: textColor }} />
+          <span className="text-[12px] font-bold text-white leading-none">A</span>
+          <span className="w-[14px] h-[2.5px] rounded-sm" style={{ background: textColor }} />
         </div>
         <input type="color" value={textColor}
           onChange={(e) => { setTextColor(e.target.value); exec('foreColor', e.target.value); }}
           className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
       </label>
 
-      <label title="형광펜" onMouseDown={saveSelection}
-        className="relative w-7 h-7 flex items-center justify-center rounded hover:bg-[#f0f4fa] cursor-pointer shrink-0">
-        <div className="flex flex-col items-center gap-[3px] pointer-events-none">
-          <span className="text-[10px] font-bold leading-none px-[3px] rounded-sm"
-            style={{ background: hlColor, color: '#1a222b' }}>HI</span>
-        </div>
+      {/* 형광펜 */}
+      <label title="형광펜" onMouseDown={saveRange}
+        className="relative w-7 h-7 flex items-center justify-center rounded hover:bg-white/15 cursor-pointer shrink-0">
+        <span className="text-[10px] font-bold leading-none px-[3px] py-[1px] rounded-sm pointer-events-none"
+          style={{ background: hlColor, color: '#1a222b' }}>HI</span>
         <input type="color" value={hlColor}
           onChange={(e) => { setHlColor(e.target.value); exec('hiliteColor', e.target.value); }}
           className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
       </label>
 
       <Sep />
-      <ToolBtn title="왼쪽 정렬"   onMD={() => exec('justifyLeft')}>
-        <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><path d="M1 1h12M1 4h8M1 7h12M1 10h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-      </ToolBtn>
-      <ToolBtn title="가운데 정렬" onMD={() => exec('justifyCenter')}>
-        <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><path d="M1 1h12M3 4h8M1 7h12M3 10h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-      </ToolBtn>
-      <ToolBtn title="오른쪽 정렬" onMD={() => exec('justifyRight')}>
-        <svg width="14" height="12" viewBox="0 0 14 12" fill="none"><path d="M1 1h12M5 4h8M1 7h12M5 10h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-      </ToolBtn>
+      <Btn title="왼쪽 정렬"   onMD={() => exec('justifyLeft')}>
+        <svg width="13" height="11" viewBox="0 0 14 12" fill="none"><path d="M1 1h12M1 4h8M1 7h12M1 10h8" stroke="white" strokeWidth="1.3" strokeLinecap="round"/></svg>
+      </Btn>
+      <Btn title="가운데 정렬" onMD={() => exec('justifyCenter')}>
+        <svg width="13" height="11" viewBox="0 0 14 12" fill="none"><path d="M1 1h12M3 4h8M1 7h12M3 10h8" stroke="white" strokeWidth="1.3" strokeLinecap="round"/></svg>
+      </Btn>
+      <Btn title="오른쪽 정렬" onMD={() => exec('justifyRight')}>
+        <svg width="13" height="11" viewBox="0 0 14 12" fill="none"><path d="M1 1h12M5 4h8M1 7h12M5 10h8" stroke="white" strokeWidth="1.3" strokeLinecap="round"/></svg>
+      </Btn>
     </div>
   );
 }
 
 /* ── 텍스트 블록 ── */
-function TextBlock({ block, onChange, onDelete, onEnter, showPlaceholder }) {
+function TextBlock({ block, onChange, onDelete, onEnter, onArrow }) {
   const ref = useRef(null);
   const isComposing = useRef(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const isEmpty = !(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
+  const showPlaceholder = isFocused && isEmpty;
 
   useEffect(() => {
     if (ref.current && ref.current !== document.activeElement) {
@@ -147,8 +216,46 @@ function TextBlock({ block, onChange, onDelete, onEnter, showPlaceholder }) {
     if (e.key === 'Enter' && !e.shiftKey && !isComposing.current) {
       e.preventDefault();
       onEnter(block.id);
+      return;
     }
-    // Shift+Enter → 기본 동작(줄바꿈) 허용
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.shiftKey && !e.metaKey && !e.ctrlKey && !isComposing.current) {
+      const sel = window.getSelection();
+      if (!sel?.rangeCount || !sel.getRangeAt(0).collapsed) return;
+      const prevNode   = sel.focusNode;
+      const prevOffset = sel.focusOffset;
+      const dir        = e.key === 'ArrowLeft' ? 'left' : 'right';
+      requestAnimationFrame(() => {
+        const next = window.getSelection();
+        if (next && document.activeElement === ref.current &&
+            next.focusNode === prevNode && next.focusOffset === prevOffset) {
+          onArrow(block.id, dir);
+        }
+      });
+      return;
+    }
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.metaKey || e.ctrlKey) && !isComposing.current) {
+      e.preventDefault();
+      onArrow(block.id, e.key === 'ArrowUp' ? 'first' : 'last', 0);
+      return;
+    }
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !isComposing.current) {
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const caretRect = sel.getRangeAt(0).getBoundingClientRect();
+      const elRect    = ref.current.getBoundingClientRect();
+      const lineH     = caretRect.height || 20;
+      // 빈 블록은 caretRect가 (0,0,0,0)을 반환 — elRect.left를 X 기본값으로
+      const zeroRect  = caretRect.top === 0 && caretRect.bottom === 0;
+      const caretX    = zeroRect ? elRect.left : (caretRect.left + caretRect.width / 2);
+
+      if (e.key === 'ArrowUp' && (zeroRect || caretRect.top < elRect.top + lineH)) {
+        e.preventDefault();
+        onArrow(block.id, 'up', caretX);
+      } else if (e.key === 'ArrowDown' && (zeroRect || caretRect.bottom > elRect.bottom - lineH)) {
+        e.preventDefault();
+        onArrow(block.id, 'down', caretX);
+      }
+    }
   };
 
   return (
@@ -161,6 +268,8 @@ function TextBlock({ block, onChange, onDelete, onEnter, showPlaceholder }) {
         data-text-id={block.id}
         data-placeholder={showPlaceholder ? '텍스트를 입력하세요...' : undefined}
         className="flex-1 min-h-[32px] text-[13px] text-dark outline-none px-1 py-0.5"
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
         onCompositionStart={() => { isComposing.current = true; }}
         onCompositionEnd={() => { isComposing.current = false; }}
         onInput={(e) => onChange(block.id, e.currentTarget.innerHTML)}
@@ -178,8 +287,10 @@ function TextBlock({ block, onChange, onDelete, onEnter, showPlaceholder }) {
 function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDelete }) {
   if (!widgetDef) return null;
   const cfg = config[block.instanceId] || {};
-  const viewType = cfg.viewType || widgetDef.viewTypes[0]?.id;
+  const viewType    = cfg.viewType   || widgetDef.viewTypes[0]?.id;
   const showPreview = !widgetDef.hasSystemSelect || (cfg.systemIds?.length > 0);
+  const showBorder  = cfg.showBorder !== false;
+  const showLabel   = cfg.showLabel  !== false;
 
   return (
     <div className="flex items-start">
@@ -189,7 +300,7 @@ function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDelete }) 
         onClick={(e) => { e.stopPropagation(); onClick(block.instanceId, widgetDef); }}
       >
         {showPreview
-          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
+          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} />
           : <WidgetPlaceholder widgetDef={widgetDef} />}
       </div>
       <button
@@ -200,7 +311,6 @@ function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDelete }) 
   );
 }
 
-
 /* ── Word 캔버스 ── */
 export default function WordCanvas({
   docBlocks, config, selectedWidget, docConfig, findWidgetDef,
@@ -210,13 +320,47 @@ export default function WordCanvas({
   const isLand = docConfig.orientation === 'landscape';
   const docW = isLand ? paper.h : paper.w;
   const docH = isLand ? paper.w : paper.h;
-  const m = docConfig.margins;
+  const m   = docConfig.margins;
   const pad = `${Math.round(m.top * MM_TO_PX)}px ${Math.round(m.right * MM_TO_PX)}px ${Math.round(m.bottom * MM_TO_PX)}px ${Math.round(m.left * MM_TO_PX)}px`;
 
-  /* 블록 드래그 재정렬 */
   const pendingFocusRef = useRef(null);
 
-  // Enter 키 → 현재 블록 다음에 새 텍스트 블록 생성 후 포커스
+  const handleArrow = useCallback((blockId, direction, caretX = 0) => {
+    let ti;
+    if (direction === 'first') {
+      ti = docBlocks.findIndex(b => b.type === 'text');
+    } else if (direction === 'last') {
+      ti = docBlocks.length - 1;
+      while (ti >= 0 && docBlocks[ti].type !== 'text') ti--;
+    } else {
+      const idx = docBlocks.findIndex(b => b.id === blockId);
+      const step = (direction === 'up' || direction === 'left') ? -1 : 1;
+      ti = idx + step;
+      while (ti >= 0 && ti < docBlocks.length && docBlocks[ti].type !== 'text') ti += step;
+    }
+    if (ti < 0 || ti >= docBlocks.length) return;
+    const targetEl = document.querySelector(`[data-text-id="${docBlocks[ti].id}"]`);
+    if (!targetEl) return;
+    targetEl.focus();
+
+    // X 좌표를 유지하며 인접 블록에 커서 배치
+    const targetRect = targetEl.getBoundingClientRect();
+    const goToEnd = direction === 'up' || direction === 'last' || direction === 'left';
+    const y = goToEnd ? targetRect.bottom - 4 : targetRect.top + 4;
+    const range = document.caretRangeFromPoint?.(caretX, y);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    if (range && targetEl.contains(range.startContainer)) {
+      sel.addRange(range);
+    } else {
+      // fallback: caretRangeFromPoint 미지원 또는 블록 밖을 가리킬 때
+      const r = document.createRange();
+      if (direction === 'up') { r.selectNodeContents(targetEl); r.collapse(false); }
+      else { r.setStart(targetEl, 0); r.collapse(true); }
+      sel.addRange(r);
+    }
+  }, [docBlocks]);
+
   const handleEnterBlock = useCallback((blockId) => {
     const idx = docBlocks.findIndex(b => b.id === blockId);
     const newId = `text-${Date.now()}`;
@@ -232,8 +376,8 @@ export default function WordCanvas({
 
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dropIdx,     setDropIdx]     = useState(null);
-  const dragRef    = useRef(null);   // { fromIdx }
-  const blockRefs  = useRef([]);     // DOM refs per block
+  const dragRef   = useRef(null);
+  const blockRefs = useRef([]);
 
   const getDropIndex = useCallback((clientY) => {
     let idx = docBlocks.length;
@@ -262,9 +406,7 @@ export default function WordCanvas({
       if (!dragRef.current) return;
       const { fromIdx } = dragRef.current;
       const to = getDropIndex(e.clientY);
-      if (to !== fromIdx && to !== fromIdx + 1) {
-        onReorderBlocks(fromIdx, to);
-      }
+      if (to !== fromIdx && to !== fromIdx + 1) onReorderBlocks(fromIdx, to);
       dragRef.current = null;
       setDraggingIdx(null);
       setDropIdx(null);
@@ -276,7 +418,8 @@ export default function WordCanvas({
 
   return (
     <>
-      <WordToolbar />
+      <FloatingToolbar />
+
       <div
         className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10"
         style={{ width: docW, minHeight: docH, padding: pad }}
@@ -285,7 +428,6 @@ export default function WordCanvas({
           const sel = window.getSelection();
           const container = e.currentTarget;
 
-          // Ctrl+A → 전체 선택
           if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             e.preventDefault();
             const editables = container.querySelectorAll('[contenteditable]');
@@ -300,23 +442,18 @@ export default function WordCanvas({
             return;
           }
 
-          // Backspace/Delete + 크로스 블록 선택
           if ((e.key === 'Backspace' || e.key === 'Delete') && sel && !sel.isCollapsed) {
             const editables = [...container.querySelectorAll('[contenteditable]')];
             const aIdx = editables.findIndex(el => el.contains(sel.anchorNode));
             const fIdx = editables.findIndex(el => el.contains(sel.focusNode));
             if (aIdx === -1 || fIdx === -1 || aIdx === fIdx) return;
-
             e.preventDefault();
             sel.removeAllRanges();
-
-            const fromIdx  = Math.min(aIdx, fIdx);
-            const toIdx    = Math.max(aIdx, fIdx);
-            const keepId   = editables[fromIdx].getAttribute('data-text-id');
+            const fromIdx   = Math.min(aIdx, fIdx);
+            const toIdx     = Math.max(aIdx, fIdx);
+            const keepId    = editables[fromIdx].getAttribute('data-text-id');
             const deleteIds = editables.slice(fromIdx + 1, toIdx + 1)
-              .map(el => el.getAttribute('data-text-id'))
-              .filter(Boolean);
-
+              .map(el => el.getAttribute('data-text-id')).filter(Boolean);
             onDeleteBlocksInRange(keepId, deleteIds);
             setTimeout(() => {
               const el = container.querySelector(`[data-text-id="${keepId}"]`);
@@ -325,7 +462,6 @@ export default function WordCanvas({
           }
         }}
       >
-        {/* 맨 위 드롭 인디케이터 */}
         {draggingIdx !== null && dropIdx === 0 && (
           <div className="h-[2px] bg-primary rounded-full mb-1" />
         )}
@@ -339,7 +475,6 @@ export default function WordCanvas({
                   ? 'opacity-40 bg-[#e8f0fc] shadow-[0_2px_12px_rgba(53,113,206,0.18)] cursor-grabbing scale-[0.99]'
                   : ''}`}
             >
-              {/* 드래그 핸들 */}
               <div
                 onMouseDown={(e) => { e.stopPropagation(); handleDragHandleMouseDown(e, i); }}
                 className="absolute -left-6 top-[6px] opacity-0 group-hover:opacity-50 hover:!opacity-100 cursor-grab active:cursor-grabbing text-muted transition-opacity select-none"
@@ -347,14 +482,13 @@ export default function WordCanvas({
                 <DragHandleIcon />
               </div>
 
-              {/* 블록 컨텐츠 */}
               {block.type === 'text' ? (
                 <TextBlock
                   block={block}
                   onChange={onUpdateText}
                   onDelete={onDeleteBlock}
                   onEnter={handleEnterBlock}
-                  showPlaceholder={i === 0 && docBlocks.length === 1}
+                  onArrow={handleArrow}
                 />
               ) : (
                 <WidgetBlock
@@ -368,7 +502,6 @@ export default function WordCanvas({
               )}
             </div>
 
-            {/* 드롭 인디케이터 */}
             {draggingIdx !== null && dropIdx === i + 1 && draggingIdx !== i && draggingIdx !== i + 1 && (
               <div className="h-[2px] bg-primary rounded-full my-0.5" />
             )}

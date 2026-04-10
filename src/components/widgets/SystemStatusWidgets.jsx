@@ -34,10 +34,10 @@ function Legend({ rows }) {
 }
 
 /* ── 공통 카드 래퍼 ── */
-function StatusCard({ chart, legendRows }) {
+function StatusCard({ chart, legendRows, showBorder = true, showLabel = true }) {
   return (
-    <div className="w-[274px] h-[153px] bg-white border border-border rounded-[10px] overflow-hidden shrink-0 relative">
-      <div className="absolute left-[10px] top-[13px] right-[32px]">
+    <div className={`w-[274px] h-[153px] bg-white rounded-[10px] overflow-hidden shrink-0 relative ${showBorder ? 'border border-border' : ''}`}>
+      <div className={`absolute left-[10px] top-[13px] right-[32px] ${showLabel ? '' : 'invisible'}`}>
         <span className="text-[12px] text-muted">시스템 상태</span>
       </div>
       <img src={imgDrag1} alt="drag"
@@ -78,10 +78,10 @@ function PieChart({ size = 96 }) {
 }
 
 /* ── Export: 세 variant ── */
-export function PreviewSimpleStatus() {
+export function PreviewSimpleStatus({ showBorder = true, showLabel = true }) {
   return (
-    <div className="w-[274px] h-[153px] bg-white border border-border rounded-[10px] overflow-hidden shrink-0 relative">
-      <div className="absolute left-[10px] top-[13px] right-[32px]">
+    <div className={`w-[274px] h-[153px] bg-white rounded-[10px] overflow-hidden shrink-0 relative ${showBorder ? 'border border-border' : ''}`}>
+      <div className={`absolute left-[10px] top-[13px] right-[32px] ${showLabel ? '' : 'invisible'}`}>
         <span className="text-[12px] text-muted">시스템 상태</span>
       </div>
       <img src={imgDrag1} alt="drag"
@@ -99,19 +99,21 @@ export function PreviewSimpleStatus() {
   );
 }
 
-export function PreviewDonutStatus() {
+export function PreviewDonutStatus({ showBorder = true, showLabel = true }) {
   return (
     <StatusCard
       chart={<PieChart size={96} />}
       legendRows={DATA.map(d => ({ ...d, icon: null }))}
+      showBorder={showBorder}
+      showLabel={showLabel}
     />
   );
 }
 
-export function PreviewBarStatus() {
+export function PreviewBarStatus({ showBorder = true, showLabel = true }) {
   return (
-    <div className="relative w-[298px] h-[124px] bg-white border border-border rounded-[10px] overflow-hidden shrink-0">
-      <span className="absolute left-[10px] top-[13px] text-[12px] text-muted">시스템 상태</span>
+    <div className={`relative w-[298px] h-[124px] bg-white rounded-[10px] overflow-hidden shrink-0 ${showBorder ? 'border border-border' : ''}`}>
+      <span className={`absolute left-[10px] top-[13px] text-[12px] text-muted ${showLabel ? '' : 'invisible'}`}>시스템 상태</span>
       <img src={imgDrag1} alt="drag"
         className="absolute right-2 top-3 w-4 h-4 pointer-events-none opacity-40" />
 

@@ -360,6 +360,26 @@ export default function RightPanel({ mode, selected, config, onConfigChange, onR
           </>
         )}
 
+        {/* 표시 설정 */}
+        <>
+          <Sep />
+          <div className="flex flex-col gap-2">
+            <SectionLabel>표시 설정</SectionLabel>
+            {[['showBorder', '외곽선'], ['showLabel', '라벨']].map(([key, label]) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-[12px] text-dark">{label}</span>
+                <button
+                  onClick={() => onConfigChange(instanceId, { ...cfg, [key]: cfg[key] === false ? true : false })}
+                  className={`w-9 h-5 rounded-full transition-colors relative ${cfg[key] !== false ? 'bg-primary' : 'bg-[#c0c7ce]'}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-150
+                    ${cfg[key] !== false ? 'left-[18px]' : 'left-0.5'}`} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+
         {/* 기간 설정 */}
         {widgetDef.hasPeriod && (
           <>
@@ -372,8 +392,8 @@ export default function RightPanel({ mode, selected, config, onConfigChange, onR
                   onClick={() => setPeriodOn(!cfg.periodOn)}
                   className={`w-9 h-5 rounded-full transition-colors relative ${cfg.periodOn ? 'bg-primary' : 'bg-[#c0c7ce]'}`}
                 >
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform
-                    ${cfg.periodOn ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-150
+                    ${cfg.periodOn ? 'left-[18px]' : 'left-0.5'}`} />
                 </button>
               </div>
 

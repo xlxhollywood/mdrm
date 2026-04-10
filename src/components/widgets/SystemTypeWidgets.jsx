@@ -74,11 +74,11 @@ function Legend({ rows }) {
 }
 
 /* ── 공통 카드 래퍼 ── */
-function TypeCard({ chart, legendRows }) {
+function TypeCard({ chart, legendRows, showBorder = true, showLabel = true }) {
   return (
-    <div className="w-[274px] h-[153px] bg-white border border-border rounded-[10px] overflow-hidden shrink-0 relative">
+    <div className={`w-[274px] h-[153px] bg-white rounded-[10px] overflow-hidden shrink-0 relative ${showBorder ? 'border border-border' : ''}`}>
       {/* 헤더 */}
-      <div className="absolute left-[10px] top-[13px] right-[32px]">
+      <div className={`absolute left-[10px] top-[13px] right-[32px] ${showLabel ? '' : 'invisible'}`}>
         <span className="text-[12px] text-muted">시스템 유형</span>
       </div>
       <img src={imgDrag1} alt="drag"
@@ -143,7 +143,7 @@ function StackedBar() {
 }
 
 /* ── Export: 세 variant ── */
-export function PreviewSimpleType() {
+export function PreviewSimpleType({ showBorder = true, showLabel = true }) {
   return (
     <TypeCard
       chart={
@@ -151,23 +151,27 @@ export function PreviewSimpleType() {
           className="w-[90px] h-[90px] object-contain pointer-events-none" />
       }
       legendRows={SIMPLE_ROWS}
+      showBorder={showBorder}
+      showLabel={showLabel}
     />
   );
 }
 
-export function PreviewDonutType() {
+export function PreviewDonutType({ showBorder = true, showLabel = true }) {
   return (
     <TypeCard
       chart={<PieChart size={96} />}
       legendRows={DATA.map(d => ({ ...d, icon: null }))}
+      showBorder={showBorder}
+      showLabel={showLabel}
     />
   );
 }
 
-export function PreviewBarType() {
+export function PreviewBarType({ showBorder = true, showLabel = true }) {
   return (
-    <div className="relative w-[298px] h-[124px] bg-white border border-border rounded-[10px] overflow-hidden shrink-0">
-      <span className="absolute left-[10px] top-[13px] text-[12px] text-muted">시스템 유형</span>
+    <div className={`relative w-[298px] h-[124px] bg-white rounded-[10px] overflow-hidden shrink-0 ${showBorder ? 'border border-border' : ''}`}>
+      <span className={`absolute left-[10px] top-[13px] text-[12px] text-muted ${showLabel ? '' : 'invisible'}`}>시스템 유형</span>
       <img src={imgDrag1} alt="drag"
         className="absolute right-2 top-3 w-4 h-4 pointer-events-none opacity-40" />
 
