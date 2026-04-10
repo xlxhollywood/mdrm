@@ -1,0 +1,15 @@
+export const imgLogo       = '/assets/logo.png';
+export const imgIconNoti   = '/assets/icon-noti.png';
+export const imgIconUser   = '/assets/icon-user.png';
+export const imgIconSet    = '/assets/icon-settings.png';
+export const imgStatus1    = '/assets/widget-status.png';
+export const imgDatacenter = '/assets/icon-datacenter-img.png';
+export const imgDrag1      = '/assets/icon-drag.png';
+export const imgIconOk     = '/assets/icon-ok.png';
+export const imgIconWarn   = '/assets/icon-warn.png';
+export const imgIconOffline= '/assets/icon-offline.png';
+export const imgServerBox  = '/assets/icon-server-box.png';
+export const imgCategories = '/assets/widget-categories.png';
+export const imgIconServer  = '/assets/icon-server.png';
+export const imgIconNetwork = '/assets/icon-network.png';
+export const imgIconStorage = '/assets/icon-storage.png';
