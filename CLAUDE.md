@@ -91,6 +91,6 @@ lsof -ti:3000 || (cd /Users/sehun/Documents/mantech/mdrm-ui && npm start &)
 - `chore`: 빌드, 설정 등 기타
 
 ### 규칙
-- subject는 소문자로 시작, 마침표 없음
-- 영어 또는 한국어 혼용 가능
+- subject와 body는 **반드시 한국어**로만 작성 (영어 혼용 금지)
+- 마침표 없음
 - 한 줄 72자 이내
