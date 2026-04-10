@@ -74,6 +74,26 @@ function BlockInsert({ onInsertText }) {
   );
 }
 
+/* ── Widget List Item ── */
+function WidgetListItem({ widget, onAdd }) {
+  return (
+    <div
+      onClick={() => onAdd(widget.id)}
+      className="flex items-center gap-2 px-4 py-[9px] cursor-pointer border-l-[3px] border-transparent
+        transition-colors hover:bg-primary-light hover:border-primary active:bg-blue-50"
+    >
+      <div className="w-7 h-7 rounded bg-primary-light flex items-center justify-center shrink-0 text-[14px]">
+        {widget.icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[12px] font-medium text-dark truncate">{widget.name}</div>
+        <div className="text-[11px] text-muted mt-px truncate">{widget.desc}</div>
+      </div>
+      <span className="text-[11px] text-border shrink-0">+</span>
+    </div>
+  );
+}
+
 /* ── Widget Placeholder ── */
 function WidgetPlaceholder({ widgetDef }) {
   return (
@@ -214,6 +234,7 @@ export default function WidgetDashboard() {
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, []);
 
+  const isAllTab = activeTab === 'all';
   const currentCategory = WIDGET_CATEGORIES[activeTab];
 
   return (
@@ -222,11 +243,11 @@ export default function WidgetDashboard() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* ── Left Panel ── */}
-        <div className="w-[260px] bg-white border-r border-border flex flex-col shrink-0 overflow-hidden">
+        <div className="w-[300px] bg-white border-r border-border flex flex-col shrink-0 overflow-hidden">
           <div className="px-4 pt-[14px] border-b border-border">
             <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.06em] mb-[10px]">위젯 목록</div>
             <div className="flex">
-              {Object.entries(WIDGET_CATEGORIES).map(([key, cat]) => (
+              {[['all', '전체'], ...Object.entries(WIDGET_CATEGORIES).map(([k, c]) => [k, c.label])].map(([key, label]) => (
                 <div
                   key={key}
                   onClick={() => setActiveTab(key)}
@@ -235,30 +256,21 @@ export default function WidgetDashboard() {
                       ? 'text-primary border-primary font-semibold'
                       : 'text-muted border-transparent hover:text-primary'}`}
                 >
-                  {cat.label}
+                  {label}
                 </div>
               ))}
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto py-3">
-            {currentCategory.widgets.map(widget => (
-              <div
-                key={widget.id}
-                onClick={() => handleAddWidget(widget.id)}
-                className="flex items-center gap-2 px-4 py-[9px] cursor-pointer border-l-[3px] border-transparent
-                  transition-colors hover:bg-primary-light hover:border-primary active:bg-blue-50"
-              >
-                <div className="w-7 h-7 rounded bg-primary-light flex items-center justify-center shrink-0 text-[14px]">
-                  {widget.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-medium text-dark truncate">{widget.name}</div>
-                  <div className="text-[11px] text-muted mt-px truncate">{widget.desc}</div>
-                </div>
-                <span className="text-[11px] text-border shrink-0">+</span>
-              </div>
-            ))}
+            {isAllTab
+              ? Object.values(WIDGET_CATEGORIES).flatMap(cat => cat.widgets).map(widget => (
+                  <WidgetListItem key={widget.id} widget={widget} onAdd={handleAddWidget} />
+                ))
+              : currentCategory.widgets.map(widget => (
+                  <WidgetListItem key={widget.id} widget={widget} onAdd={handleAddWidget} />
+                ))
+            }
           </div>
         </div>
 
