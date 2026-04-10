@@ -397,6 +397,63 @@ function PreviewBar() {
   );
 }
 
+function PreviewHistorySimple() {
+  const rows = [
+    { name: 'MDRMMSL-Agent-01', badge: 'Kernel', before: '10.0.14393.0',       after: '10.0.14393.1' },
+    { name: '10.110.34.111',    badge: 'OS',     before: 'Windows Server 2016', after: 'Windows Server 2016' },
+    { name: '10.110.34.112',    badge: 'OS',     before: '1024 MB',             after: '1024 MB' },
+  ];
+
+  return (
+    <div style={{
+      width: 360, background: '#fff', border: '1px solid #d9dfe5',
+      borderRadius: 10, flexShrink: 0,
+      boxShadow: '0 1px 4px rgba(26,34,43,0.08)',
+      fontFamily: "'Apple SD Gothic Neo', sans-serif",
+      padding: '13px 14px 14px',
+    }}>
+      {/* 카드 헤더 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <span style={{ fontSize: 12, color: '#5b646f' }}>시스템 변경 이력</span>
+        <img src={imgDrag1} alt="drag" style={{ width: 16, height: 16, opacity: 0.4, pointerEvents: 'none' }} />
+      </div>
+
+      {/* 행 목록 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* 아이콘 */}
+            <img src={imgServerBox} alt="" style={{ width: 20, height: 20, flexShrink: 0 }} />
+            {/* 이름 */}
+            <span style={{
+              fontSize: 12, color: '#1a222b', fontWeight: 500,
+              width: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0,
+            }}>{r.name}</span>
+            {/* 배지 */}
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: '#fff',
+              background: '#3571ce', borderRadius: 4,
+              padding: '1px 7px', flexShrink: 0,
+            }}>{r.badge}</span>
+            {/* 변경 전 */}
+            <span style={{
+              fontSize: 11, color: '#5b646f',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+            }}>{r.before}</span>
+            {/* 화살표 */}
+            <span style={{ fontSize: 11, color: '#3571ce', flexShrink: 0, fontWeight: 700 }}>››</span>
+            {/* 변경 후 */}
+            <span style={{
+              fontSize: 11, color: '#5b646f',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+            }}>{r.after}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PreviewHistoryTable() {
   // CSS grid template: icon | name | item | before | after | date
   const GRID = '26px 140px 120px 140px 130px 72px';
@@ -561,6 +618,7 @@ function WidgetPreview({ widgetId, viewType }) {
   if (viewType === 'simple' || (!viewType && (widgetId === 'insp-result' || widgetId === 'insp-schedule'))) {
     if (widgetId === 'wf-history' || widgetId === 'insp-result' || widgetId === 'insp-schedule') return <PreviewHistory />;
     if (widgetId === 'sys-type') return <PreviewSimpleType />;
+    if (widgetId === 'sys-history') return <PreviewHistorySimple />;
     return <PreviewSimple />;
   }
   if (viewType === 'donut') return <PreviewDonut />;
