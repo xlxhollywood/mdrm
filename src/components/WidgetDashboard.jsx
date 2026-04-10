@@ -86,9 +86,30 @@ export default function WidgetDashboard() {
   const handleUpdateText = useCallback((id, html) =>
     setDocBlocks(prev => prev.map(b => b.id === id ? { ...b, html } : b)), []);
 
-  const handleInsertText = useCallback((afterIdx) => {
-    const newBlock = { id: `text-${Date.now()}`, type: 'text', html: '' };
+  const handleInsertText = useCallback((afterIdx, id) => {
+    const newBlock = { id: id || `text-${Date.now()}`, type: 'text', html: '' };
     setDocBlocks(prev => { const a = [...prev]; a.splice(afterIdx + 1, 0, newBlock); return a; });
+  }, []);
+
+  const handleDeleteBlocksInRange = useCallback((keepId, deleteIds) => {
+    setDocBlocks(prev =>
+      prev
+        .filter(b => !deleteIds.includes(b.id) && !deleteIds.includes(b.instanceId))
+        .map(b => b.id === keepId ? { ...b, html: '' } : b)
+    );
+    deleteIds.forEach(id => {
+      setConfig(c => { const n = { ...c }; delete n[id]; return n; });
+    });
+    if (deleteIds.includes(selectedWidget?.instanceId)) setSelectedWidget(null);
+  }, [selectedWidget]);
+
+  const handleReorderBlocks = useCallback((fromIdx, toIdx) => {
+    setDocBlocks(prev => {
+      const arr = [...prev];
+      const [item] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx > fromIdx ? toIdx - 1 : toIdx, 0, item);
+      return arr;
+    });
   }, []);
 
   const handleDeleteBlock = useCallback((blockId) => {
@@ -181,7 +202,9 @@ export default function WidgetDashboard() {
               onDeleteBlock={handleDeleteBlock}
               onUpdateText={handleUpdateText}
               onInsertText={handleInsertText}
+              onDeleteBlocksInRange={handleDeleteBlocksInRange}
               onDeselectWidget={() => setSelectedWidget(null)}
+              onReorderBlocks={handleReorderBlocks}
             />
           )}
         </div>
