@@ -447,7 +447,7 @@ function PreviewHistoryTable() {
         }}>
           <div />
           {[
-            { label: '이름' },
+            { label: '이름', ml: -20 },
             { label: '변경 구성 항목' },
             { label: '변경 전' },
             { label: '변경 후' },
@@ -459,6 +459,7 @@ function PreviewHistoryTable() {
               letterSpacing: '0.02em',
               justifyContent: c.right ? 'flex-end' : 'flex-start',
               overflow: 'hidden',
+              marginLeft: c.ml || 0,
             }}>
               {c.label}<SortIcon />
             </div>
