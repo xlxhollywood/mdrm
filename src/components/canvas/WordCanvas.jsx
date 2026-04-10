@@ -199,7 +199,7 @@ function FloatingToolbar() {
 }
 
 /* ── 텍스트 블록 ── */
-function TextBlock({ block, onChange, onDelete, onEnter, onArrow }) {
+function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onFocusBlock, onBlurBlock, isBlockActive, allSelected }) {
   const ref = useRef(null);
   const isComposing = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -259,7 +259,7 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow }) {
   };
 
   return (
-    <div className="flex items-start">
+    <div className="flex items-center min-h-[32px]">
       <div
         ref={ref}
         contentEditable
@@ -267,9 +267,10 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow }) {
         dir="ltr"
         data-text-id={block.id}
         data-placeholder={showPlaceholder ? '텍스트를 입력하세요...' : undefined}
-        className="flex-1 min-h-[32px] text-[13px] text-dark outline-none px-1 py-0.5"
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        className="flex-1 text-[13px] text-dark outline-none px-1 py-0.5"
+        onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
+        onBlur={() => { setIsFocused(false); onBlurBlock?.(); }}
+        onDragStart={(e) => e.preventDefault()}
         onCompositionStart={() => { isComposing.current = true; }}
         onCompositionEnd={() => { isComposing.current = false; }}
         onInput={(e) => onChange(block.id, e.currentTarget.innerHTML)}
@@ -277,7 +278,8 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow }) {
       />
       <button
         onClick={() => onDelete(block.id)}
-        className="opacity-0 group-hover:opacity-100 ml-2 w-5 h-5 flex items-center justify-center text-[#c0c7ce] hover:text-danger text-[14px] shrink-0 transition-opacity mt-0.5"
+        className={`ml-2 w-5 h-5 flex items-center justify-center text-[#c0c7ce] hover:text-danger text-[14px] shrink-0 transition-opacity mt-0.5
+          ${isFocused && !isBlockActive && !allSelected ? 'opacity-100' : 'opacity-0'}`}
       >×</button>
     </div>
   );
@@ -343,21 +345,35 @@ export default function WordCanvas({
     if (!targetEl) return;
     targetEl.focus();
 
-    // X 좌표를 유지하며 인접 블록에 커서 배치
-    const targetRect = targetEl.getBoundingClientRect();
-    const goToEnd = direction === 'up' || direction === 'last' || direction === 'left';
-    const y = goToEnd ? targetRect.bottom - 4 : targetRect.top + 4;
-    const range = document.caretRangeFromPoint?.(caretX, y);
     const sel = window.getSelection();
     sel.removeAllRanges();
-    if (range && targetEl.contains(range.startContainer)) {
-      sel.addRange(range);
-    } else {
-      // fallback: caretRangeFromPoint 미지원 또는 블록 밖을 가리킬 때
+
+    if (direction === 'left' || direction === 'last') {
+      // 이전 블록 맨 끝
       const r = document.createRange();
-      if (direction === 'up') { r.selectNodeContents(targetEl); r.collapse(false); }
-      else { r.setStart(targetEl, 0); r.collapse(true); }
+      r.selectNodeContents(targetEl);
+      r.collapse(false);
       sel.addRange(r);
+    } else if (direction === 'right' || direction === 'first') {
+      // 다음 블록 맨 앞
+      const r = document.createRange();
+      r.setStart(targetEl, 0);
+      r.collapse(true);
+      sel.addRange(r);
+    } else {
+      // up/down: X 좌표 유지
+      const targetRect = targetEl.getBoundingClientRect();
+      const goToEnd = direction === 'up';
+      const y = goToEnd ? targetRect.bottom - 4 : targetRect.top + 4;
+      const range = document.caretRangeFromPoint?.(caretX, y);
+      if (range && targetEl.contains(range.startContainer)) {
+        sel.addRange(range);
+      } else {
+        const r = document.createRange();
+        if (goToEnd) { r.selectNodeContents(targetEl); r.collapse(false); }
+        else { r.setStart(targetEl, 0); r.collapse(true); }
+        sel.addRange(r);
+      }
     }
   }, [docBlocks]);
 
@@ -374,6 +390,9 @@ export default function WordCanvas({
     if (el) { el.focus(); pendingFocusRef.current = null; }
   });
 
+  const [focusedBlockId, setFocusedBlockId] = useState(null);
+  const [activeBlockId,  setActiveBlockId]  = useState(null);
+  const [allSelected,    setAllSelected]    = useState(false);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dropIdx,     setDropIdx]     = useState(null);
   const dragRef   = useRef(null);
@@ -390,26 +409,38 @@ export default function WordCanvas({
     return idx;
   }, [docBlocks.length]);
 
-  const handleDragHandleMouseDown = useCallback((e, idx) => {
+  const DRAG_THRESHOLD = 6; // px
+
+  const handleDragHandleMouseDown = useCallback((e, idx, blockId) => {
     e.preventDefault();
-    dragRef.current = { fromIdx: idx };
-    setDraggingIdx(idx);
-    setDropIdx(idx);
+    setActiveBlockId(blockId);
+    dragRef.current = { fromIdx: idx, startX: e.clientX, startY: e.clientY, started: false };
   }, []);
 
   useEffect(() => {
     const onMove = (e) => {
       if (!dragRef.current) return;
+      const { startX, startY, started, fromIdx } = dragRef.current;
+      if (!started) {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+        dragRef.current.started = true;
+        setDraggingIdx(fromIdx);
+        setDropIdx(fromIdx);
+      }
       setDropIdx(getDropIndex(e.clientY));
     };
     const onUp = (e) => {
       if (!dragRef.current) return;
-      const { fromIdx } = dragRef.current;
-      const to = getDropIndex(e.clientY);
-      if (to !== fromIdx && to !== fromIdx + 1) onReorderBlocks(fromIdx, to);
+      const { fromIdx, started } = dragRef.current;
+      if (started) {
+        const to = getDropIndex(e.clientY);
+        if (to !== fromIdx && to !== fromIdx + 1) onReorderBlocks(fromIdx, to);
+        setDraggingIdx(null);
+        setDropIdx(null);
+      }
       dragRef.current = null;
-      setDraggingIdx(null);
-      setDropIdx(null);
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -423,25 +454,35 @@ export default function WordCanvas({
       <div
         className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10"
         style={{ width: docW, minHeight: docH, padding: pad }}
-        onClick={onDeselectWidget}
+        onClick={(e) => { onDeselectWidget(e); setActiveBlockId(null); setAllSelected(false); }}
         onKeyDown={(e) => {
           const sel = window.getSelection();
           const container = e.currentTarget;
 
+          // Ctrl+A → 전체 블록 선택 상태
           if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             e.preventDefault();
-            const editables = container.querySelectorAll('[contenteditable]');
-            if (!editables.length) return;
-            const first = editables[0];
-            const last  = editables[editables.length - 1];
-            const range = document.createRange();
-            range.setStart(first, 0);
-            range.setEnd(last, last.childNodes.length);
             sel.removeAllRanges();
-            sel.addRange(range);
+            setAllSelected(true);
+            setActiveBlockId(null);
             return;
           }
 
+          // 전체 선택 상태에서 Backspace/Delete → 모든 블록 삭제 후 빈 블록 하나 유지
+          if (allSelected && (e.key === 'Backspace' || e.key === 'Delete')) {
+            e.preventDefault();
+            setAllSelected(false);
+            const allIds = docBlocks.map(b => b.id);
+            onDeleteBlocksInRange(null, allIds);
+            return;
+          }
+
+          // 전체 선택 상태에서 다른 키 → 선택 해제 후 기본 동작
+          if (allSelected) {
+            setAllSelected(false);
+          }
+
+          // 크로스 블록 선택 Backspace
           if ((e.key === 'Backspace' || e.key === 'Delete') && sel && !sel.isCollapsed) {
             const editables = [...container.querySelectorAll('[contenteditable]')];
             const aIdx = editables.findIndex(el => el.contains(sel.anchorNode));
@@ -470,14 +511,20 @@ export default function WordCanvas({
           <React.Fragment key={block.id}>
             <div
               ref={el => blockRefs.current[i] = el}
-              className={`relative group rounded-[6px] transition-all duration-100
+              className={`relative rounded-[6px] transition-all duration-100
                 ${draggingIdx === i
                   ? 'opacity-40 bg-[#e8f0fc] shadow-[0_2px_12px_rgba(53,113,206,0.18)] cursor-grabbing scale-[0.99]'
-                  : ''}`}
+                  : allSelected || activeBlockId === block.id
+                    ? 'bg-[#dce8ff]'
+                    : ''}`}
             >
+              {/* 드래그 핸들 — 커서가 있는 블록에만 표시 */}
               <div
-                onMouseDown={(e) => { e.stopPropagation(); handleDragHandleMouseDown(e, i); }}
-                className="absolute -left-6 top-[6px] opacity-0 group-hover:opacity-50 hover:!opacity-100 cursor-grab active:cursor-grabbing text-muted transition-opacity select-none"
+                onMouseDown={(e) => { e.stopPropagation(); window.getSelection()?.removeAllRanges(); handleDragHandleMouseDown(e, i, block.id); }}
+                onClick={(e) => e.stopPropagation()}
+                className={`absolute -left-6 cursor-grab active:cursor-grabbing text-muted transition-opacity select-none
+                  ${!(block.html || '').includes('<br>') ? 'top-1/2 -translate-y-1/2' : 'top-[4px]'}
+                  ${focusedBlockId === block.id || activeBlockId === block.id ? 'opacity-60 hover:opacity-100' : 'opacity-0 pointer-events-none'}`}
               >
                 <DragHandleIcon />
               </div>
@@ -489,6 +536,10 @@ export default function WordCanvas({
                   onDelete={onDeleteBlock}
                   onEnter={handleEnterBlock}
                   onArrow={handleArrow}
+                  onFocusBlock={() => { setFocusedBlockId(block.id); setAllSelected(false); }}
+                  onBlurBlock={() => setFocusedBlockId(id => id === block.id ? null : id)}
+                  isBlockActive={activeBlockId === block.id}
+                  allSelected={allSelected}
                 />
               ) : (
                 <WidgetBlock

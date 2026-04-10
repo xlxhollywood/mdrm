@@ -93,6 +93,12 @@ export default function WidgetDashboard() {
   }, []);
 
   const handleDeleteBlocksInRange = useCallback((keepId, deleteIds) => {
+    if (keepId === null) {
+      // 전체 선택 삭제 → 빈 블록 하나로 리셋
+      setDocBlocks([{ id: `text-${Date.now()}`, type: 'text', html: '' }]);
+      setSelectedWidget(null);
+      return;
+    }
     setDocBlocks(prev =>
       prev
         .filter(b => !deleteIds.includes(b.id) && !deleteIds.includes(b.instanceId))
