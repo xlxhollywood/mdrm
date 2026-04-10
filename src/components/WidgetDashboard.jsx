@@ -11,7 +11,6 @@ const findWidgetDef = (id) => allWidgets.find(w => w.id === id);
 const makeConfig = (def) => ({
   viewType: def?.viewTypes[0]?.id || null,
   periodOn: false, from: MONTH_AGO, to: TODAY, quick: null,
-  applied: false,
 });
 
 /* ── Word Mode Blocks ── */
@@ -66,17 +65,6 @@ function BlockInsert({ onInsertText }) {
   );
 }
 
-/* ── Widget Placeholder (미적용 상태) ── */
-function WidgetPlaceholder({ widgetDef }) {
-  return (
-    <div className="w-[274px] h-[153px] bg-white border-2 border-dashed border-border rounded-[10px] flex flex-col items-center justify-center gap-2 shrink-0">
-      <span className="text-[28px]">{widgetDef.icon}</span>
-      <span className="text-[12px] font-medium text-dark">{widgetDef.name}</span>
-      <span className="text-[10px] text-muted">오른쪽 패널에서 설정 후 적용하세요</span>
-    </div>
-  );
-}
-
 /* ── Placed Card (Grid Mode) ── */
 function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragging, onClick, onDragHandleMouseDown }) {
   const cfg = config[instance.id] || {};
@@ -91,9 +79,7 @@ function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragg
         ${isDragging ? 'opacity-30' : 'opacity-100'}`}
       onClick={() => !isDragging && onClick(instance.id, widgetDef)}
     >
-      {cfg.applied
-        ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
-        : <WidgetPlaceholder widgetDef={widgetDef} />}
+      <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
       <div
         onMouseDown={(e) => { e.stopPropagation(); onDragHandleMouseDown(e, instance.id); }}
         onClick={(e) => e.stopPropagation()}
@@ -126,10 +112,6 @@ export default function WidgetDashboard() {
       setCanvasWidgets(prev => [...prev, { id: instanceId, widgetId }]);
     }
   }, [canvasMode]);
-
-  const handleApply = useCallback((instanceId) => {
-    setConfig(prev => ({ ...prev, [instanceId]: { ...prev[instanceId], applied: true } }));
-  }, []);
 
   const handleRemove = useCallback((instanceId) => {
     setCanvasWidgets(prev => prev.filter(w => w.id !== instanceId));
@@ -333,7 +315,6 @@ export default function WidgetDashboard() {
           config={config}
           onConfigChange={handleConfigChange}
           onRemove={handleRemove}
-          onApply={handleApply}
         />
       </div>
 
