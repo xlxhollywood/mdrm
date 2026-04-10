@@ -70,3 +70,30 @@ lsof -ti:3000 || (cd /Users/sehun/Documents/mantech/mdrm-ui && npm start &)
 - 서버가 이미 실행 중이면 그대로 사용
 - 새로 시작한 경우 수 초 후 `http://localhost:3000` 에서 확인 가능
 - 서버 시작 후 `open http://localhost:3000` 으로 브라우저도 자동으로 열 것
+
+## Git 커밋 컨벤션 (Google Style)
+
+모든 커밋 메시지는 아래 형식을 따를 것.
+
+```
+<type>(<scope>): <subject>
+
+<body> (선택)
+```
+
+### Type
+- `feat`: 새 기능
+- `fix`: 버그 수정
+- `docs`: 문서 변경
+- `style`: 포맷팅, 코드 스타일 (기능 변경 없음)
+- `refactor`: 리팩토링
+- `test`: 테스트 추가/수정
+- `chore`: 빌드, 설정 등 기타
+
+### Scope 예시
+- `dashboard`, `table`, `panel`, `header`, `widget`, `assets`, `canvas`
+
+### 규칙
+- subject는 소문자로 시작, 마침표 없음
+- 영어 또는 한국어 혼용 가능
+- 한 줄 72자 이내
