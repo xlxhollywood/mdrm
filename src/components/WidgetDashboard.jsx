@@ -40,7 +40,7 @@ function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDelete }) 
   return (
     <div
       className={`relative flex items-start group cursor-pointer rounded-[10px]
-        ${isActive ? 'outline outline-2 outline-primary-hover outline-offset-2 shadow-[0_0_0_3px_rgba(53,113,206,0.15)]' : ''}`}
+        ${isActive ? 'ring-2 ring-[#3571ce] ring-offset-2 shadow-[0_0_0_4px_rgba(53,113,206,0.12)]' : ''}`}
       onClick={() => onClick(block.instanceId, widgetDef)}
     >
       <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
@@ -74,8 +74,8 @@ function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragg
     <div
       data-card-id={instance.id}
       className={`relative inline-flex cursor-pointer rounded-[10px] transition-all duration-150
-        ${isActive   ? 'outline outline-2 outline-primary-hover outline-offset-2 shadow-[0_0_0_3px_rgba(53,113,206,0.15)]' : ''}
-        ${isDragOver ? 'outline outline-2 outline-dashed outline-primary-hover outline-offset-2' : ''}
+        ${isActive   ? 'ring-2 ring-[#3571ce] ring-offset-2 shadow-[0_0_0_4px_rgba(53,113,206,0.12)]' : ''}
+        ${isDragOver ? 'ring-2 ring-[#3571ce] ring-offset-2 ring-dashed' : ''}
         ${isDragging ? 'opacity-30' : 'opacity-100'}`}
       onClick={() => !isDragging && onClick(instance.id, widgetDef)}
     >
