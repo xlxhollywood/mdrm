@@ -126,7 +126,7 @@ function PieChart({ size = 96 }) {
 function StackedBar() {
   return (
     <div className="w-full flex flex-col items-center gap-2">
-      <div className="w-full h-[22px] rounded-full overflow-hidden flex">
+      <div className="w-full h-[14px] rounded-full overflow-hidden flex">
         {DATA.map((d, i) => (
           <div
             key={d.label}
@@ -176,7 +176,7 @@ export function PreviewBarType() {
         <span className="text-[12px] text-link">Datacenter</span>
       </div>
 
-      <div className="absolute left-[12px] right-[12px] top-[56px] h-[22px] rounded-full overflow-hidden flex">
+      <div className="absolute left-[12px] right-[12px] top-[56px] h-[18px] rounded-full overflow-hidden flex">
         {DATA.map((d, i) => (
           <div
             key={d.label}

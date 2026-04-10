@@ -120,7 +120,7 @@ export function PreviewBarStatus() {
         <span className="text-[12px] text-link">Datacenter</span>
       </div>
 
-      <div className="absolute left-[12px] right-[12px] top-[56px] h-[22px] rounded-full overflow-hidden flex">
+      <div className="absolute left-[12px] right-[12px] top-[56px] h-[18px] rounded-full overflow-hidden flex">
         {DATA.map((d, i) => (
           <div
             key={d.label}

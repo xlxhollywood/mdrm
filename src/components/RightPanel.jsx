@@ -60,7 +60,6 @@ function TreeNode({ node, depth, selectedIds, onToggleSelect, expanded, onToggle
           ${isDisabled ? 'opacity-40' : 'hover:bg-[#f0f4fa] cursor-pointer'}`}
         style={{ paddingLeft: `${8 + indent}px` }}
       >
-        {/* 펼치기 토글 */}
         <span
           className={`w-4 h-4 flex items-center justify-center shrink-0 ${hasChildren && !isDisabled ? 'cursor-pointer' : ''}`}
           onClick={(e) => { e.stopPropagation(); if (hasChildren && !isDisabled) onToggleExpand(node.id); }}
@@ -68,13 +67,10 @@ function TreeNode({ node, depth, selectedIds, onToggleSelect, expanded, onToggle
           {hasChildren && <IcoChevron open={isExpanded} />}
         </span>
 
-        {/* 체크박스 */}
         <span
           onClick={() => !isDisabled && onToggleSelect(node.id)}
           className={`w-[13px] h-[13px] border rounded-[2px] shrink-0 flex items-center justify-center transition-colors
-            ${isSelected
-              ? 'bg-primary border-primary'
-              : 'border-[#a6acb7] bg-white'}`}
+            ${isSelected ? 'bg-primary border-primary' : 'border-[#a6acb7] bg-white'}`}
         >
           {isSelected && (
             <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
@@ -83,7 +79,6 @@ function TreeNode({ node, depth, selectedIds, onToggleSelect, expanded, onToggle
           )}
         </span>
 
-        {/* 아이콘 + 라벨 */}
         <span
           className="flex items-center gap-1.5 flex-1 min-w-0"
           onClick={() => !isDisabled && onToggleSelect(node.id)}
@@ -101,7 +96,6 @@ function TreeNode({ node, depth, selectedIds, onToggleSelect, expanded, onToggle
         </span>
       </div>
 
-      {/* 자식 노드 */}
       {hasChildren && isExpanded && (
         <div>
           {node.children.map(child => (
@@ -171,8 +165,132 @@ function SystemSelectSection({ cfg, onCfgChange }) {
   );
 }
 
+/* ── 섹션 구분선 ── */
+const Sep = () => <div className="h-px bg-border" />;
+
+/* ── 섹션 라벨 ── */
+const SectionLabel = ({ children }) => (
+  <div className="text-[11px] font-semibold text-muted uppercase tracking-[0.06em]">{children}</div>
+);
+
+/* ── Word 문서 설정 패널 ── */
+function WordDocPanel({ docConfig, onChange, onPublish, published }) {
+  const set = (key, val) => onChange({ ...docConfig, [key]: val });
+  const setMargin = (side, val) => onChange({ ...docConfig, margins: { ...docConfig.margins, [side]: Number(val) } });
+
+  return (
+    <div className="flex-1 flex flex-col overflow-y-auto">
+      <div className="flex-1 p-4 flex flex-col gap-3">
+        <SectionLabel>페이지 설정</SectionLabel>
+
+        {/* 용지 크기 */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] text-muted">용지 크기</label>
+          <select
+            value={docConfig.paperSize}
+            onChange={e => set('paperSize', e.target.value)}
+            className="text-[12px] border border-border rounded-[6px] px-2.5 py-[7px] text-dark bg-white outline-none focus:border-primary"
+          >
+            <option value="A4">A4  (210 × 297mm)</option>
+            <option value="A3">A3  (297 × 420mm)</option>
+            <option value="B5">B5  (176 × 250mm)</option>
+            <option value="Letter">Letter  (216 × 279mm)</option>
+            <option value="Legal">Legal  (216 × 356mm)</option>
+          </select>
+        </div>
+
+        {/* 방향 */}
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] text-muted">방향</label>
+          <div className="flex gap-2">
+            {[
+              {
+                val: 'portrait', label: '세로',
+                icon: (
+                  <svg width="18" height="24" viewBox="0 0 18 24" fill="none">
+                    <rect x="1" y="1" width="16" height="22" rx="2"
+                      stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.08"/>
+                  </svg>
+                ),
+              },
+              {
+                val: 'landscape', label: '가로',
+                icon: (
+                  <svg width="24" height="18" viewBox="0 0 24 18" fill="none">
+                    <rect x="1" y="1" width="22" height="16" rx="2"
+                      stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.08"/>
+                  </svg>
+                ),
+              },
+            ].map(({ val, label, icon }) => (
+              <button
+                key={val}
+                onClick={() => set('orientation', val)}
+                className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-[6px] border text-[11px] transition-colors
+                  ${docConfig.orientation === val
+                    ? 'border-primary bg-primary-light text-primary'
+                    : 'border-border text-muted hover:border-primary hover:text-primary'}`}
+              >
+                {icon}
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 여백 */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] text-muted">여백 (mm)</label>
+          <div className="grid grid-cols-2 gap-2">
+            {[['top','위'], ['bottom','아래'], ['left','왼쪽'], ['right','오른쪽']].map(([side, label]) => (
+              <div key={side} className="flex flex-col gap-1">
+                <span className="text-[10px] text-muted">{label}</span>
+                <input
+                  type="number"
+                  value={docConfig.margins[side]}
+                  onChange={e => setMargin(side, e.target.value)}
+                  min="0" max="100"
+                  className="text-[12px] border border-border rounded-[6px] px-2 py-1.5 text-dark outline-none focus:border-primary w-full"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 발행 버튼 */}
+      <div className="px-4 py-3 border-t border-border">
+        <button
+          onClick={onPublish}
+          className={`w-full py-2.5 text-[13px] font-semibold rounded-[6px] transition-colors
+            ${published
+              ? 'bg-success text-white'
+              : 'bg-primary text-white hover:bg-primary-hover'}`}
+        >
+          {published ? '✓ 발행 완료' : '발행'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ── */
-export default function RightPanel({ selected, config, onConfigChange, onRemove }) {
+export default function RightPanel({ mode, selected, config, onConfigChange, onRemove, docConfig, onDocConfigChange, published, onPublish }) {
+
+  /* Word 모드 + 위젯 미선택 → 문서 설정 */
+  if (mode === 'word' && !selected) {
+    return (
+      <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <div className="text-[13px] font-semibold text-dark">문서 설정</div>
+          <div className="text-[11px] text-muted mt-0.5">용지·여백을 설정하세요</div>
+        </div>
+        <WordDocPanel docConfig={docConfig} onChange={onDocConfigChange} onPublish={onPublish} published={published} />
+      </div>
+    );
+  }
+
+  /* Grid 모드 + 위젯 미선택 → 빈 상태 */
   if (!selected) {
     return (
       <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
@@ -188,15 +306,16 @@ export default function RightPanel({ selected, config, onConfigChange, onRemove 
     );
   }
 
+  /* 위젯 선택 → 위젯 옵션 (Grid/Word 공통) */
   const { widgetDef, instanceId } = selected;
   const cfg = config[instanceId] || {};
 
-  const setViewType   = (vt) => onConfigChange(instanceId, { ...cfg, viewType: vt });
-  const setPeriodOn   = (v)  => onConfigChange(instanceId, { ...cfg, periodOn: v });
-  const setFrom       = (v)  => onConfigChange(instanceId, { ...cfg, from: v });
-  const setTo         = (v)  => onConfigChange(instanceId, { ...cfg, to: v });
-  const setQuick      = (q)  => onConfigChange(instanceId, { ...cfg, quick: q });
-  const setSystemIds  = (ids) => onConfigChange(instanceId, { ...cfg, systemIds: ids });
+  const setViewType  = (vt)  => onConfigChange(instanceId, { ...cfg, viewType: vt });
+  const setPeriodOn  = (v)   => onConfigChange(instanceId, { ...cfg, periodOn: v });
+  const setFrom      = (v)   => onConfigChange(instanceId, { ...cfg, from: v });
+  const setTo        = (v)   => onConfigChange(instanceId, { ...cfg, to: v });
+  const setQuick     = (q)   => onConfigChange(instanceId, { ...cfg, quick: q });
+  const setSystemIds = (ids) => onConfigChange(instanceId, { ...cfg, systemIds: ids });
 
   return (
     <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
@@ -206,6 +325,7 @@ export default function RightPanel({ selected, config, onConfigChange, onRemove 
       </div>
 
       <div className="flex-1 flex flex-col overflow-y-auto p-4 gap-4">
+
         {/* 시스템 선택 */}
         {widgetDef.hasSystemSelect && (
           <SystemSelectSection cfg={cfg} onCfgChange={setSystemIds} />
@@ -214,9 +334,9 @@ export default function RightPanel({ selected, config, onConfigChange, onRemove 
         {/* 표시 형태 */}
         {widgetDef.viewTypes.length > 0 && (
           <>
-            {widgetDef.hasSystemSelect && <div className="h-px bg-border" />}
+            {widgetDef.hasSystemSelect && <Sep />}
             <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold text-muted uppercase tracking-[0.06em]">표시 형태</div>
+              <SectionLabel>표시 형태</SectionLabel>
               <div className="flex flex-col gap-1">
                 {widgetDef.viewTypes.map(vt => (
                   <div
@@ -224,7 +344,7 @@ export default function RightPanel({ selected, config, onConfigChange, onRemove 
                     className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer border transition-colors
                       ${cfg.viewType === vt.id
                         ? 'border-primary bg-primary-light text-primary'
-                        : 'border-border hover:bg-gray-50 text-dark'}`}
+                        : 'border-border hover:bg-[#f8fafc] text-dark'}`}
                     onClick={() => setViewType(vt.id)}
                   >
                     <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0
@@ -243,11 +363,9 @@ export default function RightPanel({ selected, config, onConfigChange, onRemove 
         {/* 기간 설정 */}
         {widgetDef.hasPeriod && (
           <>
-            {(widgetDef.viewTypes.length > 0 || widgetDef.hasSystemSelect) && (
-              <div className="h-px bg-border" />
-            )}
+            {(widgetDef.viewTypes.length > 0 || widgetDef.hasSystemSelect) && <Sep />}
             <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold text-muted uppercase tracking-[0.06em]">기간 설정</div>
+              <SectionLabel>기간 설정</SectionLabel>
               <div className="flex items-center justify-between">
                 <span className="text-[12px] text-dark">기간 필터 사용</span>
                 <button
@@ -298,15 +416,12 @@ export default function RightPanel({ selected, config, onConfigChange, onRemove 
 
         <div className="flex-1" />
 
-        {/* 버튼 */}
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={() => onRemove && onRemove(instanceId)}
-            className="w-full py-2 bg-white text-danger text-[12px] font-medium rounded border border-danger hover:bg-red-50 transition-colors"
-          >
-            위젯 삭제
-          </button>
-        </div>
+        <button
+          onClick={() => onRemove && onRemove(instanceId)}
+          className="w-full py-2 bg-white text-danger text-[12px] font-medium rounded border border-danger hover:bg-red-50 transition-colors"
+        >
+          위젯 삭제
+        </button>
       </div>
     </div>
   );
