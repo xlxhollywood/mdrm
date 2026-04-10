@@ -76,7 +76,7 @@ lsof -ti:3000 || (cd /Users/sehun/Documents/mantech/mdrm-ui && npm start &)
 모든 커밋 메시지는 아래 형식을 따를 것.
 
 ```
-<type>(<scope>): <subject>
+<type>: <subject>
 
 <body> (선택)
 ```
@@ -89,9 +89,6 @@ lsof -ti:3000 || (cd /Users/sehun/Documents/mantech/mdrm-ui && npm start &)
 - `refactor`: 리팩토링
 - `test`: 테스트 추가/수정
 - `chore`: 빌드, 설정 등 기타
-
-### Scope 예시
-- `dashboard`, `table`, `panel`, `header`, `widget`, `assets`, `canvas`
 
 ### 규칙
 - subject는 소문자로 시작, 마침표 없음
