@@ -124,3 +124,6 @@ lsof -ti:3000 || (cd /Users/sehun/Documents/mantech/mdrm-ui && npm start &)
 - subject와 body는 **반드시 한국어**로만 작성 (영어 혼용 금지)
 - 마침표 없음
 - 한 줄 72자 이내
+- **커밋 단위**: 기능 하나 또는 버그 하나당 커밋 하나. 여러 기능/버그를 하나의 커밋에 묶지 말 것
+  - feat과 fix를 같은 커밋에 섞지 말 것
+  - 무관한 변경사항을 한 커밋에 합치지 말 것
