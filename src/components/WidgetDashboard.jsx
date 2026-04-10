@@ -15,15 +15,24 @@ const makeConfig = (def) => ({
 
 /* ── Word Mode Blocks ── */
 function TextBlock({ block, onChange, onDelete }) {
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    if (ref.current && ref.current !== document.activeElement) {
+      ref.current.innerHTML = block.html || '';
+    }
+  }, [block.html]);
+
   return (
     <div className="relative flex items-start group">
       <div
+        ref={ref}
         contentEditable
         suppressContentEditableWarning
+        dir="ltr"
         data-placeholder="텍스트를 입력하세요..."
         className="flex-1 min-h-[32px] text-[13px] text-dark outline-none px-1 py-0.5"
         onInput={(e) => onChange(block.id, e.currentTarget.innerHTML)}
-        dangerouslySetInnerHTML={{ __html: block.html || '' }}
       />
       <button
         onClick={() => onDelete(block.id)}
@@ -65,10 +74,24 @@ function BlockInsert({ onInsertText }) {
   );
 }
 
+/* ── Widget Placeholder ── */
+function WidgetPlaceholder({ widgetDef }) {
+  return (
+    <div className="w-[274px] h-[153px] bg-white border-2 border-dashed border-border rounded-[10px] flex flex-col items-center justify-center gap-2 shrink-0">
+      <span className="text-[26px]">{widgetDef.icon}</span>
+      <span className="text-[12px] font-medium text-dark">{widgetDef.name}</span>
+      <span className="text-[10px] text-muted text-center leading-[1.5]">
+        우측 패널에서<br/>시스템을 선택해주세요
+      </span>
+    </div>
+  );
+}
+
 /* ── Placed Card (Grid Mode) ── */
-function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragging, onClick, onDragHandleMouseDown }) {
+function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragging, onClick, onDelete, onDragHandleMouseDown }) {
   const cfg = config[instance.id] || {};
   const viewType = cfg.viewType || widgetDef.viewTypes[0]?.id;
+  const showPreview = !widgetDef.hasSystemSelect || (cfg.systemIds?.length > 0);
 
   return (
     <div
@@ -79,7 +102,18 @@ function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragg
         ${isDragging ? 'opacity-30' : 'opacity-100'}`}
       onClick={() => !isDragging && onClick(instance.id, widgetDef)}
     >
-      <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
+      {showPreview
+        ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
+        : <WidgetPlaceholder widgetDef={widgetDef} />}
+
+      {/* 활성 시 삭제 버튼 */}
+      {isActive && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(instance.id); }}
+          className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#5b646f] text-white text-[11px] font-bold flex items-center justify-center shadow-md z-20 hover:bg-[#1a222b] transition-colors"
+        >×</button>
+      )}
+
       <div
         onMouseDown={(e) => { e.stopPropagation(); onDragHandleMouseDown(e, instance.id); }}
         onClick={(e) => e.stopPropagation()}
@@ -220,7 +254,7 @@ export default function WidgetDashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[12px] font-medium text-dark truncate">{widget.name}</div>
-                  <div className="text-[11px] text-muted mt-px">{widget.desc}</div>
+                  <div className="text-[11px] text-muted mt-px truncate">{widget.desc}</div>
                 </div>
                 <span className="text-[11px] text-border shrink-0">+</span>
               </div>
@@ -278,6 +312,7 @@ export default function WidgetDashboard() {
                         isDragOver={dragOverId === inst.id}
                         isDragging={reorderDragPos?.instanceId === inst.id}
                         onClick={handleCardClick}
+                        onDelete={handleRemove}
                         onDragHandleMouseDown={startReorderDrag}
                       />
                     );
