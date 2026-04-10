@@ -338,7 +338,17 @@ export default function WordCanvas({
   const m   = docConfig.margins;
   const pad = `${Math.round(m.top * MM_TO_PX)}px ${Math.round(m.right * MM_TO_PX)}px ${Math.round(m.bottom * MM_TO_PX)}px ${Math.round(m.left * MM_TO_PX)}px`;
 
-  const pendingFocusRef = useRef(null); // { id, position: 'start'|'end' } or string id
+  const pendingFocusRef  = useRef(null); // { id, position: 'start'|'end' } or string id
+  const didInitFocus     = useRef(false);
+
+  // 최초 마운트 시 첫 텍스트 블록 포커스
+  useEffect(() => {
+    if (didInitFocus.current) return;
+    const first = docBlocks.find(b => b.type === 'text');
+    if (!first) return;
+    const el = document.querySelector(`[data-text-id="${first.id}"]`);
+    if (el) { el.focus(); didInitFocus.current = true; }
+  });
 
   const handleArrow = useCallback((blockId, direction, caretX = 0) => {
     let ti;
