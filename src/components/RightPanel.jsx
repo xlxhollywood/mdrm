@@ -2,7 +2,7 @@
 
 import { TODAY, MONTH_AGO, QUICK_PERIODS } from '@/lib/constants';
 
-export default function RightPanel({ selected, config, onConfigChange, onRemove }) {
+export default function RightPanel({ selected, config, onConfigChange, onRemove, onApply }) {
   if (!selected) {
     return (
       <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
@@ -121,11 +121,11 @@ export default function RightPanel({ selected, config, onConfigChange, onRemove 
 
         {/* 버튼 */}
         <div className="flex flex-col gap-2">
-          <button className="w-full py-2 bg-primary text-white text-[12px] font-semibold rounded hover:bg-primary-hover transition-colors">
+          <button
+            onClick={() => onApply && onApply(instanceId)}
+            className="w-full py-2 bg-primary text-white text-[12px] font-semibold rounded hover:bg-primary-hover transition-colors"
+          >
             적용
-          </button>
-          <button className="w-full py-2 bg-white text-muted text-[12px] font-medium rounded border border-border hover:border-primary hover:text-primary transition-colors">
-            초기화
           </button>
           <button
             onClick={() => onRemove && onRemove(instanceId)}

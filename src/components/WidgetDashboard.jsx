@@ -11,6 +11,7 @@ const findWidgetDef = (id) => allWidgets.find(w => w.id === id);
 const makeConfig = (def) => ({
   viewType: def?.viewTypes[0]?.id || null,
   periodOn: false, from: MONTH_AGO, to: TODAY, quick: null,
+  applied: false,
 });
 
 /* ── Word Mode Blocks ── */
@@ -65,6 +66,17 @@ function BlockInsert({ onInsertText }) {
   );
 }
 
+/* ── Widget Placeholder (미적용 상태) ── */
+function WidgetPlaceholder({ widgetDef }) {
+  return (
+    <div className="w-[274px] h-[153px] bg-white border-2 border-dashed border-border rounded-[10px] flex flex-col items-center justify-center gap-2 shrink-0">
+      <span className="text-[28px]">{widgetDef.icon}</span>
+      <span className="text-[12px] font-medium text-dark">{widgetDef.name}</span>
+      <span className="text-[10px] text-muted">오른쪽 패널에서 설정 후 적용하세요</span>
+    </div>
+  );
+}
+
 /* ── Placed Card (Grid Mode) ── */
 function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragging, onClick, onDragHandleMouseDown }) {
   const cfg = config[instance.id] || {};
@@ -79,7 +91,9 @@ function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragg
         ${isDragging ? 'opacity-30' : 'opacity-100'}`}
       onClick={() => !isDragging && onClick(instance.id, widgetDef)}
     >
-      <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
+      {cfg.applied
+        ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} />
+        : <WidgetPlaceholder widgetDef={widgetDef} />}
       <div
         onMouseDown={(e) => { e.stopPropagation(); onDragHandleMouseDown(e, instance.id); }}
         onClick={(e) => e.stopPropagation()}
@@ -95,30 +109,11 @@ export default function WidgetDashboard() {
   const [canvasWidgets,   setCanvasWidgets]   = useState([]);
   const [selectedWidget,  setSelectedWidget]  = useState(null);
   const [config,          setConfig]          = useState({});
-  const [isDragOver,      setIsDragOver]      = useState(false);
   const [canvasMode,      setCanvasMode]      = useState('grid');
   const [docBlocks,       setDocBlocks]       = useState([{ id: 'init', type: 'text', html: '' }]);
-  const [dragWidgetId,    setDragWidgetId]    = useState(null);
   const [dragOverId,      setDragOverId]      = useState(null);
-  const [hoveredWidget,   setHoveredWidget]   = useState(null);
   const reorderDragRef  = useRef(null);
   const [reorderDragPos, setReorderDragPos]   = useState(null);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    if (!dragWidgetId) return;
-    const instanceId = `${dragWidgetId}-${Date.now()}`;
-    const def = findWidgetDef(dragWidgetId);
-    setConfig(prev => ({ ...prev, [instanceId]: makeConfig(def) }));
-    setSelectedWidget({ instanceId, widgetDef: def });
-    if (canvasMode === 'word') {
-      setDocBlocks(prev => [...prev, { id: instanceId, type: 'widget', instanceId, widgetId: dragWidgetId }]);
-    } else {
-      setCanvasWidgets(prev => [...prev, { id: instanceId, widgetId: dragWidgetId }]);
-    }
-    setDragWidgetId(null);
-  }, [dragWidgetId, canvasMode]);
 
   const handleAddWidget = useCallback((widgetId) => {
     const instanceId = `${widgetId}-${Date.now()}`;
@@ -131,6 +126,10 @@ export default function WidgetDashboard() {
       setCanvasWidgets(prev => [...prev, { id: instanceId, widgetId }]);
     }
   }, [canvasMode]);
+
+  const handleApply = useCallback((instanceId) => {
+    setConfig(prev => ({ ...prev, [instanceId]: { ...prev[instanceId], applied: true } }));
+  }, []);
 
   const handleRemove = useCallback((instanceId) => {
     setCanvasWidgets(prev => prev.filter(w => w.id !== instanceId));
@@ -230,14 +229,9 @@ export default function WidgetDashboard() {
             {currentCategory.widgets.map(widget => (
               <div
                 key={widget.id}
-                draggable
-                onDragStart={() => setDragWidgetId(widget.id)}
-                onMouseEnter={() => setHoveredWidget(widget.id)}
-                onMouseLeave={() => setHoveredWidget(null)}
-                className={`flex items-center gap-2 px-4 py-[9px] cursor-grab border-l-[3px] transition-colors
-                  ${hoveredWidget === widget.id
-                    ? 'bg-primary-light border-primary'
-                    : 'border-transparent hover:bg-primary-light'}`}
+                onClick={() => handleAddWidget(widget.id)}
+                className="flex items-center gap-2 px-4 py-[9px] cursor-pointer border-l-[3px] border-transparent
+                  transition-colors hover:bg-primary-light hover:border-primary active:bg-blue-50"
               >
                 <div className="w-7 h-7 rounded bg-primary-light flex items-center justify-center shrink-0 text-[14px]">
                   {widget.icon}
@@ -246,28 +240,16 @@ export default function WidgetDashboard() {
                   <div className="text-[12px] font-medium text-dark truncate">{widget.name}</div>
                   <div className="text-[11px] text-muted mt-px">{widget.desc}</div>
                 </div>
-                <span className="text-[12px] text-border shrink-0">⠿</span>
+                <span className="text-[11px] text-border shrink-0">+</span>
               </div>
             ))}
           </div>
-
-          <button
-            disabled={!hoveredWidget}
-            onClick={() => hoveredWidget && handleAddWidget(hoveredWidget)}
-            className="mx-3 mb-3 py-2 bg-primary text-white text-[12px] font-semibold rounded
-              hover:bg-primary-hover disabled:bg-border disabled:cursor-not-allowed transition-colors"
-          >
-            + 캔버스에 추가
-          </button>
         </div>
 
         {/* ── Canvas ── */}
         <div
           className={`flex-1 overflow-auto flex flex-col items-center
             ${canvasMode === 'word' ? 'bg-[#c8cdd3]' : 'bg-bg'}`}
-          onDragOver={(e) => { e.preventDefault(); if (!reorderDragRef.current) setIsDragOver(true); }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={(e) => { if (reorderDragRef.current) return; handleDrop(e); }}
         >
           {/* 툴바 */}
           <div className="w-full flex justify-end gap-1 px-3 py-2 bg-black/[0.08] shrink-0">
@@ -297,7 +279,7 @@ export default function WidgetDashboard() {
                 <div className="flex flex-col items-center justify-center h-full min-h-[600px] text-border gap-3">
                   <span className="text-5xl">⊞</span>
                   <span className="text-[15px] font-medium">위젯을 배치하세요</span>
-                  <span className="text-[12px] text-center">왼쪽 목록에서 위젯을 드래그하거나<br/>선택 후 추가 버튼을 누르세요</span>
+                  <span className="text-[12px] text-center">왼쪽 목록에서 위젯을 클릭하여<br/>캔버스에 추가하세요</span>
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-4 content-start">
@@ -351,6 +333,7 @@ export default function WidgetDashboard() {
           config={config}
           onConfigChange={handleConfigChange}
           onRemove={handleRemove}
+          onApply={handleApply}
         />
       </div>
 
