@@ -32,8 +32,17 @@ src/
     RightPanel.jsx                       우측 옵션 패널 (위젯 옵션 / 문서 설정)
     canvas/
       GridCanvas.jsx                     Grid 모드 캔버스 + PlacedCard + 드래그 재정렬
-      WordCanvas.jsx                     Word 모드 캔버스 + 서식 툴바 + 블록 에디터
+      WordCanvas.jsx                     Word 모드 캔버스 오케스트레이터 (약 390줄)
       WidgetPlaceholder.jsx              시스템 미선택 시 플레이스홀더 (공용)
+      word/                              Word 모드 전용 서브 컴포넌트들
+        wordConstants.js                 PAPER_SIZES, MM_TO_PX, BLOCK_FORMATS,
+                                         PLUS_MENU_ITEMS, HEADING_FORMATS
+        TextBlock.jsx                    일반/heading/bullet/numbered/callout/quote 블록
+        TodoListBlock.jsx                할일 목록 블록 (다중 아이템, items[] 구조)
+        FloatingToolbar.jsx              텍스트 선택 시 뜨는 서식 플로팅 툴바
+        BlockPlusMenu.jsx                블록 왼쪽 + 버튼 클릭 시 나오는 팝업 메뉴
+        WordBlockTypes.jsx               DragHandleIcon, WidgetBlock, TableBlock
+        useDragBlocks.js                 블록 드래그 재정렬 커스텀 훅
     widgets/
       WidgetPreview.jsx                  위젯 ID + viewType → 실제 미리보기 라우팅
       SystemStatusWidgets.jsx            시스템 상태 심플/도넛/막대 컴포넌트
@@ -74,11 +83,54 @@ src/
   - Word 모드 + 위젯 미선택: 페이지 설정(용지·방향·여백) + 발행 버튼
   - Word 모드 + 위젯 선택: 위젯 옵션 (Grid와 동일)
 
+## Word 블록 데이터 모델
+
+모든 블록은 `docBlocks` 배열에 저장되며 `WidgetDashboard`가 상태를 소유.
+
+```js
+// 일반 텍스트 / 헤딩
+{ id: 'text-xxx', type: 'text', subtype: undefined | 'h1'~'h5', html: '...' }
+
+// 글머리 기호 / 번호 목록 (단일 블록, <li> 태그로 관리)
+{ id: 'text-xxx', type: 'text', subtype: 'bullet' | 'numbered', html: '<li>...</li>' }
+
+// 할일 목록 (단일 블록, 다중 아이템)
+{ id: 'text-xxx', type: 'text', subtype: 'todo',
+  items: [{ id: 'ti-xxx', html: '...', checked: false }] }
+
+// 콜아웃 / 인용
+{ id: 'text-xxx', type: 'text', subtype: 'callout' | 'quote', html: '...' }
+
+// 구분선
+{ id: 'divider-xxx', type: 'divider' }
+
+// 표
+{ id: 'table-xxx', type: 'table', rows: 3, cols: 3, cells: { '0,0': '<html>' } }
+
+// 위젯
+{ id: 'widget-xxx', type: 'widget', widgetId: '...', instanceId: '...' }
+```
+
+## + 메뉴 동작 규칙 (handleInsertBlockFromMenu)
+
+- `textSize`, `bullet`, `numbered`, `todo`, `callout`, `quote` → **현재 블록 변환** (새 블록 삽입 안 함)
+- `table`, `divider` → **새 블록 삽입** (현재 블록 뒤에)
+
+## Word 포커스 관리 패턴
+
+- `pendingFocusRef.current = { id, position: 'start' | 'end' | 'offset', charOffset? }`
+  → 다음 렌더 사이클에서 `useEffect`가 읽어 DOM 포커스 + 커서 세팅
+- `TodoListBlock` 내부는 별도 `pendingItemFocus` ref 사용
+  → `{ itemId, position: 'start' | 'end' }`
+- `data-text-id` 어트리뷰트로 DOM 노드 조회 (`[data-text-id="${id}"]`)
+- `data-init` 어트리뷰트로 `contentEditable` innerHTML 초기화 중복 방지
+
 ## 주요 UX 동작 규칙
 
 - **위젯 추가**: 좌측 목록 클릭 → 캔버스에 즉시 추가 + 우측 패널 오픈
 - **플레이스홀더**: `hasSystemSelect: true` 위젯은 시스템 선택 전 플레이스홀더 표시, 선택 후 실시간 프리뷰
 - **Word 블록**: 엔터 → 새 블록, 쉬프트+엔터 → 줄바꿈, 한글 IME 조합 중 엔터 무시
+- **Word 목록 Backspace**: 내용 있는 상태에서 행 시작 Backspace → 내용 유지하고 목록 마커만 제거 (일반 텍스트로 변환)
 - **Word Ctrl+A**: 모든 블록 전체 선택, 이후 Backspace로 일괄 삭제 가능
 - **Word 발행**: 우측 패널 최하단 발행 버튼 (3초 후 복귀)
 
