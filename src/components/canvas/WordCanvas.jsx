@@ -199,11 +199,14 @@ function FloatingToolbar() {
 }
 
 /* ── 텍스트 블록 ── */
-function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onToggleCheck }) {
+function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onToggleCheck, onConvertToSubtype, lineHeight, letterSpacing }) {
   const ref = useRef(null);
   const isComposing = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
-  const isEmpty = !(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
+  const isList = block.subtype === 'bullet' || block.subtype === 'numbered';
+  const isEmpty = isList
+    ? !(block.html || '').replace(/<[^>]*>/g, '').trim()
+    : !(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
   const showPlaceholder = block.subtype ? isEmpty : (isFocused && isEmpty);
 
   const placeholderText = {
@@ -222,17 +225,63 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
 
   useEffect(() => {
     if (ref.current && ref.current !== document.activeElement) {
-      ref.current.innerHTML = block.html || '';
+      const isList = block.subtype === 'bullet' || block.subtype === 'numbered';
+      ref.current.innerHTML = block.html || (isList ? '<li></li>' : '');
     }
   }, [block.html]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !isComposing.current) {
+      if (isList) {
+        // 빈 <li>에서 엔터 → 리스트 탈출
+        const sel = window.getSelection();
+        if (sel?.rangeCount) {
+          let node = sel.getRangeAt(0).startContainer;
+          while (node && node !== ref.current && node.tagName !== 'LI') node = node.parentElement;
+          const currentLi = node?.tagName === 'LI' ? node : null;
+          if (currentLi && !currentLi.textContent.trim()) {
+            e.preventDefault();
+            currentLi.remove();
+            const hasRemaining = !!ref.current.textContent.trim();
+            if (hasRemaining) {
+              onChange(block.id, ref.current.innerHTML);
+            } else {
+              // 리스트 전체가 비어있음 → 일반 텍스트로 변환
+              onChange(block.id, '');
+              onBackspaceAtStart?.(block.id, '');
+            }
+          }
+          // 비어있지 않으면 브라우저가 <li> 자동 생성
+        }
+        return;
+      }
       e.preventDefault();
       onEnter(block.id);
       return;
     }
+    // - + 스페이스 → 글머리 기호 목록 자동 변환
+    if (e.key === ' ' && !isComposing.current && !block.subtype) {
+      const text = ref.current?.textContent || '';
+      if (text === '-') {
+        e.preventDefault();
+        onConvertToSubtype?.(block.id, 'bullet');
+        return;
+      }
+      if (text === '1.') {
+        e.preventDefault();
+        onConvertToSubtype?.(block.id, 'numbered');
+        return;
+      }
+    }
     if (e.key === 'Backspace' && !isComposing.current) {
+      if (isList) {
+        // 리스트 전체가 비어있을 때만 블록 탈출 처리, 나머지는 브라우저에 위임
+        if (!ref.current?.textContent?.trim()) {
+          e.preventDefault();
+          onBackspaceAtStart?.(block.id, block.html || '');
+        }
+        return;
+      }
       const sel = window.getSelection();
       if (!sel?.rangeCount || !sel.getRangeAt(0).collapsed) return;
       const range = sel.getRangeAt(0);
@@ -304,6 +353,8 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
         fontStyle: block.subtype === 'quote' ? 'italic' : undefined,
         textDecoration: (block.subtype === 'todo' && block.checked) ? 'line-through' : undefined,
         fontSize: '13px',
+        lineHeight: lineHeight ?? 1.6,
+        letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
         ...headingStyle,
       }}
       onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
@@ -316,20 +367,25 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
     />
   );
 
-  if (block.subtype === 'bullet') {
+  if (block.subtype === 'bullet' || block.subtype === 'numbered') {
+    const Tag = block.subtype === 'bullet' ? 'ul' : 'ol';
     return (
-      <div className="flex items-start min-h-[32px] gap-2">
-        <span className="text-[18px] leading-[1.5] text-[#1a222b] shrink-0 select-none pl-1 mt-[1px]">•</span>
-        {editableDiv}
-      </div>
-    );
-  }
-  if (block.subtype === 'numbered') {
-    return (
-      <div className="flex items-start min-h-[32px] gap-1">
-        <span className="text-[13px] leading-[2.1] text-[#1a222b] shrink-0 select-none pl-1 min-w-[22px] text-right">{bulletNumber}.</span>
-        {editableDiv}
-      </div>
+      <Tag
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        data-text-id={block.id}
+        data-placeholder={showPlaceholder ? '목록을 입력하세요...' : undefined}
+        className={`outline-none cursor-text pl-5 min-h-[28px] ${block.subtype === 'bullet' ? 'list-disc' : 'list-decimal'}`}
+        style={{ fontSize: '13px', color: '#1a222b', lineHeight: lineHeight ?? 1.6, letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined }}
+        onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
+        onBlur={() => { setIsFocused(false); onBlurBlock?.(); }}
+        onDragStart={e => e.preventDefault()}
+        onCompositionStart={() => { isComposing.current = true; }}
+        onCompositionEnd={() => { isComposing.current = false; }}
+        onInput={e => onChange(block.id, e.currentTarget.innerHTML)}
+        onKeyDown={handleKeyDown}
+      />
     );
   }
   if (block.subtype === 'todo') {
@@ -367,7 +423,7 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
     );
   }
   return (
-    <div className="flex items-center min-h-[32px]">
+    <div className="flex items-start min-h-[32px]">
       {editableDiv}
     </div>
   );
@@ -601,7 +657,8 @@ export default function WordCanvas({
 
     // 서브타입 있는 빈 블록 → 서브타입만 제거 (일반 텍스트로 변환)
     if (block?.subtype && !currentHtml.replace(/<br\s*\/?>/gi, '').trim()) {
-      onUpdateBlock(blockId, { subtype: undefined, checked: undefined });
+      onUpdateBlock(blockId, { subtype: undefined, checked: undefined, html: '' });
+      pendingFocusRef.current = { id: blockId, position: 'start' };
       return;
     }
 
@@ -645,7 +702,9 @@ export default function WordCanvas({
     if (type === 'table') {
       blockDef = { id: newId, type: 'table', rows: 3, cols: 3, cells: {} };
     } else {
-      blockDef = { id: newId, type: 'text', subtype: subtype || undefined, html: '' };
+      const blockSubtype = type; // type 자체가 subtype (bullet, numbered, todo, callout, quote)
+      const isListType = blockSubtype === 'bullet' || blockSubtype === 'numbered';
+      blockDef = { id: newId, type: 'text', subtype: blockSubtype || undefined, html: isListType ? '<li></li>' : '' };
     }
     pendingFocusRef.current = { id: newId, position: 'start' };
     onInsertBlock(afterIdx, blockDef);
@@ -655,6 +714,13 @@ export default function WordCanvas({
     const block = docBlocks.find(b => b.id === blockId);
     if (block) onUpdateBlock(blockId, { checked: !block.checked });
   }, [docBlocks, onUpdateBlock]);
+
+  const handleConvertToSubtype = useCallback((blockId, subtype) => {
+    const isListType = subtype === 'bullet' || subtype === 'numbered';
+    const initialHtml = isListType ? '<li></li>' : '';
+    onUpdateBlock(blockId, { subtype, html: initialHtml });
+    pendingFocusRef.current = { id: blockId, position: 'start' };
+  }, [onUpdateBlock]);
 
   useEffect(() => {
     if (!pendingFocusRef.current) return;
@@ -666,14 +732,19 @@ export default function WordCanvas({
       el.focus();
       const sel = window.getSelection();
       sel.removeAllRanges();
+      // <ul>/<ol>은 첫/마지막 <li> 안으로 커서 이동
+      const isListEl = el.tagName === 'UL' || el.tagName === 'OL';
+      const targetEl = isListEl
+        ? (position === 'end' ? el.querySelector('li:last-child') : el.querySelector('li')) ?? el
+        : el;
       if (position === 'start') {
         const r = document.createRange();
-        r.setStart(el, 0);
+        r.setStart(targetEl, 0);
         r.collapse(true);
         sel.addRange(r);
       } else if (position === 'end') {
         const r = document.createRange();
-        r.selectNodeContents(el);
+        r.selectNodeContents(targetEl);
         r.collapse(false);
         sel.addRange(r);
       } else if (position === 'offset') {
@@ -884,7 +955,8 @@ export default function WordCanvas({
           <React.Fragment key={block.id}>
             <div
               ref={el => blockRefs.current[i] = el}
-              className={`relative rounded-[6px] transition-all duration-100 mb-[3px]
+              style={{ marginBottom: docConfig.blockSpacing ?? 3 }}
+              className={`relative rounded-[6px] transition-all duration-100
                 ${draggingIdx === i
                   ? 'opacity-40 bg-[#e8f0fc] shadow-[0_2px_12px_rgba(53,113,206,0.18)] cursor-grabbing scale-[0.99]'
                   : allSelected || activeBlockId === block.id
@@ -893,12 +965,9 @@ export default function WordCanvas({
             >
               {/* 드래그 핸들 + 추가(+) 버튼 — 마우스가 올라간 블록에 표시 */}
               {(() => {
-                const hasText = !!(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
-                const hasMultiLine = hasText && (block.html || '').includes('<br>');
                 const isHovered = hoveredBlockId === block.id;
-                const topClass = hasMultiLine ? 'top-[3px]' : 'top-1/2 -translate-y-1/2';
                 return (
-                  <div className={`absolute -left-[52px] ${topClass} flex items-center gap-[3px] transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                  <div className={`absolute -left-[52px] top-[3px] flex items-center gap-[3px] transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
                     {/* + 버튼 */}
                     <button
                       onMouseDown={e => e.stopPropagation()}
@@ -933,6 +1002,9 @@ export default function WordCanvas({
                     ? docBlocks.slice(0, i).filter(b => b.subtype === 'numbered').length + 1
                     : null}
                   onToggleCheck={handleToggleCheck}
+                  onConvertToSubtype={handleConvertToSubtype}
+                  lineHeight={docConfig.lineHeight}
+                  letterSpacing={docConfig.letterSpacing}
                 />
               ) : block.type === 'table' ? (
                 <TableBlock block={block} onUpdateBlock={onUpdateBlock} />
