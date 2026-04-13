@@ -235,9 +235,9 @@ export default function WordCanvas({
       return;
     }
 
-    // 새 블록을 삽입하는 타입 (table, divider 등)
+    // 새 블록을 삽입하는 타입 (table 등)
     if (type === 'divider') {
-      onInsertBlock(afterIdx, { id: `divider-${Date.now()}`, type: 'divider' });
+      if (currentBlock) onUpdateBlock(currentBlock.id, { type: 'divider', subtype: undefined, html: undefined, items: undefined });
       return;
     }
     const newId = `table-${Date.now()}`;
@@ -302,8 +302,7 @@ export default function WordCanvas({
       onUpdateBlock(blockId, { subtype: type, html: cleanHtml, items: undefined });
       pendingFocusRef.current = { id: blockId, position: 'end' };
     } else if (type === 'divider') {
-      onUpdateText(blockId, cleanHtml);
-      onInsertBlock(blockIdx, { id: `divider-${Date.now()}`, type: 'divider' });
+      onUpdateBlock(blockId, { type: 'divider', subtype: undefined, html: undefined, items: undefined });
     } else if (type === 'table') {
       onUpdateText(blockId, cleanHtml);
       onInsertBlock(blockIdx, { id: `table-${Date.now()}`, type: 'table', rows: 3, cols: 3, cells: {} });
