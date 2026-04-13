@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onConvertToSubtype, lineHeight, letterSpacing }) {
+export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onConvertToSubtype, lineHeight, letterSpacing, onSlashTrigger, onSlashClose, isSlashOpen, slashMenuRef }) {
   const ref = useRef(null);
   const isComposing = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -34,6 +34,20 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
   }, [block.html]);
 
   const handleKeyDown = (e) => {
+    // 슬래시 메뉴 키보드 제어
+    if (isSlashOpen) {
+      if (e.key === 'Escape') { e.preventDefault(); onSlashClose?.(); return; }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        slashMenuRef?.current?.navigate(e.key);
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey && !isComposing.current) {
+        e.preventDefault();
+        slashMenuRef?.current?.select();
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey && !isComposing.current) {
       if (isList) {
         const sel = window.getSelection();
@@ -170,7 +184,32 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
       onDragStart={(e) => e.preventDefault()}
       onCompositionStart={() => { isComposing.current = true; }}
       onCompositionEnd={() => { isComposing.current = false; }}
-      onInput={(e) => onChange(block.id, e.currentTarget.innerHTML)}
+      onInput={(e) => {
+        const el = e.currentTarget;
+        onChange(block.id, el.innerHTML);
+        if (!isComposing.current && onSlashTrigger) {
+          const sel = window.getSelection();
+          if (sel?.rangeCount) {
+            try {
+              const range = sel.getRangeAt(0);
+              const preRange = document.createRange();
+              preRange.setStart(el, 0);
+              preRange.setEnd(range.startContainer, range.startOffset);
+              const textBefore = preRange.toString();
+              const match = textBefore.match(/\/(\S*)$/);
+              if (match) {
+                const caretRect = range.getBoundingClientRect();
+                const rect = (caretRect.width === 0 && caretRect.height === 0)
+                  ? el.getBoundingClientRect()
+                  : caretRect;
+                onSlashTrigger(block.id, rect, match[1]);
+              } else {
+                onSlashClose?.();
+              }
+            } catch (_) {}
+          }
+        }
+      }}
       onKeyDown={handleKeyDown}
     />
   );

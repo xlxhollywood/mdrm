@@ -6,6 +6,7 @@ import FloatingToolbar   from './word/FloatingToolbar';
 import TextBlock         from './word/TextBlock';
 import TodoListBlock     from './word/TodoListBlock';
 import BlockPlusMenu     from './word/BlockPlusMenu';
+import SlashMenu         from './word/SlashMenu';
 import { DragHandleIcon, WidgetBlock, TableBlock } from './word/WordBlockTypes';
 import useDragBlocks     from './word/useDragBlocks';
 
@@ -30,6 +31,8 @@ export default function WordCanvas({
   const [activeBlockId,  setActiveBlockId]  = useState(null);
   const [allSelected,    setAllSelected]    = useState(false);
   const [plusMenu,       setPlusMenu]       = useState(null);
+  const [slashMenu,      setSlashMenu]      = useState(null);
+  const slashMenuRef    = useRef(null);
   const pendingResetFocus = useRef(false);
 
   const { draggingIdx, dropIdx, handleDragHandleMouseDown } = useDragBlocks({
@@ -248,6 +251,65 @@ export default function WordCanvas({
     pendingFocusRef.current = { id: blockId, position: 'start' };
   }, [onUpdateBlock]);
 
+  const handleSlashTrigger = useCallback((blockId, caretRect, query) => {
+    setSlashMenu(prev =>
+      prev?.blockId === blockId
+        ? { ...prev, query }
+        : { blockId, anchorRect: caretRect, query }
+    );
+  }, []);
+
+  const handleSlashClose = useCallback(() => setSlashMenu(null), []);
+
+  const handleSlashSelect = useCallback((type, subtype) => {
+    if (!slashMenu) return;
+    const { blockId, query } = slashMenu;
+    setSlashMenu(null);
+
+    const blockIdx = docBlocks.findIndex(b => b.id === blockId);
+    if (blockIdx === -1) return;
+
+    // DOM에서 /query 텍스트 제거 후 clean HTML 추출
+    const el = document.querySelector(`[data-text-id="${blockId}"]`);
+    let cleanHtml = '';
+    if (el) {
+      const slashStr = '/' + query;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let textNode;
+      while ((textNode = walker.nextNode())) {
+        const idx = textNode.textContent.lastIndexOf(slashStr);
+        if (idx !== -1) {
+          textNode.textContent =
+            textNode.textContent.slice(0, idx) +
+            textNode.textContent.slice(idx + slashStr.length);
+          break;
+        }
+      }
+      cleanHtml = el.innerHTML;
+    }
+
+    if (type === 'textSize') {
+      onUpdateBlock(blockId, { subtype: subtype || undefined, html: cleanHtml });
+      pendingFocusRef.current = { id: blockId, position: 'start' };
+    } else if (type === 'todo') {
+      onUpdateBlock(blockId, { subtype: 'todo', html: undefined, items: [{ id: `ti-${Date.now()}`, html: cleanHtml, checked: false }] });
+      pendingFocusRef.current = { id: blockId, position: 'end' };
+    } else if (type === 'bullet' || type === 'numbered') {
+      const liContent = cleanHtml.replace(/<br\s*\/?>/gi, '').trim();
+      onUpdateBlock(blockId, { subtype: type, html: liContent ? `<li>${cleanHtml}</li>` : '<li></li>', items: undefined });
+      pendingFocusRef.current = { id: blockId, position: 'end' };
+    } else if (type === 'callout' || type === 'quote') {
+      onUpdateBlock(blockId, { subtype: type, html: cleanHtml, items: undefined });
+      pendingFocusRef.current = { id: blockId, position: 'end' };
+    } else if (type === 'divider') {
+      onUpdateText(blockId, cleanHtml);
+      onInsertBlock(blockIdx, { id: `divider-${Date.now()}`, type: 'divider' });
+    } else if (type === 'table') {
+      onUpdateText(blockId, cleanHtml);
+      onInsertBlock(blockIdx, { id: `table-${Date.now()}`, type: 'table', rows: 3, cols: 3, cells: {} });
+    }
+  }, [slashMenu, docBlocks, onUpdateBlock, onUpdateText, onInsertBlock]);
+
   return (
     <>
       <FloatingToolbar />
@@ -257,6 +319,15 @@ export default function WordCanvas({
           anchorRect={plusMenu.anchorRect}
           onInsert={handleInsertBlockFromMenu}
           onClose={() => setPlusMenu(null)}
+        />
+      )}
+      {slashMenu && (
+        <SlashMenu
+          ref={slashMenuRef}
+          anchorRect={slashMenu.anchorRect}
+          query={slashMenu.query}
+          onSelect={handleSlashSelect}
+          onClose={handleSlashClose}
         />
       )}
 
@@ -367,7 +438,7 @@ export default function WordCanvas({
                   onEnter={handleEnterBlock}
                   onArrow={handleArrow}
                   onBackspaceAtStart={handleBackspaceAtStart}
-                  onFocusBlock={() => setAllSelected(false)}
+                  onFocusBlock={() => { setAllSelected(false); if (slashMenu?.blockId !== block.id) setSlashMenu(null); }}
                   onBlurBlock={() => {}}
                   isBlockActive={activeBlockId === block.id}
                   allSelected={allSelected}
@@ -377,9 +448,15 @@ export default function WordCanvas({
                   onConvertToSubtype={handleConvertToSubtype}
                   lineHeight={docConfig.lineHeight}
                   letterSpacing={docConfig.letterSpacing}
+                  onSlashTrigger={handleSlashTrigger}
+                  onSlashClose={handleSlashClose}
+                  isSlashOpen={slashMenu?.blockId === block.id}
+                  slashMenuRef={slashMenuRef}
                 />
               ) : block.type === 'divider' ? (
-                <hr className="border-none border-t border-[#d9dfe5] my-1" style={{ borderTopWidth: 1 }} />
+                <div className="py-2">
+                  <div style={{ height: 1, background: '#d9dfe5', borderRadius: 1 }} />
+                </div>
               ) : block.type === 'table' ? (
                 <TableBlock block={block} onUpdateBlock={onUpdateBlock} />
               ) : (
