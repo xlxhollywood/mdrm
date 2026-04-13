@@ -136,11 +136,28 @@ export default function FloatingToolbar() {
           onChange={(e) => { setHlColor(e.target.value); exec('hiliteColor', e.target.value); }}
           className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
       </label>
-      <Btn title="형광펜 제거" onMD={() => exec('hiliteColor', 'transparent')}>
-        <span className="text-[10px] font-bold leading-none px-[3px] py-[1px] rounded-sm relative"
+      <Btn title="형광펜 제거" onMD={() => {
+        restoreSelection();
+        const selObj = window.getSelection();
+        if (!selObj?.rangeCount) return;
+        const range = selObj.getRangeAt(0);
+        const anchor = selObj.anchorNode;
+        const editable = (anchor?.nodeType === 3 ? anchor.parentElement : anchor)?.closest('[contenteditable]');
+        if (!editable) return;
+        // DOM 직접 조작: selection 내 span의 background-color 제거
+        [...editable.querySelectorAll('span')].forEach(span => {
+          if ((span.style.backgroundColor || span.style.background) && range.intersectsNode(span)) {
+            span.style.backgroundColor = '';
+            span.style.background = '';
+            const s = span.getAttribute('style') ?? '';
+            if (!s.replace(/\s|;/g, '')) span.removeAttribute('style');
+          }
+        });
+      }}>
+        <span className="relative text-[10px] font-bold leading-none px-[3px] py-[1px] rounded-sm pointer-events-none"
           style={{ background: '#fef08a', color: '#1a222b' }}>
           HI
-          <span className="absolute inset-0 flex items-center justify-center text-red-400 text-[10px] font-bold">✕</span>
+          <span className="absolute -top-[3px] -right-[3px] text-[8px] text-red-400 font-bold leading-none">✕</span>
         </span>
       </Btn>
 

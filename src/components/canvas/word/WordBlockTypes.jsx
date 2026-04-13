@@ -86,6 +86,11 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
     </button>
   );
 
+  const upIcon   = type === 'row' ? '↑' : '←';
+  const downIcon = type === 'row' ? '↓' : '→';
+  const upLabel  = type === 'row' ? '행 위로 이동'     : '열 왼쪽으로 이동';
+  const downLabel= type === 'row' ? '행 아래로 이동'   : '열 오른쪽으로 이동';
+
   const BG_PRESETS = ['#ffffff','#fef9c3','#fce7f3','#dbeafe','#d1fae5','#ede9fe','#fee2e2','#e5e7eb'];
 
   return (
@@ -94,8 +99,8 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
       style={{ position: 'fixed', left: anchorRect.right + 6, top: anchorRect.top, zIndex: 9999 }}
       className="bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] py-1 min-w-[168px]"
     >
-      <Item icon="↑" txt={`${label} 위로 이동`}   onClick={() => { onMoveUp();   onClose(); }} disabled={!canMoveUp}   />
-      <Item icon="↓" txt={`${label} 아래로 이동`}  onClick={() => { onMoveDown(); onClose(); }} disabled={!canMoveDown} />
+      <Item icon={upIcon}   txt={upLabel}   onClick={() => { onMoveUp();   onClose(); }} disabled={!canMoveUp}   />
+      <Item icon={downIcon} txt={downLabel} onClick={() => { onMoveDown(); onClose(); }} disabled={!canMoveDown} />
       <div className="h-px bg-[#eef0f2] my-1" />
 
       {/* 배경색 */}
@@ -147,6 +152,7 @@ export function TableBlock({
   onAddRow, onAddCol,
   onDeleteRow, onDeleteCol,
   onMoveRow, onMoveCol,
+  forceSync = 0,
 }) {
   const { rows = 3, cols = 3, cells = {}, cellBg = {} } = block;
   const cellRefs     = useRef({});
@@ -173,14 +179,14 @@ export function TableBlock({
     });
   }, [cols]);
 
-  /* 행/열 삽입 후 DOM 콘텐츠 동기화 */
+  /* 구조 변경(삽입/삭제/이동) 후 DOM 콘텐츠 동기화 */
   useEffect(() => {
     Object.entries(cellRefs.current).forEach(([key, el]) => {
       if (!el) return;
       const expected = cells[key] ?? '';
       if (el.innerHTML !== expected) el.innerHTML = expected;
     });
-  }, [rows, cols]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, cols, forceSync]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* 열 너비 드래그 */
   useEffect(() => {
@@ -237,19 +243,30 @@ export function TableBlock({
   const isFullColSel = (c) =>
     sel && sel.c1 <= c && c <= sel.c2 && sel.r1 === 0 && sel.r2 === rows - 1;
 
-  /* 셀 마우스다운 */
+  /* 셀 마우스다운: sel을 초기화하고 드래그 원점만 기록 */
   const handleCellMouseDown = (e, r, c) => {
     if (e.shiftKey && sel) {
+      // Shift+클릭: 기존 선택 확장
       setSel({ r1: Math.min(sel.r1, r), r2: Math.max(sel.r2, r), c1: Math.min(sel.c1, c), c2: Math.max(sel.c2, c) });
     } else {
-      setSel({ r1: r, r2: r, c1: c, c2: c });
-      setDragOrigin({ r, c }); setIsDragging(true);
+      // 새 드래그 시작 — 아직 sel은 설정하지 않음 (다른 셀에 진입 시 설정)
+      setSel(null);
+      setDragOrigin({ r, c });
+      setIsDragging(true);
     }
     setCtxMenu(null);
   };
+
+  /* 셀 마우스엔터: 다른 셀로 진입할 때만 범위 선택 시작 */
   const handleCellMouseEnter = (r, c) => {
     if (!isDragging || !dragOrigin) return;
-    setSel({ r1: Math.min(dragOrigin.r, r), r2: Math.max(dragOrigin.r, r), c1: Math.min(dragOrigin.c, c), c2: Math.max(dragOrigin.c, c) });
+    if (r === dragOrigin.r && c === dragOrigin.c) return; // 원점 셀 복귀 → 선택 해제
+    // 텍스트 드래그 취소하고 셀 범위 선택으로 전환
+    window.getSelection()?.removeAllRanges();
+    setSel({
+      r1: Math.min(dragOrigin.r, r), r2: Math.max(dragOrigin.r, r),
+      c1: Math.min(dragOrigin.c, c), c2: Math.max(dragOrigin.c, c),
+    });
   };
 
   /* 컨텍스트 메뉴 동작 */

@@ -34,6 +34,7 @@ export default function WordCanvas({
   const [plusMenu,       setPlusMenu]       = useState(null);
   const [slashMenu,        setSlashMenu]        = useState(null);
   const [tableSizePicker,  setTableSizePicker]  = useState(null); // { blockId, blockIdx, anchorRect }
+  const [tableSync,        setTableSync]        = useState(0);   // 행/열 이동 후 DOM 강제 동기화 트리거
   const slashMenuRef    = useRef(null);
   const pendingResetFocus = useRef(false);
 
@@ -300,6 +301,7 @@ export default function WordCanvas({
       else                   newCells[k] = v;
     });
     onUpdateBlock(blockId, { cells: newCells });
+    setTableSync(s => s + 1);
   }, [docBlocks, onUpdateBlock]);
 
   const handleMoveTableCol = useCallback((blockId, colIdx, dir) => {
@@ -321,6 +323,7 @@ export default function WordCanvas({
       [newWidths[colIdx], newWidths[toIdx]] = [newWidths[toIdx], newWidths[colIdx]];
     }
     onUpdateBlock(blockId, { cells: newCells, ...(newWidths ? { colWidths: newWidths } : {}) });
+    setTableSync(s => s + 1);
   }, [docBlocks, onUpdateBlock]);
 
   const handleAddTableRow = useCallback((blockId, afterRowIdx) => {
@@ -600,6 +603,7 @@ export default function WordCanvas({
                   onDeleteCol={handleDeleteTableCol}
                   onMoveRow={handleMoveTableRow}
                   onMoveCol={handleMoveTableCol}
+                  forceSync={tableSync}
                 />
               ) : (
                 <WidgetBlock
