@@ -130,6 +130,14 @@ export default function WidgetDashboard() {
     });
   }, [selectedWidget]);
 
+  const handleInsertBlock = useCallback((afterIdx, blockDef) => {
+    setDocBlocks(prev => { const a = [...prev]; a.splice(afterIdx + 1, 0, blockDef); return a; });
+  }, []);
+
+  const handleUpdateBlock = useCallback((id, fields) => {
+    setDocBlocks(prev => prev.map(b => b.id === id ? { ...b, ...fields } : b));
+  }, []);
+
   const isAllTab = activeTab === 'all';
   const currentCategory = WIDGET_CATEGORIES[activeTab];
 
@@ -209,6 +217,8 @@ export default function WidgetDashboard() {
               onDeleteBlock={handleDeleteBlock}
               onUpdateText={handleUpdateText}
               onInsertText={handleInsertText}
+              onInsertBlock={handleInsertBlock}
+              onUpdateBlock={handleUpdateBlock}
               onDeleteBlocksInRange={handleDeleteBlocksInRange}
               onDeselectWidget={() => setSelectedWidget(null)}
               onReorderBlocks={handleReorderBlocks}

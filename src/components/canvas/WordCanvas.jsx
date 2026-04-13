@@ -199,12 +199,26 @@ function FloatingToolbar() {
 }
 
 /* ── 텍스트 블록 ── */
-function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected }) {
+function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onToggleCheck }) {
   const ref = useRef(null);
   const isComposing = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
   const isEmpty = !(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
-  const showPlaceholder = isFocused && isEmpty;
+  const showPlaceholder = block.subtype ? isEmpty : (isFocused && isEmpty);
+
+  const placeholderText = {
+    bullet: '목록', numbered: '목록', todo: '할 일',
+    callout: '내용을 입력하세요...', quote: '인용문을 입력하세요...',
+    h1: '제목 1', h2: '제목 2', h3: '제목 3', h4: '제목 4', h5: '제목 5',
+  }[block.subtype] || '텍스트를 입력하세요...';
+
+  const headingStyle = {
+    h1: { fontSize: '30px', fontWeight: 'bold' },
+    h2: { fontSize: '24px', fontWeight: 'bold' },
+    h3: { fontSize: '20px', fontWeight: 'bold' },
+    h4: { fontSize: '16px', fontWeight: 'bold' },
+    h5: { fontSize: '14px', fontWeight: 'bold' },
+  }[block.subtype] || {};
 
   useEffect(() => {
     if (ref.current && ref.current !== document.activeElement) {
@@ -276,24 +290,85 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
     }
   };
 
+  const editableDiv = (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      dir="ltr"
+      data-text-id={block.id}
+      data-placeholder={showPlaceholder ? placeholderText : undefined}
+      className="flex-1 outline-none px-1 py-0.5 cursor-text"
+      style={{
+        color: block.subtype === 'quote' ? '#5b646f' : '#1a222b',
+        fontStyle: block.subtype === 'quote' ? 'italic' : undefined,
+        textDecoration: (block.subtype === 'todo' && block.checked) ? 'line-through' : undefined,
+        fontSize: '13px',
+        ...headingStyle,
+      }}
+      onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
+      onBlur={() => { setIsFocused(false); onBlurBlock?.(); }}
+      onDragStart={(e) => e.preventDefault()}
+      onCompositionStart={() => { isComposing.current = true; }}
+      onCompositionEnd={() => { isComposing.current = false; }}
+      onInput={(e) => onChange(block.id, e.currentTarget.innerHTML)}
+      onKeyDown={handleKeyDown}
+    />
+  );
+
+  if (block.subtype === 'bullet') {
+    return (
+      <div className="flex items-start min-h-[32px] gap-2">
+        <span className="text-[18px] leading-[1.5] text-[#1a222b] shrink-0 select-none pl-1 mt-[1px]">•</span>
+        {editableDiv}
+      </div>
+    );
+  }
+  if (block.subtype === 'numbered') {
+    return (
+      <div className="flex items-start min-h-[32px] gap-1">
+        <span className="text-[13px] leading-[2.1] text-[#1a222b] shrink-0 select-none pl-1 min-w-[22px] text-right">{bulletNumber}.</span>
+        {editableDiv}
+      </div>
+    );
+  }
+  if (block.subtype === 'todo') {
+    return (
+      <div className="flex items-start min-h-[32px] gap-2">
+        <button
+          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onToggleCheck?.(block.id); }}
+          className="mt-[7px] shrink-0 w-[15px] h-[15px] rounded border-[1.5px] flex items-center justify-center transition-colors"
+          style={{ borderColor: block.checked ? '#0056a4' : '#5b646f', background: block.checked ? '#0056a4' : 'white' }}
+        >
+          {block.checked && (
+            <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+              <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+        </button>
+        {editableDiv}
+      </div>
+    );
+  }
+  if (block.subtype === 'quote') {
+    return (
+      <div className="flex items-stretch min-h-[32px] gap-2 py-0.5">
+        <div className="w-[3px] rounded-full shrink-0 bg-[#d9dfe5]" />
+        {editableDiv}
+      </div>
+    );
+  }
+  if (block.subtype === 'callout') {
+    return (
+      <div className="flex items-start min-h-[32px] gap-2 px-3 py-2 rounded-[8px] bg-[#f0f4ff] border border-[#c5d3f0]">
+        <span className="text-[15px] leading-[1.8] shrink-0 select-none">💡</span>
+        {editableDiv}
+      </div>
+    );
+  }
   return (
     <div className="flex items-center min-h-[32px]">
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        dir="ltr"
-        data-text-id={block.id}
-        data-placeholder={showPlaceholder ? '텍스트를 입력하세요...' : undefined}
-        className="flex-1 text-[13px] text-dark outline-none px-1 py-0.5 cursor-text"
-        onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
-        onBlur={() => { setIsFocused(false); onBlurBlock?.(); }}
-        onDragStart={(e) => e.preventDefault()}
-        onCompositionStart={() => { isComposing.current = true; }}
-        onCompositionEnd={() => { isComposing.current = false; }}
-        onInput={(e) => onChange(block.id, e.currentTarget.innerHTML)}
-        onKeyDown={handleKeyDown}
-      />
+      {editableDiv}
     </div>
   );
 }
@@ -326,10 +401,115 @@ function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDelete }) 
   );
 }
 
+/* ── 표 블록 ── */
+function TableBlock({ block, onUpdateBlock }) {
+  const { rows = 3, cols = 3, cells = {} } = block;
+  return (
+    <div className="py-1 overflow-x-auto">
+      <table className="border-collapse">
+        <tbody>
+          {Array.from({ length: rows }, (_, r) => (
+            <tr key={r}>
+              {Array.from({ length: cols }, (_, c) => {
+                const key = `${r},${c}`;
+                const isHeader = r === 0;
+                return (
+                  <td key={c} className={`border border-[#d9dfe5] px-2 py-1 min-w-[80px] ${isHeader ? 'bg-[#f5f5f5]' : ''}`}>
+                    <div
+                      contentEditable
+                      suppressContentEditableWarning
+                      className={`outline-none text-[13px] min-h-[20px] ${isHeader ? 'font-semibold' : ''}`}
+                      style={{ color: '#1a222b' }}
+                      onInput={e => onUpdateBlock(block.id, { cells: { ...cells, [key]: e.currentTarget.innerHTML } })}
+                      dangerouslySetInnerHTML={{ __html: cells[key] || '' }}
+                    />
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── 블록 + 메뉴 ── */
+const PLUS_MENU_ITEMS = [
+  { id: 'textSize', label: '텍스트 크기 조정', icon: 'T', hasSub: true },
+  { id: 'bullet',   label: '글머리 기호 목록', icon: '•' },
+  { id: 'numbered', label: '번호 매기기 목록', icon: '1.' },
+  { id: 'todo',     label: '할일 목록',        icon: '☐' },
+  { id: 'callout',  label: '콜아웃',           icon: '💡' },
+  { id: 'quote',    label: '인용',             icon: '❝' },
+  { id: 'table',    label: '표',               icon: '⊞' },
+];
+
+const HEADING_FORMATS = [
+  { label: '일반 텍스트', subtype: null,  fontSize: '13px', fontWeight: 'normal' },
+  { label: '제목 1',      subtype: 'h1',  fontSize: '22px', fontWeight: 'bold'   },
+  { label: '제목 2',      subtype: 'h2',  fontSize: '18px', fontWeight: 'bold'   },
+  { label: '제목 3',      subtype: 'h3',  fontSize: '15px', fontWeight: 'bold'   },
+  { label: '제목 4',      subtype: 'h4',  fontSize: '13px', fontWeight: 'bold'   },
+  { label: '제목 5',      subtype: 'h5',  fontSize: '12px', fontWeight: 'bold'   },
+];
+
+function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose }) {
+  const [showSub, setShowSub] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) onClose(); };
+    const onKey   = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={menuRef}
+      style={{ position: 'fixed', left: anchorRect.right + 4, top: anchorRect.top, zIndex: 9999 }}
+      className="bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] py-1 min-w-[190px]"
+    >
+      {PLUS_MENU_ITEMS.map(item => (
+        <div key={item.id} className="relative"
+          onMouseEnter={() => item.hasSub && setShowSub(item.id)}
+          onMouseLeave={() => item.hasSub && setShowSub(false)}
+        >
+          <button
+            onClick={() => { if (!item.hasSub) { onInsert(blockIdx, item.id, null); onClose(); } }}
+            className="w-full px-3 py-[6px] text-left text-[13px] text-[#1a222b] hover:bg-[#f5f5f5] flex items-center gap-2.5 transition-colors"
+          >
+            <span className="w-5 text-center text-[13px] shrink-0">{item.icon}</span>
+            <span>{item.label}</span>
+            {item.hasSub && <span className="ml-auto text-[#5b646f] text-[11px]">›</span>}
+          </button>
+          {item.hasSub && showSub === item.id && (
+            <div className="absolute left-full top-0 ml-1 bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] py-1 min-w-[130px]">
+              {HEADING_FORMATS.map(f => (
+                <button
+                  key={f.subtype || 'p'}
+                  onClick={() => { onInsert(blockIdx, 'textSize', f.subtype); onClose(); }}
+                  className="w-full px-3 py-[5px] text-left hover:bg-[#f5f5f5] transition-colors text-[#1a222b]"
+                  style={{ fontSize: f.fontSize, fontWeight: f.fontWeight }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── Word 캔버스 ── */
 export default function WordCanvas({
   docBlocks, config, selectedWidget, docConfig, findWidgetDef,
   onCardClick, onDeleteBlock, onUpdateText, onDeselectWidget, onReorderBlocks, onInsertText, onDeleteBlocksInRange,
+  onInsertBlock, onUpdateBlock,
 }) {
   const paper = PAPER_SIZES[docConfig.paperSize] || PAPER_SIZES.A4;
   const isLand = docConfig.orientation === 'landscape';
@@ -409,6 +589,14 @@ export default function WordCanvas({
 
   const handleBackspaceAtStart = useCallback((blockId, currentHtml) => {
     const idx = docBlocks.findIndex(b => b.id === blockId);
+    const block = docBlocks[idx];
+
+    // 서브타입 있는 빈 블록 → 서브타입만 제거 (일반 텍스트로 변환)
+    if (block?.subtype && !currentHtml.replace(/<br\s*\/?>/gi, '').trim()) {
+      onUpdateBlock(blockId, { subtype: undefined, checked: undefined });
+      return;
+    }
+
     // 첫 번째 블록이면 아무것도 안 함
     if (idx <= 0) return;
     // 이전 텍스트 블록 찾기
@@ -435,7 +623,30 @@ export default function WordCanvas({
       onDeleteBlock(blockId);
       pendingFocusRef.current = { id: prevBlock.id, position: 'offset', charOffset: prevTextLen };
     }
-  }, [docBlocks, onDeleteBlock, onUpdateText]);
+  }, [docBlocks, onDeleteBlock, onUpdateText, onUpdateBlock]);
+
+  const handleInsertBlockFromMenu = useCallback((afterIdx, type, subtype) => {
+    if (type === 'textSize') {
+      // 현재 블록의 텍스트 크기(subtype)만 변경, 새 블록 삽입 없음
+      const currentBlock = docBlocks[afterIdx];
+      if (currentBlock) onUpdateBlock(currentBlock.id, { subtype: subtype || undefined });
+      return;
+    }
+    const newId = type === 'table' ? `table-${Date.now()}` : `text-${Date.now()}`;
+    let blockDef;
+    if (type === 'table') {
+      blockDef = { id: newId, type: 'table', rows: 3, cols: 3, cells: {} };
+    } else {
+      blockDef = { id: newId, type: 'text', subtype: subtype || undefined, html: '' };
+    }
+    pendingFocusRef.current = { id: newId, position: 'start' };
+    onInsertBlock(afterIdx, blockDef);
+  }, [docBlocks, onInsertBlock, onUpdateBlock]);
+
+  const handleToggleCheck = useCallback((blockId) => {
+    const block = docBlocks.find(b => b.id === blockId);
+    if (block) onUpdateBlock(blockId, { checked: !block.checked });
+  }, [docBlocks, onUpdateBlock]);
 
   useEffect(() => {
     if (!pendingFocusRef.current) return;
@@ -498,6 +709,7 @@ export default function WordCanvas({
   const [hoveredBlockId,   setHoveredBlockId]   = useState(null);
   const [activeBlockId,    setActiveBlockId]    = useState(null);
   const [allSelected,      setAllSelected]      = useState(false);
+  const [plusMenu,         setPlusMenu]         = useState(null); // { blockIdx, anchorRect }
   const pendingResetFocus  = useRef(false);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [dropIdx,     setDropIdx]     = useState(null);
@@ -516,7 +728,7 @@ export default function WordCanvas({
         if (!el) continue;
         const rect = el.getBoundingClientRect();
         if (e.clientY >= rect.top && e.clientY <= rect.bottom &&
-            e.clientX >= rect.left - 32 && e.clientX <= rect.right) {
+            e.clientX >= rect.left - 72 && e.clientX <= rect.right) {
           found = docBlocks[i]?.id ?? null;
           break;
         }
@@ -584,6 +796,14 @@ export default function WordCanvas({
   return (
     <>
       <FloatingToolbar />
+      {plusMenu && (
+        <BlockPlusMenu
+          blockIdx={plusMenu.blockIdx}
+          anchorRect={plusMenu.anchorRect}
+          onInsert={handleInsertBlockFromMenu}
+          onClose={() => setPlusMenu(null)}
+        />
+      )}
 
       <div
         ref={paperRef}
@@ -654,20 +874,28 @@ export default function WordCanvas({
                     ? 'bg-[#dce8ff]'
                     : ''}`}
             >
-              {/* 드래그 핸들 — 마우스가 올라간 블록에 표시 */}
+              {/* 드래그 핸들 + 추가(+) 버튼 — 마우스가 올라간 블록에 표시 */}
               {(() => {
-                // 실제 텍스트가 있고 <br>도 있을 때만 multiline(top-[4px]), 나머지는 중앙정렬
                 const hasText = !!(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
                 const hasMultiLine = hasText && (block.html || '').includes('<br>');
+                const isHovered = hoveredBlockId === block.id;
+                const topClass = hasMultiLine ? 'top-[3px]' : 'top-1/2 -translate-y-1/2';
                 return (
-                  <div
-                    onMouseDown={(e) => { e.stopPropagation(); window.getSelection()?.removeAllRanges(); handleDragHandleMouseDown(e, i, block.id); }}
-                    onClick={(e) => e.stopPropagation()}
-                    className={`absolute -left-6 text-muted transition-opacity select-none
-                      ${hasMultiLine ? 'top-[3px]' : 'top-[calc(50%-1px)] -translate-y-1/2'}
-                      ${hoveredBlockId === block.id ? 'opacity-60 cursor-grab active:cursor-grabbing' : 'opacity-0 cursor-auto'}`}
-                  >
-                    <DragHandleIcon />
+                  <div className={`absolute -left-[52px] ${topClass} flex items-center gap-[3px] transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                    {/* + 버튼 */}
+                    <button
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); setPlusMenu({ blockIdx: i, anchorRect: e.currentTarget.getBoundingClientRect() }); }}
+                      className="w-[18px] h-[18px] flex items-center justify-center rounded text-[#8c959e] text-[15px] font-normal leading-none hover:bg-[#e2e6ea] hover:text-[#3d4a56] select-none transition-colors"
+                    >+</button>
+                    {/* 드래그 핸들 */}
+                    <div
+                      onMouseDown={(e) => { e.stopPropagation(); window.getSelection()?.removeAllRanges(); handleDragHandleMouseDown(e, i, block.id); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[#8c959e] cursor-grab active:cursor-grabbing"
+                    >
+                      <DragHandleIcon />
+                    </div>
                   </div>
                 );
               })()}
@@ -684,7 +912,13 @@ export default function WordCanvas({
                   onBlurBlock={() => {}}
                   isBlockActive={activeBlockId === block.id}
                   allSelected={allSelected}
+                  bulletNumber={block.subtype === 'numbered'
+                    ? docBlocks.slice(0, i).filter(b => b.subtype === 'numbered').length + 1
+                    : null}
+                  onToggleCheck={handleToggleCheck}
                 />
+              ) : block.type === 'table' ? (
+                <TableBlock block={block} onUpdateBlock={onUpdateBlock} />
               ) : (
                 <WidgetBlock
                   block={block}
