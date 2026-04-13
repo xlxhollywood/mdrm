@@ -814,6 +814,15 @@ export default function WordCanvas({
           const sel = window.getSelection();
           const container = e.currentTarget;
 
+          // 드래그 핸들로 활성화된 블록에서 Backspace/Delete → 블록 삭제
+          if (activeBlockId && (e.key === 'Backspace' || e.key === 'Delete')) {
+            e.preventDefault();
+            const delId = activeBlockId;
+            setActiveBlockId(null);
+            onDeleteBlock(delId);
+            return;
+          }
+
           // Ctrl+A → 전체 블록 선택 상태
           if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             e.preventDefault();
