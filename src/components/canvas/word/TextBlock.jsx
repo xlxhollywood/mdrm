@@ -37,6 +37,7 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
     // 슬래시 메뉴 키보드 제어
     if (isSlashOpen) {
       if (e.key === 'Escape') { e.preventDefault(); onSlashClose?.(); return; }
+      if (e.key === ' ') { onSlashClose?.(); /* preventDefault 없음 - 스페이스는 그대로 입력됨 */ }
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
         slashMenuRef?.current?.navigate(e.key);
@@ -44,7 +45,8 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
       }
       if (e.key === 'Enter' && !e.shiftKey && !isComposing.current) {
         e.preventDefault();
-        slashMenuRef?.current?.select();
+        const selected = slashMenuRef?.current?.select();
+        if (!selected) onSlashClose?.(); // 결과 없으면 메뉴만 닫기
         return;
       }
     }
@@ -172,7 +174,7 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
       data-placeholder={showPlaceholder ? placeholderText : undefined}
       className="flex-1 outline-none px-1 py-0.5 cursor-text"
       style={{
-        color: block.subtype === 'quote' ? '#5b646f' : '#1a222b',
+        color: isSlashOpen ? '#0056a4' : block.subtype === 'quote' ? '#5b646f' : '#1a222b',
         fontStyle: block.subtype === 'quote' ? 'italic' : undefined,
         fontSize: '13px',
         lineHeight: lineHeight ?? 1.6,
@@ -186,8 +188,7 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
       onCompositionEnd={() => { isComposing.current = false; }}
       onInput={(e) => {
         const el = e.currentTarget;
-        onChange(block.id, el.innerHTML);
-        if (!isComposing.current && onSlashTrigger) {
+        if (onSlashTrigger) {
           const sel = window.getSelection();
           if (sel?.rangeCount) {
             try {
@@ -196,19 +197,20 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
               preRange.setStart(el, 0);
               preRange.setEnd(range.startContainer, range.startOffset);
               const textBefore = preRange.toString();
-              const match = textBefore.match(/\/(\S*)$/);
+              // 블록 첫 글자가 /일 때만 슬래시 모드 (^\/로 시작 조건)
+              const match = textBefore.match(/^\/(\S*)$/);
               if (match) {
                 const caretRect = range.getBoundingClientRect();
                 const rect = (caretRect.width === 0 && caretRect.height === 0)
-                  ? el.getBoundingClientRect()
-                  : caretRect;
+                  ? el.getBoundingClientRect() : caretRect;
                 onSlashTrigger(block.id, rect, match[1]);
-              } else {
+              } else if (!isComposing.current) {
                 onSlashClose?.();
               }
             } catch (_) {}
           }
         }
+        onChange(block.id, el.innerHTML);
       }}
       onKeyDown={handleKeyDown}
     />
