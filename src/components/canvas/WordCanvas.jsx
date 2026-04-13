@@ -199,7 +199,7 @@ function FloatingToolbar() {
 }
 
 /* ── 텍스트 블록 ── */
-function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onToggleCheck, onConvertToSubtype, lineHeight, letterSpacing }) {
+function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onConvertToSubtype, lineHeight, letterSpacing }) {
   const ref = useRef(null);
   const isComposing = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -382,7 +382,7 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
         data-text-id={block.id}
         data-placeholder={showPlaceholder ? '목록을 입력하세요...' : undefined}
         className={`outline-none cursor-text pl-5 min-h-[28px] ${block.subtype === 'bullet' ? 'list-disc' : 'list-decimal'}`}
-        style={{ fontSize: '13px', color: '#1a222b', lineHeight: lineHeight ?? 1.6, letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined }}
+        style={{ fontSize: '13px', color: '#1a222b', lineHeight: lineHeight ?? 1.6, letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined, marginLeft: '-16px' }}
         onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
         onBlur={() => { setIsFocused(false); onBlurBlock?.(); }}
         onDragStart={e => e.preventDefault()}
@@ -391,24 +391,6 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
         onInput={e => onChange(block.id, e.currentTarget.innerHTML)}
         onKeyDown={handleKeyDown}
       />
-    );
-  }
-  if (block.subtype === 'todo') {
-    return (
-      <div className="flex items-start min-h-[32px] gap-2">
-        <button
-          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onToggleCheck?.(block.id); }}
-          className="mt-[7px] shrink-0 w-[15px] h-[15px] rounded border-[1.5px] flex items-center justify-center transition-colors"
-          style={{ borderColor: block.checked ? '#0056a4' : '#5b646f', background: block.checked ? '#0056a4' : 'white' }}
-        >
-          {block.checked && (
-            <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-              <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          )}
-        </button>
-        {editableDiv}
-      </div>
     );
   }
   if (block.subtype === 'quote') {
@@ -430,6 +412,131 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
   return (
     <div className="flex items-start min-h-[32px]">
       {editableDiv}
+    </div>
+  );
+}
+
+/* ── 할일 목록 블록 ── */
+function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock, onBackspaceAtStart, onFocusBlock, lineHeight, letterSpacing }) {
+  const items = block.items ?? [{ id: `ti-0-${block.id}`, html: block.html || '', checked: block.checked || false }];
+  const itemRefs = useRef({});
+  const pendingItemFocus = useRef(null);
+
+  useEffect(() => {
+    if (!pendingItemFocus.current) return;
+    const { itemId } = pendingItemFocus.current;
+    pendingItemFocus.current = null;
+    const el = itemRefs.current[itemId];
+    if (!el) return;
+    el.focus();
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    const r = document.createRange();
+    r.setStart(el, 0);
+    r.collapse(true);
+    sel.addRange(r);
+  }, [items]);
+
+  const updateItems = (newItems) => onUpdateBlock(block.id, { items: newItems });
+
+  const handleItemEnter = (e, idx) => {
+    e.preventDefault();
+    const item = items[idx];
+    const el = itemRefs.current[item.id];
+    const isEmpty = !el?.textContent?.trim();
+    const isLast = idx === items.length - 1;
+
+    if (isEmpty) {
+      if (items.length === 1) {
+        onBackspaceAtStart?.(block.id, '');
+      } else if (isLast) {
+        const newItems = items.filter((_, i) => i !== idx);
+        updateItems(newItems);
+        onEnterAfterBlock?.(block.id);
+      } else {
+        const newItems = items.filter((_, i) => i !== idx);
+        updateItems(newItems);
+      }
+      return;
+    }
+    const newItem = { id: `ti-${Date.now()}`, html: '', checked: false };
+    const newItems = [...items];
+    newItems.splice(idx + 1, 0, newItem);
+    updateItems(newItems);
+    pendingItemFocus.current = { itemId: newItem.id };
+  };
+
+  const handleItemBackspace = (e, idx) => {
+    const item = items[idx];
+    const el = itemRefs.current[item.id];
+    const isEmpty = !el?.textContent?.trim();
+    if (!isEmpty) return;
+
+    e.preventDefault();
+    if (items.length === 1) {
+      onBackspaceAtStart?.(block.id, '');
+    } else {
+      const newItems = items.filter((_, i) => i !== idx);
+      updateItems(newItems);
+      const focusIdx = idx > 0 ? idx - 1 : 0;
+      pendingItemFocus.current = { itemId: newItems[focusIdx].id };
+    }
+  };
+
+  const handleToggle = (item) => {
+    updateItems(items.map(it => it.id === item.id ? { ...it, checked: !it.checked } : it));
+  };
+
+  return (
+    <div>
+      {items.map((item, idx) => {
+        const isItemEmpty = !item.html?.replace(/<br\s*\/?>/gi, '').trim();
+        return (
+          <div key={item.id} className="flex items-start gap-2 min-h-[28px]">
+            <button
+              onMouseDown={e => { e.preventDefault(); e.stopPropagation(); handleToggle(item); }}
+              className="mt-[5px] shrink-0 w-[15px] h-[15px] rounded border-[1.5px] flex items-center justify-center transition-colors"
+              style={{ borderColor: item.checked ? '#0056a4' : '#5b646f', background: item.checked ? '#0056a4' : 'white' }}
+            >
+              {item.checked && (
+                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                  <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
+            <div
+              ref={el => {
+                if (el) {
+                  itemRefs.current[item.id] = el;
+                  if (!el.dataset.init) { el.dataset.init = '1'; el.innerHTML = item.html || ''; }
+                }
+              }}
+              contentEditable
+              suppressContentEditableWarning
+              data-text-id={idx === 0 ? block.id : undefined}
+              data-placeholder={isItemEmpty ? '할 일을 입력하세요...' : undefined}
+              className="flex-1 outline-none px-1 py-0.5 cursor-text"
+              style={{
+                color: '#1a222b',
+                textDecoration: item.checked ? 'line-through' : undefined,
+                fontSize: '13px',
+                lineHeight: lineHeight ?? 1.6,
+                letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+              }}
+              onFocus={onFocusBlock}
+              onDragStart={e => e.preventDefault()}
+              onInput={e => {
+                const el = e.currentTarget;
+                updateItems(items.map(it => it.id === item.id ? { ...it, html: el.innerHTML } : it));
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) handleItemEnter(e, idx);
+                else if (e.key === 'Backspace') handleItemBackspace(e, idx);
+              }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -662,7 +769,7 @@ export default function WordCanvas({
 
     // 서브타입 있는 빈 블록 → 서브타입만 제거 (일반 텍스트로 변환)
     if (block?.subtype && !currentHtml.replace(/<br\s*\/?>/gi, '').trim()) {
-      onUpdateBlock(blockId, { subtype: undefined, checked: undefined, html: '' });
+      onUpdateBlock(blockId, { subtype: undefined, checked: undefined, html: '', items: undefined });
       pendingFocusRef.current = { id: blockId, position: 'start' };
       return;
     }
@@ -707,9 +814,13 @@ export default function WordCanvas({
     if (type === 'table') {
       blockDef = { id: newId, type: 'table', rows: 3, cols: 3, cells: {} };
     } else {
-      const blockSubtype = type; // type 자체가 subtype (bullet, numbered, todo, callout, quote)
+      const blockSubtype = type;
       const isListType = blockSubtype === 'bullet' || blockSubtype === 'numbered';
-      blockDef = { id: newId, type: 'text', subtype: blockSubtype || undefined, html: isListType ? '<li></li>' : '' };
+      if (blockSubtype === 'todo') {
+        blockDef = { id: newId, type: 'text', subtype: 'todo', items: [{ id: `ti-${Date.now()}`, html: '', checked: false }] };
+      } else {
+        blockDef = { id: newId, type: 'text', subtype: blockSubtype || undefined, html: isListType ? '<li></li>' : '' };
+      }
     }
     pendingFocusRef.current = { id: newId, position: 'start' };
     onInsertBlock(afterIdx, blockDef);
@@ -991,7 +1102,17 @@ export default function WordCanvas({
                 );
               })()}
 
-              {block.type === 'text' ? (
+              {block.type === 'text' && block.subtype === 'todo' ? (
+                <TodoListBlock
+                  block={block}
+                  onUpdateBlock={onUpdateBlock}
+                  onEnterAfterBlock={handleEnterBlock}
+                  onBackspaceAtStart={handleBackspaceAtStart}
+                  onFocusBlock={() => setAllSelected(false)}
+                  lineHeight={docConfig.lineHeight}
+                  letterSpacing={docConfig.letterSpacing}
+                />
+              ) : block.type === 'text' ? (
                 <TextBlock
                   block={block}
                   onChange={onUpdateText}
@@ -1006,7 +1127,6 @@ export default function WordCanvas({
                   bulletNumber={block.subtype === 'numbered'
                     ? docBlocks.slice(0, i).filter(b => b.subtype === 'numbered').length + 1
                     : null}
-                  onToggleCheck={handleToggleCheck}
                   onConvertToSubtype={handleConvertToSubtype}
                   lineHeight={docConfig.lineHeight}
                   letterSpacing={docConfig.letterSpacing}
