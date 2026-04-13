@@ -203,22 +203,38 @@ export default function WordCanvas({
   }, [docBlocks, onDeleteBlock, onUpdateText, onUpdateBlock]);
 
   const handleInsertBlockFromMenu = useCallback((afterIdx, type, subtype) => {
+    const currentBlock = docBlocks[afterIdx];
+
+    // 현재 블록을 변환하는 타입들
     if (type === 'textSize') {
-      const currentBlock = docBlocks[afterIdx];
       if (currentBlock) onUpdateBlock(currentBlock.id, { subtype: subtype || undefined });
       return;
     }
-    const newId = type === 'table' ? `table-${Date.now()}` : `text-${Date.now()}`;
-    let blockDef;
-    if (type === 'table') {
-      blockDef = { id: newId, type: 'table', rows: 3, cols: 3, cells: {} };
-    } else if (type === 'todo') {
-      blockDef = { id: newId, type: 'text', subtype: 'todo', items: [{ id: `ti-${Date.now()}`, html: '', checked: false }] };
-    } else {
-      const isListType = type === 'bullet' || type === 'numbered';
-      blockDef = { id: newId, type: 'text', subtype: type || undefined, html: isListType ? '<li></li>' : '' };
+    if (type === 'todo') {
+      if (currentBlock) {
+        onUpdateBlock(currentBlock.id, { subtype: 'todo', html: undefined, items: [{ id: `ti-${Date.now()}`, html: '', checked: false }] });
+        pendingFocusRef.current = { id: currentBlock.id, position: 'start' };
+      }
+      return;
     }
-    pendingFocusRef.current = { id: newId, position: 'start' };
+    if (type === 'bullet' || type === 'numbered') {
+      if (currentBlock) {
+        onUpdateBlock(currentBlock.id, { subtype: type, html: '<li></li>', items: undefined });
+        pendingFocusRef.current = { id: currentBlock.id, position: 'start' };
+      }
+      return;
+    }
+    if (type === 'callout' || type === 'quote') {
+      if (currentBlock) {
+        onUpdateBlock(currentBlock.id, { subtype: type, items: undefined });
+        pendingFocusRef.current = { id: currentBlock.id, position: 'start' };
+      }
+      return;
+    }
+
+    // 새 블록을 삽입하는 타입 (table 등)
+    const newId = `table-${Date.now()}`;
+    const blockDef = { id: newId, type: 'table', rows: 3, cols: 3, cells: {} };
     onInsertBlock(afterIdx, blockDef);
   }, [docBlocks, onInsertBlock, onUpdateBlock]);
 
