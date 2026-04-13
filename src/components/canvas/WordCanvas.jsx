@@ -237,7 +237,12 @@ export default function WordCanvas({
 
     // 새 블록을 삽입하는 타입 (table 등)
     if (type === 'divider') {
-      if (currentBlock) onUpdateBlock(currentBlock.id, { type: 'divider', subtype: undefined, html: undefined, items: undefined });
+      if (currentBlock) {
+        onUpdateBlock(currentBlock.id, { type: 'divider', subtype: undefined, html: undefined, items: undefined });
+        const newId = `text-${Date.now()}`;
+        pendingFocusRef.current = { id: newId, position: 'start' };
+        onInsertText(afterIdx, newId);
+      }
       return;
     }
     const newId = `table-${Date.now()}`;
@@ -303,6 +308,9 @@ export default function WordCanvas({
       pendingFocusRef.current = { id: blockId, position: 'end' };
     } else if (type === 'divider') {
       onUpdateBlock(blockId, { type: 'divider', subtype: undefined, html: undefined, items: undefined });
+      const newId = `text-${Date.now()}`;
+      pendingFocusRef.current = { id: newId, position: 'start' };
+      onInsertText(blockIdx, newId);
     } else if (type === 'table') {
       onUpdateText(blockId, cleanHtml);
       onInsertBlock(blockIdx, { id: `table-${Date.now()}`, type: 'table', rows: 3, cols: 3, cells: {} });
@@ -453,8 +461,11 @@ export default function WordCanvas({
                   slashMenuRef={slashMenuRef}
                 />
               ) : block.type === 'divider' ? (
-                <div className="py-2">
-                  <div style={{ height: 1, background: '#d9dfe5', borderRadius: 1 }} />
+                <div
+                  className={`py-2 cursor-pointer rounded-[4px] ${activeBlockId === block.id ? 'ring-1 ring-[#3571ce]' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); setActiveBlockId(block.id); }}
+                >
+                  <div style={{ height: 1, background: activeBlockId === block.id ? '#3571ce' : '#d9dfe5', borderRadius: 1 }} />
                 </div>
               ) : block.type === 'table' ? (
                 <TableBlock block={block} onUpdateBlock={onUpdateBlock} />
