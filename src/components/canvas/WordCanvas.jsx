@@ -261,6 +261,30 @@ export default function WordCanvas({
     if (block) setTableSizePicker({ blockId: block.id, blockIdx, anchorRect });
   }, [docBlocks]);
 
+  const handleAddTableRow = useCallback((blockId, afterRowIdx) => {
+    const block = docBlocks.find(b => b.id === blockId);
+    if (!block) return;
+    const { rows = 3, cells = {} } = block;
+    const shifted = {};
+    Object.entries(cells).forEach(([k, v]) => {
+      const [r, c] = k.split(',').map(Number);
+      shifted[r > afterRowIdx ? `${r + 1},${c}` : k] = v;
+    });
+    onUpdateBlock(blockId, { rows: rows + 1, cells: shifted });
+  }, [docBlocks, onUpdateBlock]);
+
+  const handleAddTableCol = useCallback((blockId, afterColIdx) => {
+    const block = docBlocks.find(b => b.id === blockId);
+    if (!block) return;
+    const { cols = 3, cells = {} } = block;
+    const shifted = {};
+    Object.entries(cells).forEach(([k, v]) => {
+      const [r, c] = k.split(',').map(Number);
+      shifted[c > afterColIdx ? `${r},${c + 1}` : k] = v;
+    });
+    onUpdateBlock(blockId, { cols: cols + 1, cells: shifted });
+  }, [docBlocks, onUpdateBlock]);
+
   const handleTableCreate = useCallback((rows, cols) => {
     if (!tableSizePicker) return;
     const { blockId, blockIdx } = tableSizePicker;
@@ -373,9 +397,20 @@ export default function WordCanvas({
 
           if (activeBlockId && (e.key === 'Backspace' || e.key === 'Delete')) {
             e.preventDefault();
-            const delId = activeBlockId;
+            const delId  = activeBlockId;
+            const delIdx = docBlocks.findIndex(b => b.id === delId);
             setActiveBlockId(null);
             onDeleteBlock(delId);
+            // 삭제 후 인접 텍스트 블록으로 포커스 복원
+            let ti = delIdx - 1;
+            while (ti >= 0 && docBlocks[ti].type !== 'text') ti--;
+            if (ti < 0) {
+              ti = delIdx + 1;
+              while (ti < docBlocks.length && docBlocks[ti].type !== 'text') ti++;
+            }
+            if (ti >= 0 && ti < docBlocks.length) {
+              pendingFocusRef.current = { id: docBlocks[ti].id, position: 'end' };
+            }
             return;
           }
           if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
@@ -497,6 +532,8 @@ export default function WordCanvas({
                   onUpdateBlock={onUpdateBlock}
                   onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); }}
                   onFocusBlock={() => setAllSelected(false)}
+                  onAddRow={handleAddTableRow}
+                  onAddCol={handleAddTableCol}
                 />
               ) : (
                 <WidgetBlock

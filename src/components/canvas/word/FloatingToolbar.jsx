@@ -136,6 +136,13 @@ export default function FloatingToolbar() {
           onChange={(e) => { setHlColor(e.target.value); exec('hiliteColor', e.target.value); }}
           className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
       </label>
+      <Btn title="형광펜 제거" onMD={() => exec('hiliteColor', 'transparent')}>
+        <span className="text-[10px] font-bold leading-none px-[3px] py-[1px] rounded-sm relative"
+          style={{ background: '#fef08a', color: '#1a222b' }}>
+          HI
+          <span className="absolute inset-0 flex items-center justify-center text-red-400 text-[10px] font-bold">✕</span>
+        </span>
+      </Btn>
 
       <Sep />
       <Btn title="왼쪽 정렬"   onMD={() => exec('justifyLeft')}>
