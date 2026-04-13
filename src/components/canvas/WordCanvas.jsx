@@ -456,7 +456,8 @@ const HEADING_FORMATS = [
 
 function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose }) {
   const [showSub, setShowSub] = useState(false);
-  const menuRef = useRef(null);
+  const menuRef  = useRef(null);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) onClose(); };
@@ -466,6 +467,9 @@ function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose }) {
     return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('keydown', onKey); };
   }, [onClose]);
 
+  const openSub  = (id) => { clearTimeout(timerRef.current); setShowSub(id); };
+  const closeSub = ()   => { timerRef.current = setTimeout(() => setShowSub(false), 120); };
+
   return (
     <div
       ref={menuRef}
@@ -474,8 +478,8 @@ function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose }) {
     >
       {PLUS_MENU_ITEMS.map(item => (
         <div key={item.id} className="relative"
-          onMouseEnter={() => item.hasSub && setShowSub(item.id)}
-          onMouseLeave={() => item.hasSub && setShowSub(false)}
+          onMouseEnter={() => item.hasSub ? openSub(item.id) : closeSub()}
+          onMouseLeave={() => item.hasSub && closeSub()}
         >
           <button
             onClick={() => { if (!item.hasSub) { onInsert(blockIdx, item.id, null); onClose(); } }}
@@ -486,7 +490,11 @@ function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose }) {
             {item.hasSub && <span className="ml-auto text-[#5b646f] text-[11px]">›</span>}
           </button>
           {item.hasSub && showSub === item.id && (
-            <div className="absolute left-full top-0 ml-1 bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] py-1 min-w-[130px]">
+            <div
+              onMouseEnter={() => openSub(item.id)}
+              onMouseLeave={closeSub}
+              className="absolute left-full top-0 bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] py-1 min-w-[130px]"
+            >
               {HEADING_FORMATS.map(f => (
                 <button
                   key={f.subtype || 'p'}
