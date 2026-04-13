@@ -94,7 +94,7 @@ src/
 
 ```bash
 # 서버 실행 여부 확인 후 미실행 시 백그라운드로 시작
-lsof -ti:3000 || (cd /Users/sehun/Documents/mantech/mdrm-ui && npm start &)
+lsof -ti:3000 || (cd /Users/sehun/Documents/mantech/mdrm-ui && npm run dev &)
 ```
 
 - 서버가 이미 실행 중이면 그대로 사용
