@@ -35,10 +35,6 @@ const SlashMenu = forwardRef(function SlashMenu({ anchorRect, query, onSelect, o
   useEffect(() => { setActiveIdx(0); }, [query]);
 
   useEffect(() => {
-    if (filtered.length === 0) onClose();
-  }, [filtered.length, onClose]);
-
-  useEffect(() => {
     activeItemRef.current?.scrollIntoView({ block: 'nearest' });
   }, [activeIdx]);
 
@@ -52,7 +48,8 @@ const SlashMenu = forwardRef(function SlashMenu({ anchorRect, query, onSelect, o
     },
     select() {
       const item = filtered[activeIdx];
-      if (item) onSelect(item.type, item.subtype);
+      if (item) { onSelect(item.type, item.subtype); return true; }
+      return false;
     },
   }), [filtered, activeIdx, onSelect]);
 
@@ -63,8 +60,6 @@ const SlashMenu = forwardRef(function SlashMenu({ anchorRect, query, onSelect, o
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
-
-  if (filtered.length === 0) return null;
 
   return (
     <div
@@ -77,6 +72,9 @@ const SlashMenu = forwardRef(function SlashMenu({ anchorRect, query, onSelect, o
       }}
       className="bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] py-1 min-w-[200px] max-h-[300px] overflow-y-auto"
     >
+      {filtered.length === 0 && (
+        <div className="px-3 py-2 text-[12px] text-[#8c959e]">결과 없음</div>
+      )}
       {filtered.map((item, idx) => (
         <button
           key={item.id}

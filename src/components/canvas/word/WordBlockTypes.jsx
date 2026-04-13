@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import WidgetPreview from '../../widgets/WidgetPreview';
 import WidgetPlaceholder from '../WidgetPlaceholder';
 
@@ -42,8 +43,22 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
   );
 }
 
-export function TableBlock({ block, onUpdateBlock }) {
+export function TableBlock({ block, onUpdateBlock, onCellFocus, onFocusBlock }) {
   const { rows = 3, cols = 3, cells = {} } = block;
+  const cellRefs = useRef({});
+
+  const focusCell = (r, c) => {
+    const el = cellRefs.current[`${r},${c}`];
+    if (!el) return;
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
   return (
     <div className="py-1 overflow-x-auto">
       <table className="border-collapse">
@@ -56,12 +71,35 @@ export function TableBlock({ block, onUpdateBlock }) {
                 return (
                   <td key={c} className={`border border-[#d9dfe5] px-2 py-1 min-w-[80px] ${isHeader ? 'bg-[#f5f5f5]' : ''}`}>
                     <div
+                      ref={el => {
+                        if (el) {
+                          cellRefs.current[key] = el;
+                          if (!el.dataset.init) { el.dataset.init = '1'; el.innerHTML = cells[key] || ''; }
+                        }
+                      }}
                       contentEditable
                       suppressContentEditableWarning
+                      data-cell-id={`${block.id}-${r}-${c}`}
                       className={`outline-none text-[13px] min-h-[20px] ${isHeader ? 'font-semibold' : ''}`}
                       style={{ color: '#1a222b' }}
+                      onFocus={() => { onCellFocus?.(block.id, r, c); onFocusBlock?.(); }}
                       onInput={e => onUpdateBlock(block.id, { cells: { ...cells, [key]: e.currentTarget.innerHTML } })}
-                      dangerouslySetInnerHTML={{ __html: cells[key] || '' }}
+                      onKeyDown={e => {
+                        if (e.key !== 'Tab') return;
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                          if (c > 0)       focusCell(r, c - 1);
+                          else if (r > 0)  focusCell(r - 1, cols - 1);
+                        } else {
+                          if (c < cols - 1) focusCell(r, c + 1);
+                          else if (r < rows - 1) focusCell(r + 1, 0);
+                          else {
+                            // 마지막 셀 Tab → 행 추가
+                            onUpdateBlock(block.id, { rows: rows + 1 });
+                            setTimeout(() => focusCell(rows, 0), 30);
+                          }
+                        }
+                      }}
                     />
                   </td>
                 );

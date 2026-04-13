@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { PLUS_MENU_ITEMS, HEADING_FORMATS } from './wordConstants';
 
-export default function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose }) {
+export default function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose, onTablePick }) {
   const [showSub, setShowSub] = useState(false);
   const menuRef  = useRef(null);
   const timerRef = useRef(null);
@@ -31,7 +31,10 @@ export default function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose 
           onMouseLeave={() => item.hasSub && closeSub()}
         >
           <button
-            onClick={() => { if (!item.hasSub) { onInsert(blockIdx, item.id, null); onClose(); } }}
+            onClick={(e) => {
+              if (item.id === 'table') { onTablePick?.(blockIdx, e.currentTarget.getBoundingClientRect()); onClose(); return; }
+              if (!item.hasSub) { onInsert(blockIdx, item.id, null); onClose(); }
+            }}
             className="w-full px-3 py-[6px] text-left text-[13px] text-[#1a222b] hover:bg-[#f5f5f5] flex items-center gap-2.5 transition-colors"
           >
             <span className="w-5 text-center text-[13px] shrink-0">{item.icon}</span>

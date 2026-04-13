@@ -52,6 +52,7 @@ export default function WidgetDashboard() {
   const [activeTab,      setActiveTab]      = useState('system');
   const [canvasWidgets,  setCanvasWidgets]  = useState([]);
   const [selectedWidget, setSelectedWidget] = useState(null);
+  const [selectedTable,  setSelectedTable]  = useState(null); // { blockId, rows, cols, row, col }
   const [config,         setConfig]         = useState({});
   const [canvasMode,     setCanvasMode]     = useState('grid');
   const [docBlocks,      setDocBlocks]      = useState([{ id: 'init', type: 'text', html: '' }]);
@@ -141,6 +142,66 @@ export default function WidgetDashboard() {
     setDocBlocks(prev => prev.map(b => b.id === id ? { ...b, ...fields } : b));
   }, []);
 
+  const handleCellFocus = useCallback((blockId, row, col) => {
+    setDocBlocks(prev => {
+      const block = prev.find(b => b.id === blockId);
+      if (block?.type === 'table') {
+        setSelectedTable({ blockId, rows: block.rows, cols: block.cols, row, col });
+        setSelectedWidget(null);
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleTableAction = useCallback((action) => {
+    setSelectedTable(prev => {
+      if (!prev) return prev;
+      const { blockId, row, col } = prev;
+      setDocBlocks(blocks => blocks.map(b => {
+        if (b.id !== blockId || b.type !== 'table') return b;
+        let { rows, cols, cells } = b;
+        const shifted = {};
+        if (action === 'addRowBelow') {
+          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[r > row ? `${r+1},${c}` : k] = v; });
+          return { ...b, rows: rows + 1, cells: shifted };
+        }
+        if (action === 'addRowAbove') {
+          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[r >= row ? `${r+1},${c}` : k] = v; });
+          setTimeout(() => setSelectedTable(s => s ? { ...s, row: s.row + 1 } : s), 0);
+          return { ...b, rows: rows + 1, cells: shifted };
+        }
+        if (action === 'deleteRow') {
+          if (rows <= 1) return b;
+          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); if (r !== row) shifted[r > row ? `${r-1},${c}` : k] = v; });
+          setTimeout(() => setSelectedTable(s => s ? { ...s, row: Math.max(0, s.row - 1), rows: rows - 1 } : s), 0);
+          return { ...b, rows: rows - 1, cells: shifted };
+        }
+        if (action === 'addColRight') {
+          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[c > col ? `${r},${c+1}` : k] = v; });
+          return { ...b, cols: cols + 1, cells: shifted };
+        }
+        if (action === 'addColLeft') {
+          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[c >= col ? `${r},${c+1}` : k] = v; });
+          setTimeout(() => setSelectedTable(s => s ? { ...s, col: s.col + 1, cols: cols + 1 } : s), 0);
+          return { ...b, cols: cols + 1, cells: shifted };
+        }
+        if (action === 'deleteCol') {
+          if (cols <= 1) return b;
+          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); if (c !== col) shifted[c > col ? `${r},${c-1}` : k] = v; });
+          setTimeout(() => setSelectedTable(s => s ? { ...s, col: Math.max(0, s.col - 1), cols: cols - 1 } : s), 0);
+          return { ...b, cols: cols - 1, cells: shifted };
+        }
+        return b;
+      }));
+      return prev;
+    });
+  }, []);
+
+  const handleTableDelete = useCallback((blockId) => {
+    handleDeleteBlock(blockId);
+    setSelectedTable(null);
+  }, [handleDeleteBlock]);
+
   const isAllTab = activeTab === 'all';
   const currentCategory = WIDGET_CATEGORIES[activeTab];
 
@@ -223,8 +284,9 @@ export default function WidgetDashboard() {
               onInsertBlock={handleInsertBlock}
               onUpdateBlock={handleUpdateBlock}
               onDeleteBlocksInRange={handleDeleteBlocksInRange}
-              onDeselectWidget={() => setSelectedWidget(null)}
+              onDeselectWidget={() => { setSelectedWidget(null); setSelectedTable(null); }}
               onReorderBlocks={handleReorderBlocks}
+              onCellFocus={handleCellFocus}
             />
           )}
         </div>
@@ -240,6 +302,9 @@ export default function WidgetDashboard() {
           onDocConfigChange={setDocConfig}
           published={published}
           onPublish={() => { setPublished(true); setTimeout(() => setPublished(false), 3000); }}
+          selectedTable={selectedTable}
+          onTableAction={handleTableAction}
+          onTableDelete={handleTableDelete}
         />
       </div>
     </div>

@@ -317,8 +317,72 @@ function WordDocPanel({ docConfig, onChange, onPublish, published }) {
   );
 }
 
+/* ── 표 설정 패널 ── */
+function TablePanel({ table, onAction, onDelete }) {
+  const { rows, cols, row, col } = table;
+
+  const Btn = ({ label, action, danger }) => (
+    <button
+      onClick={() => onAction(action)}
+      className={`w-full text-left px-3 py-2 rounded-[6px] text-[12px] border transition-colors
+        ${danger
+          ? 'text-danger border-danger hover:bg-red-50'
+          : 'text-dark border-border hover:bg-[#f0f4ff] hover:border-primary hover:text-primary'}`}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="flex-1 flex flex-col overflow-y-auto p-4 gap-4">
+      <div className="flex flex-col gap-1">
+        <SectionLabel>크기</SectionLabel>
+        <div className="text-[12px] text-muted">{rows}행 × {cols}열 (현재 {row + 1}행 {col + 1}열)</div>
+      </div>
+      <Sep />
+      <div className="flex flex-col gap-1.5">
+        <SectionLabel>행</SectionLabel>
+        <Btn label="위에 행 추가"   action="addRowAbove" />
+        <Btn label="아래에 행 추가" action="addRowBelow" />
+        <Btn label="현재 행 삭제"   action="deleteRow"   />
+      </div>
+      <Sep />
+      <div className="flex flex-col gap-1.5">
+        <SectionLabel>열</SectionLabel>
+        <Btn label="왼쪽에 열 추가"  action="addColLeft"  />
+        <Btn label="오른쪽에 열 추가" action="addColRight" />
+        <Btn label="현재 열 삭제"    action="deleteCol"   />
+      </div>
+      <div className="flex-1" />
+      <button
+        onClick={onDelete}
+        className="w-full py-2 bg-white text-danger text-[12px] font-medium rounded border border-danger hover:bg-red-50 transition-colors"
+      >
+        표 삭제
+      </button>
+    </div>
+  );
+}
+
 /* ── Main ── */
-export default function RightPanel({ mode, selected, config, onConfigChange, onRemove, docConfig, onDocConfigChange, published, onPublish }) {
+export default function RightPanel({ mode, selected, config, onConfigChange, onRemove, docConfig, onDocConfigChange, published, onPublish, selectedTable, onTableAction, onTableDelete }) {
+
+  /* Word 모드 + 표 포커스 → 표 설정 */
+  if (mode === 'word' && !selected && selectedTable) {
+    return (
+      <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <div className="text-[13px] font-semibold text-dark">표 설정</div>
+          <div className="text-[11px] text-muted mt-0.5">{selectedTable.rows}행 × {selectedTable.cols}열</div>
+        </div>
+        <TablePanel
+          table={selectedTable}
+          onAction={onTableAction}
+          onDelete={() => onTableDelete(selectedTable.blockId)}
+        />
+      </div>
+    );
+  }
 
   /* Word 모드 + 위젯 미선택 → 문서 설정 */
   if (mode === 'word' && !selected) {

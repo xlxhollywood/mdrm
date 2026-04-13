@@ -7,13 +7,14 @@ import TextBlock         from './word/TextBlock';
 import TodoListBlock     from './word/TodoListBlock';
 import BlockPlusMenu     from './word/BlockPlusMenu';
 import SlashMenu         from './word/SlashMenu';
+import TableSizePicker   from './word/TableSizePicker';
 import { DragHandleIcon, WidgetBlock, TableBlock } from './word/WordBlockTypes';
 import useDragBlocks     from './word/useDragBlocks';
 
 export default function WordCanvas({
   docBlocks, config, selectedWidget, docConfig, findWidgetDef,
   onCardClick, onDeleteBlock, onUpdateText, onDeselectWidget, onReorderBlocks, onInsertText, onDeleteBlocksInRange,
-  onInsertBlock, onUpdateBlock,
+  onInsertBlock, onUpdateBlock, onCellFocus,
 }) {
   const paper = PAPER_SIZES[docConfig.paperSize] || PAPER_SIZES.A4;
   const isLand = docConfig.orientation === 'landscape';
@@ -31,7 +32,8 @@ export default function WordCanvas({
   const [activeBlockId,  setActiveBlockId]  = useState(null);
   const [allSelected,    setAllSelected]    = useState(false);
   const [plusMenu,       setPlusMenu]       = useState(null);
-  const [slashMenu,      setSlashMenu]      = useState(null);
+  const [slashMenu,        setSlashMenu]        = useState(null);
+  const [tableSizePicker,  setTableSizePicker]  = useState(null); // { blockId, blockIdx, anchorRect }
   const slashMenuRef    = useRef(null);
   const pendingResetFocus = useRef(false);
 
@@ -245,16 +247,30 @@ export default function WordCanvas({
       }
       return;
     }
-    const newId = `table-${Date.now()}`;
-    const blockDef = { id: newId, type: 'table', rows: 3, cols: 3, cells: {} };
-    onInsertBlock(afterIdx, blockDef);
-  }, [docBlocks, onInsertBlock, onUpdateBlock]);
+    // table은 BlockPlusMenu의 onTablePick 경로로 처리됨
+  }, [docBlocks, onInsertBlock, onInsertText, onUpdateBlock]);
 
   const handleConvertToSubtype = useCallback((blockId, subtype) => {
     const isListType = subtype === 'bullet' || subtype === 'numbered';
     onUpdateBlock(blockId, { subtype, html: isListType ? '<li></li>' : '' });
     pendingFocusRef.current = { id: blockId, position: 'start' };
   }, [onUpdateBlock]);
+
+  const handleTablePick = useCallback((blockIdx, anchorRect) => {
+    const block = docBlocks[blockIdx];
+    if (block) setTableSizePicker({ blockId: block.id, blockIdx, anchorRect });
+  }, [docBlocks]);
+
+  const handleTableCreate = useCallback((rows, cols) => {
+    if (!tableSizePicker) return;
+    const { blockId, blockIdx } = tableSizePicker;
+    setTableSizePicker(null);
+    onUpdateBlock(blockId, { type: 'table', rows, cols, cells: {}, subtype: undefined, html: undefined, items: undefined });
+    setTimeout(() => {
+      const el = document.querySelector(`[data-cell-id="${blockId}-0-0"]`);
+      if (el) el.focus();
+    }, 30);
+  }, [tableSizePicker, onUpdateBlock]);
 
   const handleSlashTrigger = useCallback((blockId, caretRect, query) => {
     setSlashMenu(prev =>
@@ -313,7 +329,7 @@ export default function WordCanvas({
       onInsertText(blockIdx, newId);
     } else if (type === 'table') {
       onUpdateText(blockId, cleanHtml);
-      onInsertBlock(blockIdx, { id: `table-${Date.now()}`, type: 'table', rows: 3, cols: 3, cells: {} });
+      setTableSizePicker({ blockId, blockIdx, anchorRect: slashMenu.anchorRect });
     }
   }, [slashMenu, docBlocks, onUpdateBlock, onUpdateText, onInsertBlock]);
 
@@ -326,6 +342,14 @@ export default function WordCanvas({
           anchorRect={plusMenu.anchorRect}
           onInsert={handleInsertBlockFromMenu}
           onClose={() => setPlusMenu(null)}
+          onTablePick={handleTablePick}
+        />
+      )}
+      {tableSizePicker && (
+        <TableSizePicker
+          anchorRect={tableSizePicker.anchorRect}
+          onSelect={handleTableCreate}
+          onClose={() => setTableSizePicker(null)}
         />
       )}
       {slashMenu && (
@@ -468,7 +492,12 @@ export default function WordCanvas({
                   <div style={{ height: 1, background: activeBlockId === block.id ? '#3571ce' : '#d9dfe5', borderRadius: 1 }} />
                 </div>
               ) : block.type === 'table' ? (
-                <TableBlock block={block} onUpdateBlock={onUpdateBlock} />
+                <TableBlock
+                  block={block}
+                  onUpdateBlock={onUpdateBlock}
+                  onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); }}
+                  onFocusBlock={() => setAllSelected(false)}
+                />
               ) : (
                 <WidgetBlock
                   block={block}
