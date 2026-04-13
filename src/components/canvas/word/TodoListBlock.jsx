@@ -10,7 +10,7 @@ export default function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock,
 
   useEffect(() => {
     if (!pendingItemFocus.current) return;
-    const { itemId } = pendingItemFocus.current;
+    const { itemId, position } = pendingItemFocus.current;
     pendingItemFocus.current = null;
     const el = itemRefs.current[itemId];
     if (!el) return;
@@ -18,8 +18,13 @@ export default function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock,
     const sel = window.getSelection();
     sel.removeAllRanges();
     const r = document.createRange();
-    r.setStart(el, 0);
-    r.collapse(true);
+    if (position === 'end') {
+      r.selectNodeContents(el);
+      r.collapse(false);
+    } else {
+      r.setStart(el, 0);
+      r.collapse(true);
+    }
     sel.addRange(r);
   }, [items]);
 
@@ -85,7 +90,7 @@ export default function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock,
       const newItems = items.filter((_, i) => i !== idx);
       updateItems(newItems);
       const focusIdx = idx > 0 ? idx - 1 : 0;
-      pendingItemFocus.current = { itemId: newItems[focusIdx].id };
+      pendingItemFocus.current = { itemId: newItems[focusIdx].id, position: 'end' };
     }
   };
 
@@ -183,7 +188,6 @@ export default function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock,
               onCompositionStart={() => { isComposing.current = true; }}
               onCompositionEnd={() => { isComposing.current = false; }}
               onInput={e => {
-                if (isComposing.current) return;
                 const el = e.currentTarget;
                 updateItems(items.map(it => it.id === item.id ? { ...it, html: el.innerHTML } : it));
               }}
