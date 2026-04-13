@@ -60,6 +60,9 @@ export default function WidgetDashboard() {
     paperSize: 'A4',
     orientation: 'portrait',
     margins: { top: 25, bottom: 25, left: 25, right: 25 },
+    lineHeight: 1.6,
+    letterSpacing: 0,
+    blockSpacing: 3,
   });
 
   const handleAddWidget = useCallback((widgetId) => {

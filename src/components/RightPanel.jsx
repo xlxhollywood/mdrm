@@ -238,6 +238,49 @@ function WordDocPanel({ docConfig, onChange, onPublish, published }) {
           </div>
         </div>
 
+        {/* 행간 / 자간 */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] text-muted">간격</label>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] text-muted">행간</span>
+                <span className="text-[10px] text-muted font-medium">{docConfig.lineHeight.toFixed(1)}</span>
+              </div>
+              <input
+                type="range" min="1.0" max="3.0" step="0.1"
+                value={docConfig.lineHeight}
+                onChange={e => set('lineHeight', parseFloat(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] text-muted">자간</span>
+                <span className="text-[10px] text-muted font-medium">{docConfig.letterSpacing.toFixed(1)}px</span>
+              </div>
+              <input
+                type="range" min="-2" max="10" step="0.5"
+                value={docConfig.letterSpacing}
+                onChange={e => set('letterSpacing', parseFloat(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] text-muted">블록 간격</span>
+                <span className="text-[10px] text-muted font-medium">{docConfig.blockSpacing}px</span>
+              </div>
+              <input
+                type="range" min="0" max="40" step="1"
+                value={docConfig.blockSpacing}
+                onChange={e => set('blockSpacing', parseInt(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* 여백 */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] text-muted">여백 (mm)</label>
