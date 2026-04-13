@@ -241,10 +241,15 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
           const currentLi = node?.tagName === 'LI' ? node : null;
           if (currentLi && !currentLi.textContent.trim()) {
             e.preventDefault();
+            const isLastLi = !currentLi.nextElementSibling;
             currentLi.remove();
             const hasRemaining = !!ref.current.textContent.trim();
             if (hasRemaining) {
               onChange(block.id, ref.current.innerHTML);
+              if (isLastLi) {
+                // 마지막 빈 항목에서 엔터 → 일반 텍스트 블록으로 탈출
+                onEnter(block.id);
+              }
             } else {
               // 리스트 전체가 비어있음 → 일반 텍스트로 변환
               onChange(block.id, '');
