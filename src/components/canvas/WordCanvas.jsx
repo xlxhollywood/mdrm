@@ -232,7 +232,11 @@ export default function WordCanvas({
       return;
     }
 
-    // 새 블록을 삽입하는 타입 (table 등)
+    // 새 블록을 삽입하는 타입 (table, divider 등)
+    if (type === 'divider') {
+      onInsertBlock(afterIdx, { id: `divider-${Date.now()}`, type: 'divider' });
+      return;
+    }
     const newId = `table-${Date.now()}`;
     const blockDef = { id: newId, type: 'table', rows: 3, cols: 3, cells: {} };
     onInsertBlock(afterIdx, blockDef);
@@ -374,6 +378,8 @@ export default function WordCanvas({
                   lineHeight={docConfig.lineHeight}
                   letterSpacing={docConfig.letterSpacing}
                 />
+              ) : block.type === 'divider' ? (
+                <hr className="border-none border-t border-[#d9dfe5] my-1" style={{ borderTopWidth: 1 }} />
               ) : block.type === 'table' ? (
                 <TableBlock block={block} onUpdateBlock={onUpdateBlock} />
               ) : (

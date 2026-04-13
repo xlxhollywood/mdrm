@@ -25,6 +25,7 @@ export const PLUS_MENU_ITEMS = [
   { id: 'callout',  label: '콜아웃',           icon: '💡' },
   { id: 'quote',    label: '인용',             icon: '❝' },
   { id: 'table',    label: '표',               icon: '⊞' },
+  { id: 'divider',  label: '구분선',           icon: '―' },
 ];
 
 export const HEADING_FORMATS = [
