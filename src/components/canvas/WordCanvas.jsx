@@ -280,10 +280,29 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
     }
     if (e.key === 'Backspace' && !isComposing.current) {
       if (isList) {
-        // 리스트 전체가 비어있을 때만 블록 탈출 처리, 나머지는 브라우저에 위임
-        if (!ref.current?.textContent?.trim()) {
+        const sel = window.getSelection();
+        const listEmpty = !ref.current?.textContent?.trim();
+        if (listEmpty) {
           e.preventDefault();
-          onBackspaceAtStart?.(block.id, block.html || '');
+          onBackspaceAtStart?.(block.id, '');
+          return;
+        }
+        // 선택 없이 첫 번째 <li> 맨 앞에 커서 → 불릿/번호 제거, 내용 유지
+        if (sel?.rangeCount && sel.getRangeAt(0).collapsed) {
+          const range = sel.getRangeAt(0);
+          const firstLi = ref.current.querySelector('li');
+          if (firstLi) {
+            try {
+              const test = document.createRange();
+              test.setStart(firstLi, 0);
+              test.setEnd(range.startContainer, range.startOffset);
+              if (test.toString().length === 0) {
+                e.preventDefault();
+                onBackspaceAtStart?.(block.id, firstLi.innerHTML);
+                return;
+              }
+            } catch (_) {}
+          }
         }
         return;
       }
@@ -417,7 +436,7 @@ function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtS
 }
 
 /* ── 할일 목록 블록 ── */
-function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock, onBackspaceAtStart, onFocusBlock, lineHeight, letterSpacing }) {
+function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock, onBackspaceAtStart, onArrowOut, onFocusBlock, lineHeight, letterSpacing }) {
   const items = block.items ?? [{ id: `ti-0-${block.id}`, html: block.html || '', checked: block.checked || false }];
   const itemRefs = useRef({});
   const pendingItemFocus = useRef(null);
@@ -469,8 +488,25 @@ function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock, onBackspaceAtS
   const handleItemBackspace = (e, idx) => {
     const item = items[idx];
     const el = itemRefs.current[item.id];
+    const sel = window.getSelection();
+    if (!sel?.rangeCount || !sel.getRangeAt(0).collapsed) return;
+
     const isEmpty = !el?.textContent?.trim();
-    if (!isEmpty) return;
+
+    if (!isEmpty) {
+      // 커서가 항목 맨 앞 → 체크박스 제거, 내용 유지
+      const range = sel.getRangeAt(0);
+      try {
+        const test = document.createRange();
+        test.setStart(el, 0);
+        test.setEnd(range.startContainer, range.startOffset);
+        if (test.toString().length === 0) {
+          e.preventDefault();
+          onBackspaceAtStart?.(block.id, el.innerHTML);
+        }
+      } catch (_) {}
+      return;
+    }
 
     e.preventDefault();
     if (items.length === 1) {
@@ -480,6 +516,57 @@ function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock, onBackspaceAtS
       updateItems(newItems);
       const focusIdx = idx > 0 ? idx - 1 : 0;
       pendingItemFocus.current = { itemId: newItems[focusIdx].id };
+    }
+  };
+
+  const handleItemArrow = (e, idx) => {
+    const item = items[idx];
+    const el = itemRefs.current[item.id];
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const caretRect = sel.getRangeAt(0).getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const lineH = caretRect.height || 20;
+    const zeroRect = caretRect.top === 0 && caretRect.bottom === 0;
+
+    if (e.key === 'ArrowUp') {
+      const isFirstLine = zeroRect || caretRect.top < elRect.top + lineH;
+      if (!isFirstLine) return;
+      if (idx > 0) {
+        e.preventDefault();
+        const prevEl = itemRefs.current[items[idx - 1].id];
+        if (prevEl) {
+          prevEl.focus();
+          const r = document.createRange();
+          r.selectNodeContents(prevEl);
+          r.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(r);
+        }
+      } else {
+        e.preventDefault();
+        const caretX = zeroRect ? elRect.left : caretRect.left + caretRect.width / 2;
+        onArrowOut?.(block.id, 'up', caretX);
+      }
+    } else if (e.key === 'ArrowDown') {
+      const isLastLine = zeroRect || caretRect.bottom > elRect.bottom - lineH;
+      if (!isLastLine) return;
+      if (idx < items.length - 1) {
+        e.preventDefault();
+        const nextEl = itemRefs.current[items[idx + 1].id];
+        if (nextEl) {
+          nextEl.focus();
+          const r = document.createRange();
+          r.setStart(nextEl, 0);
+          r.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(r);
+        }
+      } else {
+        e.preventDefault();
+        const caretX = zeroRect ? elRect.left : caretRect.left + caretRect.width / 2;
+        onArrowOut?.(block.id, 'down', caretX);
+      }
     }
   };
 
@@ -532,6 +619,7 @@ function TodoListBlock({ block, onUpdateBlock, onEnterAfterBlock, onBackspaceAtS
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) handleItemEnter(e, idx);
                 else if (e.key === 'Backspace') handleItemBackspace(e, idx);
+                else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') handleItemArrow(e, idx);
               }}
             />
           </div>
@@ -767,8 +855,17 @@ export default function WordCanvas({
     const idx = docBlocks.findIndex(b => b.id === blockId);
     const block = docBlocks[idx];
 
-    // 서브타입 있는 빈 블록 → 서브타입만 제거 (일반 텍스트로 변환)
-    if (block?.subtype && !currentHtml.replace(/<br\s*\/?>/gi, '').trim()) {
+    const isListSubtype = block?.subtype === 'bullet' || block?.subtype === 'numbered' || block?.subtype === 'todo';
+    const hasContent = !!(currentHtml || '').replace(/<br\s*\/?>/gi, '').trim();
+
+    // 리스트/할일 서브타입 + 내용 있음 → 서브타입만 제거, 내용 유지
+    if (isListSubtype && hasContent) {
+      onUpdateBlock(blockId, { subtype: undefined, checked: undefined, html: currentHtml, items: undefined });
+      pendingFocusRef.current = { id: blockId, position: 'start' };
+      return;
+    }
+    // 서브타입 있는 빈 블록 → 서브타입 제거
+    if (block?.subtype && !hasContent) {
       onUpdateBlock(blockId, { subtype: undefined, checked: undefined, html: '', items: undefined });
       pendingFocusRef.current = { id: blockId, position: 'start' };
       return;
@@ -1108,6 +1205,7 @@ export default function WordCanvas({
                   onUpdateBlock={onUpdateBlock}
                   onEnterAfterBlock={handleEnterBlock}
                   onBackspaceAtStart={handleBackspaceAtStart}
+                  onArrowOut={handleArrow}
                   onFocusBlock={() => setAllSelected(false)}
                   lineHeight={docConfig.lineHeight}
                   letterSpacing={docConfig.letterSpacing}
