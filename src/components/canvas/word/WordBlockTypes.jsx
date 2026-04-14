@@ -52,9 +52,15 @@ function SepDot({ hovered, onClick, onEnter, onLeave }) {
         onClick={e => { e.stopPropagation(); onClick(); }}
         className={`rounded-full transition-all duration-100 select-none flex items-center justify-center
           ${hovered
-            ? 'w-[8px] h-[8px] bg-[#0056a4] text-transparent shadow-sm hover:bg-[#004a8f]'
-            : 'w-[3px] h-[3px] bg-[#c8cdd3] cursor-default text-transparent'}`}
-      />
+            ? 'w-[14px] h-[14px] bg-[#0056a4] shadow-sm hover:bg-[#004a8f]'
+            : 'w-[4px] h-[4px] bg-[#c8cdd3] cursor-default'}`}
+      >
+        {hovered && (
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+            <path d="M4 1v6M1 4h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        )}
+      </button>
     </div>
   );
 }
