@@ -515,18 +515,19 @@ export default function WordCanvas({
                 ti = delIdx - 1;
                 while (ti >= 0 && docBlocks[ti].type !== 'text') ti--;
               }
-              if (ti >= 0 && ti < docBlocks.length) {
-                const targetId = docBlocks[ti].id;
-                setTimeout(() => {
-                  const el = document.querySelector(`[data-text-id="${targetId}"]`);
-                  if (el) {
-                    el.focus();
-                    const s = window.getSelection();
-                    s.removeAllRanges();
-                    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); s.addRange(r);
-                  }
-                }, 0);
-              }
+              const targetId = (ti >= 0 && ti < docBlocks.length) ? docBlocks[ti].id : null;
+              setTimeout(() => {
+                // targetId가 있으면 해당 블록, 없으면 DOM에서 첫 번째 텍스트 블록 (새로 생성된 빈 블록 포함)
+                const el = targetId
+                  ? document.querySelector(`[data-text-id="${targetId}"]`)
+                  : document.querySelector('[data-text-id]');
+                if (el) {
+                  el.focus();
+                  const s = window.getSelection();
+                  s.removeAllRanges();
+                  const r = document.createRange(); r.setStart(el, 0); r.collapse(true); s.addRange(r);
+                }
+              }, 0);
             }
             return;
           }

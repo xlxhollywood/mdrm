@@ -130,7 +130,8 @@ export default function WidgetDashboard() {
         setConfig(c => { const n = { ...c }; delete n[b.instanceId]; return n; });
         if (selectedWidget?.instanceId === b.instanceId) setSelectedWidget(null);
       }
-      return prev.filter(x => x.id !== blockId);
+      const filtered = prev.filter(x => x.id !== blockId);
+      return filtered.length > 0 ? filtered : [{ id: `text-${Date.now()}`, type: 'text', html: '' }];
     });
   }, [selectedWidget]);
 
