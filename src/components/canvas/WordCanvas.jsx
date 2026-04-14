@@ -262,65 +262,93 @@ export default function WordCanvas({
     if (block) setTableSizePicker({ blockId: block.id, blockIdx, anchorRect });
   }, [docBlocks]);
 
-  const handleDeleteTableRow = useCallback((blockId, rowIdx) => {
-    const block = docBlocks.find(b => b.id === blockId);
-    if (!block || (block.rows ?? 3) <= 1) return;
-    const { rows = 3, cells = {} } = block;
-    const shifted = {};
-    Object.entries(cells).forEach(([k, v]) => {
-      const [r, c] = k.split(',').map(Number);
-      if (r !== rowIdx) shifted[r > rowIdx ? `${r - 1},${c}` : k] = v;
-    });
-    onUpdateBlock(blockId, { rows: rows - 1, cells: shifted });
-  }, [docBlocks, onUpdateBlock]);
-
-  const handleDeleteTableCol = useCallback((blockId, colIdx) => {
-    const block = docBlocks.find(b => b.id === blockId);
-    if (!block || (block.cols ?? 3) <= 1) return;
-    const { cols = 3, cells = {}, colWidths } = block;
-    const shifted = {};
-    Object.entries(cells).forEach(([k, v]) => {
-      const [r, c] = k.split(',').map(Number);
-      if (c !== colIdx) shifted[c > colIdx ? `${r},${c - 1}` : k] = v;
-    });
-    const newWidths = colWidths ? colWidths.filter((_, i) => i !== colIdx) : undefined;
-    onUpdateBlock(blockId, { cols: cols - 1, cells: shifted, ...(newWidths ? { colWidths: newWidths } : {}) });
-  }, [docBlocks, onUpdateBlock]);
-
-  const handleMoveTableRow = useCallback((blockId, rowIdx, dir) => {
+  const handleDeleteTableRow = useCallback((blockId, r1, r2) => {
     const block = docBlocks.find(b => b.id === blockId);
     if (!block) return;
     const { rows = 3, cells = {} } = block;
-    const toIdx = dir === 'up' ? rowIdx - 1 : rowIdx + 1;
-    if (toIdx < 0 || toIdx >= rows) return;
-    const newCells = {};
+    const rangeSize = r2 - r1 + 1;
+    if (rows - rangeSize < 1) return;
+    const shifted = {};
     Object.entries(cells).forEach(([k, v]) => {
       const [r, c] = k.split(',').map(Number);
-      if (r === rowIdx)      newCells[`${toIdx},${c}`]   = v;
-      else if (r === toIdx)  newCells[`${rowIdx},${c}`]  = v;
-      else                   newCells[k] = v;
+      if (r < r1 || r > r2) shifted[r > r2 ? `${r - rangeSize},${c}` : k] = v;
     });
+    onUpdateBlock(blockId, { rows: rows - rangeSize, cells: shifted });
+  }, [docBlocks, onUpdateBlock]);
+
+  const handleDeleteTableCol = useCallback((blockId, c1, c2) => {
+    const block = docBlocks.find(b => b.id === blockId);
+    if (!block) return;
+    const { cols = 3, cells = {}, colWidths } = block;
+    const rangeSize = c2 - c1 + 1;
+    if (cols - rangeSize < 1) return;
+    const shifted = {};
+    Object.entries(cells).forEach(([k, v]) => {
+      const [r, c] = k.split(',').map(Number);
+      if (c < c1 || c > c2) shifted[c > c2 ? `${r},${c - rangeSize}` : k] = v;
+    });
+    const newWidths = colWidths ? colWidths.filter((_, i) => i < c1 || i > c2) : undefined;
+    onUpdateBlock(blockId, { cols: cols - rangeSize, cells: shifted, ...(newWidths ? { colWidths: newWidths } : {}) });
+  }, [docBlocks, onUpdateBlock]);
+
+  const handleMoveTableRow = useCallback((blockId, r1, r2, dir) => {
+    const block = docBlocks.find(b => b.id === blockId);
+    if (!block) return;
+    const { rows = 3, cells = {} } = block;
+    const newCells = {};
+    if (dir === 'up') {
+      if (r1 <= 0) return;
+      Object.entries(cells).forEach(([k, v]) => {
+        const [r, c] = k.split(',').map(Number);
+        if (r === r1 - 1)            newCells[`${r2},${c}`]    = v;
+        else if (r >= r1 && r <= r2) newCells[`${r - 1},${c}`] = v;
+        else                         newCells[k] = v;
+      });
+    } else {
+      if (r2 >= rows - 1) return;
+      Object.entries(cells).forEach(([k, v]) => {
+        const [r, c] = k.split(',').map(Number);
+        if (r === r2 + 1)            newCells[`${r1},${c}`]    = v;
+        else if (r >= r1 && r <= r2) newCells[`${r + 1},${c}`] = v;
+        else                         newCells[k] = v;
+      });
+    }
     onUpdateBlock(blockId, { cells: newCells });
     setTableSync(s => s + 1);
   }, [docBlocks, onUpdateBlock]);
 
-  const handleMoveTableCol = useCallback((blockId, colIdx, dir) => {
+  const handleMoveTableCol = useCallback((blockId, c1, c2, dir) => {
     const block = docBlocks.find(b => b.id === blockId);
     if (!block) return;
     const { cols = 3, cells = {}, colWidths } = block;
-    const toIdx = dir === 'left' ? colIdx - 1 : colIdx + 1;
-    if (toIdx < 0 || toIdx >= cols) return;
     const newCells = {};
-    Object.entries(cells).forEach(([k, v]) => {
-      const [r, c] = k.split(',').map(Number);
-      if (c === colIdx)      newCells[`${r},${toIdx}`]   = v;
-      else if (c === toIdx)  newCells[`${r},${colIdx}`]  = v;
-      else                   newCells[k] = v;
-    });
+    if (dir === 'left') {
+      if (c1 <= 0) return;
+      Object.entries(cells).forEach(([k, v]) => {
+        const [r, c] = k.split(',').map(Number);
+        if (c === c1 - 1)            newCells[`${r},${c2}`]    = v;
+        else if (c >= c1 && c <= c2) newCells[`${r},${c - 1}`] = v;
+        else                         newCells[k] = v;
+      });
+    } else {
+      if (c2 >= cols - 1) return;
+      Object.entries(cells).forEach(([k, v]) => {
+        const [r, c] = k.split(',').map(Number);
+        if (c === c2 + 1)            newCells[`${r},${c1}`]    = v;
+        else if (c >= c1 && c <= c2) newCells[`${r},${c + 1}`] = v;
+        else                         newCells[k] = v;
+      });
+    }
     let newWidths;
     if (colWidths) {
       newWidths = [...colWidths];
-      [newWidths[colIdx], newWidths[toIdx]] = [newWidths[toIdx], newWidths[colIdx]];
+      if (dir === 'left' && c1 > 0) {
+        const moved = newWidths.splice(c1 - 1, 1)[0];
+        newWidths.splice(c2, 0, moved);
+      } else if (dir === 'right' && c2 < cols - 1) {
+        const moved = newWidths.splice(c2 + 1, 1)[0];
+        newWidths.splice(c1, 0, moved);
+      }
     }
     onUpdateBlock(blockId, { cells: newCells, ...(newWidths ? { colWidths: newWidths } : {}) });
     setTableSync(s => s + 1);
@@ -466,7 +494,7 @@ export default function WordCanvas({
             const delIdx = docBlocks.findIndex(b => b.id === delId);
             setActiveBlockId(null);
             onDeleteBlock(delId);
-            // 삭제 후 인접 텍스트 블록으로 포커스 복원
+            // 삭제 후 인접 텍스트 블록으로 포커스 복원 (setTimeout으로 DOM 커밋 후 실행)
             let ti = delIdx - 1;
             while (ti >= 0 && docBlocks[ti].type !== 'text') ti--;
             if (ti < 0) {
@@ -474,7 +502,16 @@ export default function WordCanvas({
               while (ti < docBlocks.length && docBlocks[ti].type !== 'text') ti++;
             }
             if (ti >= 0 && ti < docBlocks.length) {
-              pendingFocusRef.current = { id: docBlocks[ti].id, position: 'end' };
+              const targetId = docBlocks[ti].id;
+              setTimeout(() => {
+                const el = document.querySelector(`[data-text-id="${targetId}"]`);
+                if (el) {
+                  el.focus();
+                  const s = window.getSelection();
+                  s.removeAllRanges();
+                  const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); s.addRange(r);
+                }
+              }, 0);
             }
             return;
           }
@@ -595,8 +632,8 @@ export default function WordCanvas({
                 <TableBlock
                   block={block}
                   onUpdateBlock={onUpdateBlock}
-                  onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); }}
-                  onFocusBlock={() => setAllSelected(false)}
+                  onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); setActiveBlockId(null); }}
+                  onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); }}
                   onAddRow={handleAddTableRow}
                   onAddCol={handleAddTableCol}
                   onDeleteRow={handleDeleteTableRow}

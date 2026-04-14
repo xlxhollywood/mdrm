@@ -294,11 +294,11 @@ export function TableBlock({
           type={ctxMenu.type}
           anchorRect={ctxMenu.rect}
           onClose={() => setCtxMenu(null)}
-          canMoveUp={ctxMenu.type === 'row' ? ctxMenu.idx > 0 : ctxMenu.idx > 0}
-          canMoveDown={ctxMenu.type === 'row' ? ctxMenu.idx < rows - 1 : ctxMenu.idx < cols - 1}
-          onMoveUp={()    => ctxMenu.type === 'row' ? onMoveRow?.(block.id, ctxMenu.idx, 'up')   : onMoveCol?.(block.id, ctxMenu.idx, 'left')}
-          onMoveDown={()  => ctxMenu.type === 'row' ? onMoveRow?.(block.id, ctxMenu.idx, 'down') : onMoveCol?.(block.id, ctxMenu.idx, 'right')}
-          onDelete={()    => ctxMenu.type === 'row' ? onDeleteRow?.(block.id, ctxMenu.idx) : onDeleteCol?.(block.id, ctxMenu.idx)}
+          canMoveUp={ctxMenu.type === 'row' ? ctxMenu.r1 > 0 : ctxMenu.c1 > 0}
+          canMoveDown={ctxMenu.type === 'row' ? ctxMenu.r2 < rows - 1 : ctxMenu.c2 < cols - 1}
+          onMoveUp={()   => ctxMenu.type === 'row' ? onMoveRow?.(block.id, ctxMenu.r1, ctxMenu.r2, 'up')   : onMoveCol?.(block.id, ctxMenu.c1, ctxMenu.c2, 'left')}
+          onMoveDown={()  => ctxMenu.type === 'row' ? onMoveRow?.(block.id, ctxMenu.r1, ctxMenu.r2, 'down') : onMoveCol?.(block.id, ctxMenu.c1, ctxMenu.c2, 'right')}
+          onDelete={()    => ctxMenu.type === 'row' ? onDeleteRow?.(block.id, ctxMenu.r1, ctxMenu.r2)       : onDeleteCol?.(block.id, ctxMenu.c1, ctxMenu.c2)}
           onClear={clearSelContents}
           onBgColor={applyBgColor}
         />
@@ -317,14 +317,22 @@ export function TableBlock({
           <tr key="top-gutter" style={{ height: 16 }}>
             <td style={{ padding: 0, border: 0 }} />
             {Array.from({ length: cols }, (_, c) => {
-              const fullCol = isFullColSel(c);
+              const isFullColRange   = sel && sel.r1 === 0 && sel.r2 === rows - 1;
+              const isColAnchor      = isFullColRange && c === sel.c1;
+              const colGutterSkip    = isFullColRange && c > sel.c1 && c <= sel.c2;
+              const colGutterSpan    = isColAnchor ? sel.c2 - sel.c1 + 1 : 1;
+              if (colGutterSkip) return null;
               return (
-                <td key={c} style={{ padding: '0 2px 0 0', border: 0, position: 'relative' }}>
-                  {fullCol ? (
+                <td key={c} colSpan={colGutterSpan}
+                  style={isColAnchor
+                    ? { padding: 0, border: 0, position: 'relative' }
+                    : { padding: '0 2px 0 0', border: 0, position: 'relative' }}>
+                  {isColAnchor ? (
                     <button
                       onMouseDown={e => e.preventDefault()}
-                      onClick={e => setCtxMenu({ type: 'col', idx: c, rect: e.currentTarget.getBoundingClientRect() })}
-                      className="w-full h-full flex items-center justify-center bg-[#0056a4] rounded-t-[3px] cursor-pointer hover:bg-[#004a8f]"
+                      onClick={e => setCtxMenu({ type: 'col', c1: sel.c1, c2: sel.c2, rect: e.currentTarget.getBoundingClientRect() })}
+                      style={{ position: 'absolute', inset: 0 }}
+                      className="flex items-center justify-center bg-[#0056a4] rounded-t-[3px] cursor-pointer hover:bg-[#004a8f]"
                       title="열 옵션"
                     >
                       <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
@@ -347,33 +355,45 @@ export function TableBlock({
           </tr>
 
           {/* 실제 행들 */}
-          {Array.from({ length: rows }, (_, r) => (
+          {Array.from({ length: rows }, (_, r) => {
+            const isFullRowRange = sel && sel.c1 === 0 && sel.c2 === cols - 1;
+            const isRowAnchor    = isFullRowRange && r === sel.r1;
+            const gutterSkip     = isFullRowRange && r > sel.r1 && r <= sel.r2;
+            const gutterSpan     = isRowAnchor ? sel.r2 - sel.r1 + 1 : 1;
+            return (
             <tr key={r}>
               {/* 좌측 거터: 행 삽입 포인트 + 행 선택 밴드 */}
-              <td style={{ padding: '0 0 2px 0', border: 0, verticalAlign: 'bottom', position: 'relative' }}>
-                {isFullRowSel(r) ? (
-                  <button
-                    onMouseDown={e => e.preventDefault()}
-                    onClick={e => setCtxMenu({ type: 'row', idx: r, rect: e.currentTarget.getBoundingClientRect() })}
-                    className="w-full h-full flex items-center justify-center bg-[#0056a4] rounded-l-[3px] cursor-pointer hover:bg-[#004a8f]"
-                    style={{ minHeight: 24 }}
-                    title="행 옵션"
-                  >
-                    <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
-                      <path d="M1.5 2v6M3 2v6" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <SepDot
-                      hovered={hovSepRow === r}
-                      onClick={() => onAddRow?.(block.id, r)}
-                      onEnter={() => setHovSepRow(r)}
-                      onLeave={() => setHovSepRow(null)}
-                    />
-                  </div>
-                )}
-              </td>
+              {!gutterSkip && (
+                <td
+                  rowSpan={gutterSpan}
+                  style={isRowAnchor
+                    ? { padding: 0, border: 0, position: 'relative', width: 16 }
+                    : { padding: '0 0 2px 0', border: 0, verticalAlign: 'bottom', position: 'relative' }}
+                >
+                  {isRowAnchor ? (
+                    <button
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={e => setCtxMenu({ type: 'row', r1: sel.r1, r2: sel.r2, rect: e.currentTarget.getBoundingClientRect() })}
+                      style={{ position: 'absolute', inset: 0 }}
+                      className="flex items-center justify-center bg-[#0056a4] rounded-l-[3px] cursor-pointer hover:bg-[#004a8f]"
+                      title="행 옵션"
+                    >
+                      <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
+                        <path d="M1.5 2v6M3 2v6" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <SepDot
+                        hovered={hovSepRow === r}
+                        onClick={() => onAddRow?.(block.id, r)}
+                        onEnter={() => setHovSepRow(r)}
+                        onLeave={() => setHovSepRow(null)}
+                      />
+                    </div>
+                  )}
+                </td>
+              )}
 
               {/* 실제 셀들 */}
               {Array.from({ length: cols }, (_, c) => {
@@ -440,7 +460,8 @@ export function TableBlock({
                 );
               })}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
