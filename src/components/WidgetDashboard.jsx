@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import AppHeader  from './AppHeader';
 import RightPanel from './RightPanel';
 import GridCanvas from './canvas/GridCanvas';
@@ -54,6 +54,8 @@ export default function WidgetDashboard() {
   const [canvasWidgets,  setCanvasWidgets]  = useState([]);
   const [selectedWidget, setSelectedWidget] = useState(null);
   const [selectedTable,  setSelectedTable]  = useState(null); // { blockId, rows, cols, row, col }
+  const selectedTableRef = useRef(null);
+  useEffect(() => { selectedTableRef.current = selectedTable; }, [selectedTable]);
   const [config,         setConfig]         = useState({});
   const [canvasMode,     setCanvasMode]     = useState('grid');
   const [docBlocks,      setDocBlocks]      = useState([{ id: 'init', type: 'text', html: '' }]);
@@ -160,47 +162,49 @@ export default function WidgetDashboard() {
   }, []);
 
   const handleTableAction = useCallback((action) => {
-    setSelectedTable(prev => {
-      if (!prev) return prev;
-      const { blockId, row, col } = prev;
-      setDocBlocks(blocks => blocks.map(b => {
-        if (b.id !== blockId || b.type !== 'table') return b;
-        let { rows, cols, cells } = b;
-        const shifted = {};
-        if (action === 'addRowBelow') {
-          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[r > row ? `${r+1},${c}` : k] = v; });
-          return { ...b, rows: rows + 1, cells: shifted };
-        }
-        if (action === 'addRowAbove') {
-          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[r >= row ? `${r+1},${c}` : k] = v; });
-          setTimeout(() => setSelectedTable(s => s ? { ...s, row: s.row + 1 } : s), 0);
-          return { ...b, rows: rows + 1, cells: shifted };
-        }
-        if (action === 'deleteRow') {
-          if (rows <= 1) return b;
-          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); if (r !== row) shifted[r > row ? `${r-1},${c}` : k] = v; });
-          setTimeout(() => setSelectedTable(s => s ? { ...s, row: Math.max(0, s.row - 1), rows: rows - 1 } : s), 0);
-          return { ...b, rows: rows - 1, cells: shifted };
-        }
-        if (action === 'addColRight') {
-          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[c > col ? `${r},${c+1}` : k] = v; });
-          return { ...b, cols: cols + 1, cells: shifted };
-        }
-        if (action === 'addColLeft') {
-          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[c >= col ? `${r},${c+1}` : k] = v; });
-          setTimeout(() => setSelectedTable(s => s ? { ...s, col: s.col + 1, cols: cols + 1 } : s), 0);
-          return { ...b, cols: cols + 1, cells: shifted };
-        }
-        if (action === 'deleteCol') {
-          if (cols <= 1) return b;
-          Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); if (c !== col) shifted[c > col ? `${r},${c-1}` : k] = v; });
-          setTimeout(() => setSelectedTable(s => s ? { ...s, col: Math.max(0, s.col - 1), cols: cols - 1 } : s), 0);
-          return { ...b, cols: cols - 1, cells: shifted };
-        }
-        return b;
-      }));
-      return prev;
-    });
+    const sel = selectedTableRef.current;
+    if (!sel) return;
+    const { blockId, row, col } = sel;
+
+    setDocBlocks(blocks => blocks.map(b => {
+      if (b.id !== blockId || b.type !== 'table') return b;
+      const { rows, cols, cells } = b;
+      const shifted = {};
+
+      if (action === 'addRowBelow') {
+        Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[r > row ? `${r+1},${c}` : k] = v; });
+        setSelectedTable(s => s ? { ...s, rows: rows + 1 } : s);
+        return { ...b, rows: rows + 1, cells: shifted };
+      }
+      if (action === 'addRowAbove') {
+        Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[r >= row ? `${r+1},${c}` : k] = v; });
+        setSelectedTable(s => s ? { ...s, row: s.row + 1, rows: rows + 1 } : s);
+        return { ...b, rows: rows + 1, cells: shifted };
+      }
+      if (action === 'deleteRow') {
+        if (rows <= 1) return b;
+        Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); if (r !== row) shifted[r > row ? `${r-1},${c}` : k] = v; });
+        setSelectedTable(s => s ? { ...s, row: Math.max(0, s.row - 1), rows: rows - 1 } : s);
+        return { ...b, rows: rows - 1, cells: shifted };
+      }
+      if (action === 'addColRight') {
+        Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[c > col ? `${r},${c+1}` : k] = v; });
+        setSelectedTable(s => s ? { ...s, cols: cols + 1 } : s);
+        return { ...b, cols: cols + 1, cells: shifted };
+      }
+      if (action === 'addColLeft') {
+        Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[c >= col ? `${r},${c+1}` : k] = v; });
+        setSelectedTable(s => s ? { ...s, col: s.col + 1, cols: cols + 1 } : s);
+        return { ...b, cols: cols + 1, cells: shifted };
+      }
+      if (action === 'deleteCol') {
+        if (cols <= 1) return b;
+        Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); if (c !== col) shifted[c > col ? `${r},${c-1}` : k] = v; });
+        setSelectedTable(s => s ? { ...s, col: Math.max(0, s.col - 1), cols: cols - 1 } : s);
+        return { ...b, cols: cols - 1, cells: shifted };
+      }
+      return b;
+    }));
   }, []);
 
   const handleTableDelete = useCallback((blockId) => {
