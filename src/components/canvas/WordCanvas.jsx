@@ -36,11 +36,23 @@ export default function WordCanvas({
   const [tableSizePicker,  setTableSizePicker]  = useState(null); // { blockId, blockIdx, anchorRect }
   const [tableSync,        setTableSync]        = useState(0);   // 행/열 이동 후 DOM 강제 동기화 트리거
   const slashMenuRef    = useRef(null);
+  const prevTableCellsRef = useRef({});
   const pendingResetFocus = useRef(false);
 
   const { draggingIdx, dropIdx, handleDragHandleMouseDown } = useDragBlocks({
     docBlocks, blockRefs, onReorderBlocks,
   });
+
+  // 외부에서 cells가 교체된 경우 DOM 강제 동기화
+  useEffect(() => {
+    let needSync = false;
+    docBlocks.forEach(b => {
+      if (b.type !== 'table') return;
+      if (prevTableCellsRef.current[b.id] !== b.cells) needSync = true;
+      prevTableCellsRef.current[b.id] = b.cells;
+    });
+    if (needSync) setTableSync(s => s + 1);
+  }, [docBlocks]);
 
   // activeBlockId 설정 시 paper div로 포커스 이동 (contenteditable 바깥인 경우)
   // 드래그 핸들의 e.preventDefault()로 인해 자연 포커스가 이동하지 않으므로 강제 설정

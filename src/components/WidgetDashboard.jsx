@@ -8,6 +8,7 @@ import WordCanvas from './canvas/WordCanvas';
 import { WIDGET_CATEGORIES, TODAY, MONTH_AGO } from '@/lib/constants';
 
 const allWidgets = Object.values(WIDGET_CATEGORIES).flatMap(c => c.widgets);
+
 const findWidgetDef = (id) => allWidgets.find(w => w.id === id);
 const makeConfig = (def) => ({
   viewType: def?.viewTypes[0]?.id || null,
@@ -57,6 +58,7 @@ export default function WidgetDashboard() {
   const [canvasMode,     setCanvasMode]     = useState('grid');
   const [docBlocks,      setDocBlocks]      = useState([{ id: 'init', type: 'text', html: '' }]);
   const [published,      setPublished]      = useState(false);
+  const [tempSaved,      setTempSaved]      = useState(false);
   const [docConfig,      setDocConfig]      = useState({
     paperSize: 'A4',
     orientation: 'portrait',
@@ -147,7 +149,10 @@ export default function WidgetDashboard() {
     setDocBlocks(prev => {
       const block = prev.find(b => b.id === blockId);
       if (block?.type === 'table') {
-        setSelectedTable({ blockId, rows: block.rows, cols: block.cols, row, col });
+        setSelectedTable({
+          blockId, rows: block.rows, cols: block.cols, row, col,
+          headerRow: block.headerRow ?? true, headerCol: block.headerCol ?? false,
+        });
         setSelectedWidget(null);
       }
       return prev;
@@ -202,6 +207,54 @@ export default function WidgetDashboard() {
     handleDeleteBlock(blockId);
     setSelectedTable(null);
   }, [handleDeleteBlock]);
+
+  const handleTableSwapHeaders = useCallback((blockId) => {
+    setDocBlocks(prev => prev.map(b => {
+      if (b.id !== blockId || b.type !== 'table') return b;
+      const { rows, cols, cells, cellBg = {} } = b;
+      const newCells = {};
+      const newCellBg = {};
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (cells[`${r},${c}`]) newCells[`${c},${r}`] = cells[`${r},${c}`];
+          if (cellBg[`${r},${c}`]) newCellBg[`${c},${r}`] = cellBg[`${r},${c}`];
+        }
+      }
+      return { ...b, rows: cols, cols: rows, cells: newCells, cellBg: newCellBg };
+    }));
+    setSelectedTable(s => s?.blockId === blockId ? { ...s, rows: s.cols, cols: s.rows } : s);
+  }, []);
+
+  const handleTableToggleHeader = useCallback((blockId, key, val) => {
+    setDocBlocks(prev => prev.map(b =>
+      b.id === blockId && b.type === 'table' ? { ...b, [key]: val } : b
+    ));
+    setSelectedTable(s => s?.blockId === blockId ? { ...s, [key]: val } : s);
+  }, []);
+
+  const handleTableLoadData = useCallback((blockId, direction, field, values) => {
+    setDocBlocks(prev => prev.map(b => {
+      if (b.id !== blockId || b.type !== 'table') return b;
+      const { rows, cols, cells } = b;
+      const newCells = { ...cells };
+
+      if (direction === 'row') {
+        // 값들을 새 행으로 추가 (첫 번째 열), 자동 확장
+        values.forEach((val, i) => { newCells[`${rows + i},0`] = val; });
+        const newRows = rows + values.length;
+        setSelectedTable(s => s?.blockId === blockId ? { ...s, rows: newRows } : s);
+        return { ...b, rows: newRows, cells: newCells };
+      } else {
+        // 새 열 추가: 헤더(field) + 값들, 행 수 자동 확장
+        newCells[`0,${cols}`] = field;
+        values.forEach((val, i) => { newCells[`${i + 1},${cols}`] = val; });
+        const newRows = Math.max(rows, values.length + 1);
+        const newCols = cols + 1;
+        setSelectedTable(s => s?.blockId === blockId ? { ...s, rows: newRows, cols: newCols } : s);
+        return { ...b, rows: newRows, cols: newCols, cells: newCells };
+      }
+    }));
+  }, []);
 
   const isAllTab = activeTab === 'all';
   const currentCategory = WIDGET_CATEGORIES[activeTab];
@@ -303,7 +356,12 @@ export default function WidgetDashboard() {
           onDocConfigChange={setDocConfig}
           published={published}
           onPublish={() => { setPublished(true); setTimeout(() => setPublished(false), 3000); }}
+          tempSaved={tempSaved}
+          onTempSave={() => { setTempSaved(true); setTimeout(() => setTempSaved(false), 3000); }}
           selectedTable={selectedTable}
+          onTableLoadData={handleTableLoadData}
+          onTableToggleHeader={handleTableToggleHeader}
+          onTableSwapHeaders={handleTableSwapHeaders}
           onTableAction={handleTableAction}
           onTableDelete={handleTableDelete}
         />

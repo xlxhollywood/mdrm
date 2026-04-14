@@ -154,7 +154,7 @@ export function TableBlock({
   onMoveRow, onMoveCol,
   forceSync = 0,
 }) {
-  const { rows = 3, cols = 3, cells = {}, cellBg = {} } = block;
+  const { rows = 3, cols = 3, cells = {}, cellBg = {}, headerRow = true, headerCol = false } = block;
   const cellRefs     = useRef({});
   const colWidthsRef = useRef(null);
   const tableWrapRef = useRef(null);
@@ -288,7 +288,7 @@ export function TableBlock({
   };
 
   return (
-    <div ref={tableWrapRef} className="py-1 overflow-x-auto" style={{ cursor: draggingCol ? 'col-resize' : undefined }}>
+    <div ref={tableWrapRef} className="py-1 overflow-x-auto" style={{ cursor: draggingCol ? 'col-resize' : undefined }} onClick={e => e.stopPropagation()}>
       {ctxMenu && (
         <TableCtxMenu
           type={ctxMenu.type}
@@ -398,7 +398,7 @@ export function TableBlock({
               {/* 실제 셀들 */}
               {Array.from({ length: cols }, (_, c) => {
                 const key      = `${r},${c}`;
-                const isHeader = r === 0;
+                const isHeader = (headerRow && r === 0) || (headerCol && c === 0);
                 const selected = isSelected(r, c);
                 const bg       = cellBg[key] || (isHeader ? '#f5f5f5' : '#ffffff');
                 const selBg    = selected ? (isHeader ? '#cfddf5' : '#dce8ff') : bg;
@@ -443,8 +443,8 @@ export function TableBlock({
                       }}
                     />
 
-                    {/* 열 너비 조절 핸들 (헤더 행만) */}
-                    {isHeader && (
+                    {/* 열 너비 조절 핸들 (첫 행만) */}
+                    {r === 0 && (
                       <div
                         onMouseDown={e => {
                           e.preventDefault(); e.stopPropagation();
