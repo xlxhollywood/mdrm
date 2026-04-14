@@ -4,9 +4,57 @@ import { useState, useEffect, useRef } from 'react';
 import { imgDatacenter } from '@/lib/assets';
 import { IcoChevron } from './SystemSelect';
 
-const DATA_FIELDS = ['시스템 명', 'OS', '점검명', '워크플로우 명', '업무명'];
-const SYSTEM_FIELDS = ['시스템 명', 'OS'];
+/* ── 카테고리 ── */
+const CATEGORIES = [
+  {
+    id: 'system',
+    label: '시스템',
+    desc: '시스템 상태 및 관련 데이터',
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect x="2" y="4" width="24" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+        <path d="M9 24h10M14 20v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+        <circle cx="14" cy="12" r="3" stroke="currentColor" strokeWidth="1.4"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'inspection',
+    label: '점검작업',
+    desc: '준비 중',
+    disabled: true,
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M8 4h12a2 2 0 012 2v16a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.6"/>
+        <path d="M10 10h8M10 14h8M10 18h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'workflow',
+    label: '워크플로우',
+    desc: '준비 중',
+    disabled: true,
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="6" cy="14" r="3" stroke="currentColor" strokeWidth="1.4"/>
+        <circle cx="22" cy="14" r="3" stroke="currentColor" strokeWidth="1.4"/>
+        <circle cx="14" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M9 14h10M14 9v5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+];
 
+/* ── 시스템 테이블 목록 ── */
+const SYSTEM_TABLES = [
+  { id: '시스템 상태', label: '시스템 상태', desc: '상태·OS·IP 등 기본 현황' },
+  { id: '계정',       label: '계정',       desc: '계정명·권한·로그인 이력' },
+  { id: '변경요약',   label: '변경요약',   desc: '변경 유형·일시·담당자' },
+  { id: '알림',       label: '알림',       desc: '알림 유형·내용·발생 시간' },
+];
+
+/* ── 데이터센터 트리 ── */
 const DATA_LOAD_SYSTEM_TREE = [
   {
     id: 'dl-dc-main', type: 'datacenter', label: 'Datacenter',
@@ -21,10 +69,10 @@ const DATA_LOAD_SYSTEM_TREE = [
       },
       { id: 'dl-folder-dev2', type: 'folder', label: '개발2팀',
         children: [
-          { id: 'dl-sys-d01', type: 'system', label: 'dev-web-001',  os: 'Ubuntu 22.04' },
-          { id: 'dl-sys-d02', type: 'system', label: 'dev-api-001',  os: 'Windows Server 2019' },
-          { id: 'dl-sys-d03', type: 'system', label: 'dev-db-001',   os: 'RHEL 8' },
-          { id: 'dl-sys-d04', type: 'system', label: 'dev-cache-001',os: 'Ubuntu 22.04' },
+          { id: 'dl-sys-d01', type: 'system', label: 'dev-web-001',   os: 'Ubuntu 22.04' },
+          { id: 'dl-sys-d02', type: 'system', label: 'dev-api-001',   os: 'Windows Server 2019' },
+          { id: 'dl-sys-d03', type: 'system', label: 'dev-db-001',    os: 'RHEL 8' },
+          { id: 'dl-sys-d04', type: 'system', label: 'dev-cache-001', os: 'Ubuntu 22.04' },
         ],
       },
       { id: 'dl-folder-net', type: 'folder', label: '네트워크 장비',
@@ -44,34 +92,20 @@ const DATA_LOAD_SYSTEM_TREE = [
   },
 ];
 
-const FIELD_ITEMS = {
-  '점검명':      ['정기 점검', '긴급 점검', '보안 점검', '성능 점검', '네트워크 점검', 'SW 패치 점검', 'HW 점검', '재해복구 점검'],
-  '워크플로우 명': ['배포 프로세스', '장애 대응', '변경 관리', '릴리즈 관리', '승인 절차', '배포 승인', '서비스 전환'],
-  '업무명':      ['인프라 관리', '보안 관리', '운영 지원', '개발 지원', '서비스 운영', '모니터링', '백업 관리'],
-};
-
-function getAllLeaves(node) {
+/* 유틸 */
+export function getAllLeaves(node) {
   if (node.type === 'system') return [node];
   return (node.children || []).flatMap(getAllLeaves);
 }
 
-function getSystemValues(tree, selectedIds, field) {
-  const result = [];
-  function traverse(node) {
-    if (node.type === 'system' && selectedIds.includes(node.id))
-      result.push(field === 'OS' ? node.os : node.label);
-    (node.children || []).forEach(traverse);
-  }
-  tree.forEach(traverse);
-  return result;
-}
-
+/* ── 아이콘 ── */
 const IcoFolder = ({ color = '#5b646f' }) => (
   <svg width="14" height="12" viewBox="0 0 14 12" fill="none">
     <path d="M0 2a1 1 0 011-1h4l1.5 1.5H13a1 1 0 011 1V11a1 1 0 01-1 1H1a1 1 0 01-1-1V2z" fill={color} />
   </svg>
 );
 
+/* ── 시스템 트리 노드 ── */
 function DataTreeNode({ node, depth, selectedIds, onToggle, expanded, onExpand }) {
   const hasChildren = node.children?.length > 0;
   const isSystem = node.type === 'system';
@@ -140,29 +174,23 @@ function DataTreeNode({ node, depth, selectedIds, onToggle, expanded, onExpand }
   );
 }
 
+/* ── 메인 모달 ── */
+// onConfirm(category, selectedLeafNodes, tableType)
 export function DataLoadModal({ onConfirm, onClose }) {
-  const [step,       setStep]       = useState(1);
-  const [direction,  setDirection]  = useState(null);
-  const [field,      setField]      = useState(null);
+  const [step,       setStep]    = useState(1);
+  const [category,   setCategory] = useState(null);
   const [treeSelIds, setTreeSelIds] = useState([]);
-  const [listSel,    setListSel]    = useState([]);
-  const [treeExp,    setTreeExp]    = useState(['dl-dc-main']);
+  const [treeExp,    setTreeExp]  = useState(['dl-dc-main']);
+  const [tableType,  setTableType] = useState(null);
   const overlayRef = useRef(null);
 
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') { step > 1 ? setStep(s => s - 1) : onClose(); }
-    };
+    const onKey = e => { if (e.key === 'Escape') step > 1 ? setStep(s => s - 1) : onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, step]);
 
-  const isSystemField = SYSTEM_FIELDS.includes(field);
-  const values = isSystemField
-    ? getSystemValues(DATA_LOAD_SYSTEM_TREE, treeSelIds, field)
-    : listSel;
-
-  const handleTreeToggle = (node) => {
+  const handleTreeToggle = node => {
     const leafIds = getAllLeaves(node).map(n => n.id);
     const allSel  = leafIds.every(id => treeSelIds.includes(id));
     setTreeSelIds(prev =>
@@ -171,16 +199,21 @@ export function DataLoadModal({ onConfirm, onClose }) {
     );
   };
 
-  const STEPS = ['추가 방향', '데이터 종류', '항목 선택'];
+  const selectedLeaves = DATA_LOAD_SYSTEM_TREE
+    .flatMap(getAllLeaves)
+    .filter(n => treeSelIds.includes(n.id));
+
+  const STEPS = ['카테고리', '시스템 선택', '테이블 선택'];
 
   const canNext =
-    (step === 1 && direction !== null) ||
-    (step === 2 && field !== null) ||
-    (step === 3 && values.length > 0);
+    (step === 1 && category !== null) ||
+    (step === 2 && treeSelIds.length > 0) ||
+    (step === 3 && tableType !== null);
 
   const handleNext = () => {
-    if (step < 3) setStep(s => s + 1);
-    else if (values.length > 0) { onConfirm(direction, field, values); onClose(); }
+    if (step < 3) { setStep(s => s + 1); return; }
+    onConfirm(category, selectedLeaves, tableType);
+    onClose();
   };
 
   return (
@@ -189,9 +222,9 @@ export function DataLoadModal({ onConfirm, onClose }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onMouseDown={e => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="bg-white rounded-[10px] shadow-[0_8px_40px_rgba(0,0,0,0.18)] w-[420px] flex flex-col overflow-hidden max-h-[85vh]">
+      <div className="bg-white rounded-[10px] shadow-[0_8px_40px_rgba(0,0,0,0.18)] w-[440px] flex flex-col overflow-hidden max-h-[85vh]">
 
-        {/* 헤더 */}
+        {/* 헤더 + 스텝 인디케이터 */}
         <div className="px-5 pt-5 pb-4 border-b border-border shrink-0">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[14px] font-semibold text-dark">데이터 불러오기</span>
@@ -201,19 +234,16 @@ export function DataLoadModal({ onConfirm, onClose }) {
               </svg>
             </button>
           </div>
-          {/* 스텝 인디케이터 */}
           <div className="flex items-center">
             {STEPS.map((label, i) => {
               const n = i + 1;
-              const done    = step > n;
-              const active  = step === n;
+              const done   = step > n;
+              const active = step === n;
               return (
                 <div key={n} className="flex items-center flex-1 last:flex-none">
                   <div className="flex flex-col items-center gap-1">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold transition-colors
-                      ${done   ? 'bg-primary text-white'
-                      : active ? 'bg-primary text-white ring-4 ring-primary/20'
-                               : 'bg-[#eef0f3] text-muted'}`}>
+                      ${done ? 'bg-primary text-white' : active ? 'bg-primary text-white ring-4 ring-primary/20' : 'bg-[#eef0f3] text-muted'}`}>
                       {done
                         ? <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         : n}
@@ -234,67 +264,32 @@ export function DataLoadModal({ onConfirm, onClose }) {
         {/* 본문 */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
 
-          {/* Step 1: 추가 방향 */}
+          {/* Step 1: 카테고리 */}
           {step === 1 && (
             <div className="flex flex-col gap-3">
-              <p className="text-[12px] text-muted">데이터를 표에 추가할 방향을 선택하세요.</p>
-              <div className="flex gap-3">
-                {[
-                  {
-                    val: 'row', label: '행으로 추가', desc: '데이터가 새 행으로 추가됩니다',
-                    icon: (
-                      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-                        <rect x="2" y="2" width="32" height="9" rx="2" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5"/>
-                        <rect x="2" y="14" width="32" height="6" rx="2" fill="currentColor" stroke="currentColor" strokeWidth="1.5"/>
-                        <rect x="2" y="23" width="32" height="6" rx="2" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5"/>
-                        <path d="M18 31v3M15 32.5l3 2 3-2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    ),
-                  },
-                  {
-                    val: 'col', label: '열로 추가', desc: '데이터가 새 열로 추가됩니다',
-                    icon: (
-                      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-                        <rect x="2" y="2" width="9" height="32" rx="2" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5"/>
-                        <rect x="14" y="2" width="6" height="32" rx="2" fill="currentColor" stroke="currentColor" strokeWidth="1.5"/>
-                        <rect x="23" y="2" width="6" height="32" rx="2" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5"/>
-                        <path d="M31 18h3M32.5 15l2 3-2 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    ),
-                  },
-                ].map(({ val, label, desc, icon }) => (
+              <p className="text-[12px] text-muted">불러올 데이터의 카테고리를 선택하세요.</p>
+              <div className="flex flex-col gap-2">
+                {CATEGORIES.map(cat => (
                   <button
-                    key={val}
-                    onClick={() => setDirection(val)}
-                    className={`flex-1 flex flex-col items-center gap-2.5 py-5 px-3 rounded-[10px] border-2 transition-all
-                      ${direction === val
-                        ? 'border-primary bg-primary-light text-primary'
-                        : 'border-border text-muted hover:border-[#b0bec5] hover:bg-[#f8fafc]'}`}
+                    key={cat.id}
+                    disabled={cat.disabled}
+                    onClick={() => !cat.disabled && setCategory(cat.id)}
+                    className={`flex items-center gap-4 px-4 py-3.5 rounded-[10px] border-2 text-left transition-all
+                      ${cat.disabled
+                        ? 'border-border opacity-40 cursor-not-allowed bg-[#fafafa]'
+                        : category === cat.id
+                          ? 'border-primary bg-primary-light text-primary'
+                          : 'border-border hover:border-[#b0bec5] hover:bg-[#f8fafc] text-dark'}`}
                   >
-                    {icon}
-                    <span className="text-[13px] font-semibold">{label}</span>
-                    <span className="text-[11px] opacity-70 text-center">{desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: 데이터 종류 */}
-          {step === 2 && (
-            <div className="flex flex-col gap-3">
-              <p className="text-[12px] text-muted">불러올 데이터 종류를 선택하세요.</p>
-              <div className="flex flex-col gap-1.5">
-                {DATA_FIELDS.map(f => (
-                  <button
-                    key={f}
-                    onClick={() => { setField(f); setTreeSelIds([]); setListSel([]); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-[8px] border-2 text-left transition-all
-                      ${field === f ? 'border-primary bg-primary-light' : 'border-border hover:border-[#b0bec5] hover:bg-[#f8fafc]'}`}
-                  >
-                    <span className={`text-[13px] font-semibold flex-1 ${field === f ? 'text-primary' : 'text-dark'}`}>{f}</span>
-                    {field === f && (
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <span className={category === cat.id ? 'text-primary' : 'text-[#5b646f]'}>
+                      {cat.icon}
+                    </span>
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-[13px] font-semibold">{cat.label}</span>
+                      <span className="text-[11px] opacity-70">{cat.desc}</span>
+                    </span>
+                    {category === cat.id && (
+                      <svg className="ml-auto shrink-0" width="14" height="14" viewBox="0 0 14 14" fill="none">
                         <path d="M2 7l3.5 3.5L12 3" stroke="#0056a4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     )}
@@ -304,52 +299,65 @@ export function DataLoadModal({ onConfirm, onClose }) {
             </div>
           )}
 
-          {/* Step 3: 항목 선택 */}
+          {/* Step 2: 시스템 선택 (데이터센터 트리) */}
+          {step === 2 && (
+            <div className="flex flex-col gap-3">
+              <p className="text-[12px] text-muted">데이터를 가져올 시스템을 선택하세요.</p>
+              <div className="border border-border rounded-[8px] overflow-hidden">
+                <div className="max-h-[300px] overflow-y-auto py-1 bg-white">
+                  {DATA_LOAD_SYSTEM_TREE.map(node => (
+                    <DataTreeNode
+                      key={node.id}
+                      node={node}
+                      depth={0}
+                      selectedIds={treeSelIds}
+                      onToggle={handleTreeToggle}
+                      expanded={treeExp}
+                      onExpand={id => setTreeExp(prev =>
+                        prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+                      )}
+                    />
+                  ))}
+                </div>
+                {treeSelIds.length > 0 && (
+                  <div className="border-t border-border px-3 py-1.5 flex items-center justify-between bg-[#f8fafc]">
+                    <span className="text-[11px] text-muted">{selectedLeaves.length}개 시스템 선택됨</span>
+                    <button onClick={() => setTreeSelIds([])} className="text-[11px] text-link hover:underline">전체 해제</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: 테이블 선택 */}
           {step === 3 && (
             <div className="flex flex-col gap-3">
-              <p className="text-[12px] text-muted">
-                {isSystemField ? '데이터센터 또는 시스템을 선택하세요.' : '추가할 항목을 선택하세요.'}
-              </p>
-
-              {isSystemField ? (
-                <div className="border border-border rounded-[8px] overflow-hidden">
-                  <div className="max-h-[280px] overflow-y-auto py-1 bg-white">
-                    {DATA_LOAD_SYSTEM_TREE.map(node => (
-                      <DataTreeNode
-                        key={node.id}
-                        node={node}
-                        depth={0}
-                        selectedIds={treeSelIds}
-                        onToggle={handleTreeToggle}
-                        expanded={treeExp}
-                        onExpand={id => setTreeExp(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                      />
-                    ))}
-                  </div>
-                  {values.length > 0 && (
-                    <div className="border-t border-border px-3 py-1.5 flex items-center justify-between bg-[#f8fafc]">
-                      <span className="text-[11px] text-muted">{values.length}개 선택됨</span>
-                      <button onClick={() => setTreeSelIds([])} className="text-[11px] text-link hover:underline">전체 해제</button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  {(FIELD_ITEMS[field] || []).map(item => (
-                    <button
-                      key={item}
-                      onClick={() => setListSel(prev => prev.includes(item) ? prev.filter(x => x !== item) : [...prev, item])}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-[8px] border-2 text-left transition-all
-                        ${listSel.includes(item) ? 'border-primary bg-primary-light' : 'border-border hover:border-[#b0bec5] hover:bg-[#f8fafc]'}`}
-                    >
-                      <span className={`text-[12px] font-medium flex-1 ${listSel.includes(item) ? 'text-primary' : 'text-dark'}`}>{item}</span>
-                      {listSel.includes(item) && (
-                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                          <path d="M2 6.5l3 3L11 2.5" stroke="#0056a4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
-                    </button>
-                  ))}
+              <p className="text-[12px] text-muted">표에 채울 테이블 유형을 선택하세요.</p>
+              <div className="flex flex-col gap-1.5">
+                {SYSTEM_TABLES.map(tbl => (
+                  <button
+                    key={tbl.id}
+                    onClick={() => setTableType(tbl.id)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-[8px] border-2 text-left transition-all
+                      ${tableType === tbl.id ? 'border-primary bg-primary-light' : 'border-border hover:border-[#b0bec5] hover:bg-[#f8fafc]'}`}
+                  >
+                    <span className="flex flex-col gap-0.5 flex-1">
+                      <span className={`text-[13px] font-semibold ${tableType === tbl.id ? 'text-primary' : 'text-dark'}`}>
+                        {tbl.label}
+                      </span>
+                      <span className="text-[11px] text-muted">{tbl.desc}</span>
+                    </span>
+                    {tableType === tbl.id && (
+                      <svg className="shrink-0" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M2 7l3.5 3.5L12 3" stroke="#0056a4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {selectedLeaves.length > 0 && (
+                <div className="mt-1 px-3 py-2 bg-[#f0f4fa] rounded-[6px] text-[11px] text-muted">
+                  선택된 시스템 {selectedLeaves.length}개 데이터가 표에 채워집니다
                 </div>
               )}
             </div>
@@ -370,7 +378,7 @@ export function DataLoadModal({ onConfirm, onClose }) {
             className={`flex-1 py-2.5 text-[13px] font-semibold rounded-[6px] transition-colors
               ${!canNext ? 'bg-[#c0c7ce] text-white cursor-not-allowed' : 'bg-primary text-white hover:bg-primary-hover'}`}
           >
-            {step < 3 ? '다음' : values.length > 0 ? `불러오기 (${values.length}개)` : '불러오기'}
+            {step < 3 ? '다음' : `불러오기 (${selectedLeaves.length}개)`}
           </button>
         </div>
       </div>

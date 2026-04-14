@@ -24,7 +24,7 @@ export function TablePanel({ table, onAction, onDelete, onLoadData, onToggleHead
     <>
       {showModal && (
         <DataLoadModal
-          onConfirm={(direction, field, values) => onLoadData?.(direction, field, values)}
+          onConfirm={(category, selectedLeaves, tableType) => onLoadData?.(category, selectedLeaves, tableType)}
           onClose={() => setShowModal(false)}
         />
       )}

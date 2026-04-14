@@ -25,7 +25,7 @@ export default function RightPanel({
           table={selectedTable}
           onAction={onTableAction}
           onDelete={() => onTableDelete(selectedTable.blockId)}
-          onLoadData={(direction, field, values) => onTableLoadData?.(selectedTable.blockId, direction, field, values)}
+          onLoadData={(category, selectedLeaves, tableType) => onTableLoadData?.(selectedTable.blockId, category, selectedLeaves, tableType)}
           onToggleHeader={(key, val) => onTableToggleHeader?.(selectedTable.blockId, key, val)}
           onSwapHeaders={() => onTableSwapHeaders?.(selectedTable.blockId)}
         />

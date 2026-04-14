@@ -232,28 +232,40 @@ export default function WidgetDashboard() {
     setSelectedTable(s => s?.blockId === blockId ? { ...s, [key]: val } : s);
   }, []);
 
-  const handleTableLoadData = useCallback((blockId, direction, field, values) => {
+  const handleTableLoadData = useCallback((blockId, category, selectedLeaves, tableType) => {
+    // 테이블 스키마: 헤더 열 정의
+    const SCHEMAS = {
+      '시스템 상태': ['시스템 명', '상태', 'OS', 'IP 주소', '마지막 점검'],
+      '계정':       ['시스템 명', '계정명', '권한', '마지막 로그인'],
+      '변경요약':   ['시스템 명', '변경 유형', '변경 일시', '담당자'],
+      '알림':       ['시스템 명', '알림 유형', '내용', '발생 시간'],
+    };
+    const MOCK_ROW = {
+      '시스템 상태': s => ['정상', s.os, '192.168.1.1', '2026-04-14 09:00'],
+      '계정':       s => ['admin', '관리자', '2026-04-13 18:22'],
+      '변경요약':   s => ['설정 변경', '2026-04-12 14:30', '홍길동'],
+      '알림':       s => ['경고', 'CPU 사용률 90% 초과', '2026-04-14 08:45'],
+    };
+
+    const headers = SCHEMAS[tableType] || [];
+    if (!headers.length || !selectedLeaves.length) return;
+
+    const newCols = headers.length;
+    const newRows = 1 + selectedLeaves.length; // 헤더 행 + 데이터 행
+
+    const newCells = {};
+    headers.forEach((h, c) => { newCells[`0,${c}`] = h; });
+    selectedLeaves.forEach((sys, r) => {
+      newCells[`${r + 1},0`] = sys.label;
+      const mockVals = MOCK_ROW[tableType]?.(sys) || [];
+      mockVals.forEach((val, c) => { newCells[`${r + 1},${c + 1}`] = val; });
+    });
+
     setDocBlocks(prev => prev.map(b => {
       if (b.id !== blockId || b.type !== 'table') return b;
-      const { rows, cols, cells } = b;
-      const newCells = { ...cells };
-
-      if (direction === 'row') {
-        // 값들을 새 행으로 추가 (첫 번째 열), 자동 확장
-        values.forEach((val, i) => { newCells[`${rows + i},0`] = val; });
-        const newRows = rows + values.length;
-        setSelectedTable(s => s?.blockId === blockId ? { ...s, rows: newRows } : s);
-        return { ...b, rows: newRows, cells: newCells };
-      } else {
-        // 새 열 추가: 헤더(field) + 값들, 행 수 자동 확장
-        newCells[`0,${cols}`] = field;
-        values.forEach((val, i) => { newCells[`${i + 1},${cols}`] = val; });
-        const newRows = Math.max(rows, values.length + 1);
-        const newCols = cols + 1;
-        setSelectedTable(s => s?.blockId === blockId ? { ...s, rows: newRows, cols: newCols } : s);
-        return { ...b, rows: newRows, cols: newCols, cells: newCells };
-      }
+      return { ...b, rows: newRows, cols: newCols, cells: newCells };
     }));
+    setSelectedTable(s => s?.blockId === blockId ? { ...s, rows: newRows, cols: newCols } : s);
   }, []);
 
   const isAllTab = activeTab === 'all';
