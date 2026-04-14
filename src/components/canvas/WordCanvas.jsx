@@ -42,6 +42,14 @@ export default function WordCanvas({
     docBlocks, blockRefs, onReorderBlocks,
   });
 
+  // activeBlockId 설정 시 paper div로 포커스 이동 (contenteditable 바깥인 경우)
+  // 드래그 핸들의 e.preventDefault()로 인해 자연 포커스가 이동하지 않으므로 강제 설정
+  useEffect(() => {
+    if (activeBlockId && !document.activeElement?.isContentEditable && paperRef.current) {
+      paperRef.current.focus({ preventScroll: true });
+    }
+  }, [activeBlockId]);
+
   // 최초 마운트 시 첫 텍스트 블록 포커스
   useEffect(() => {
     if (didInitFocus.current) return;
@@ -481,7 +489,8 @@ export default function WordCanvas({
 
       <div
         ref={paperRef}
-        className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10"
+        tabIndex={-1}
+        className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10 outline-none"
         style={{ width: docW, minHeight: docH, padding: pad }}
         onClick={(e) => { onDeselectWidget(e); setActiveBlockId(null); setAllSelected(false); }}
         onKeyDown={(e) => {
@@ -494,24 +503,30 @@ export default function WordCanvas({
             const delIdx = docBlocks.findIndex(b => b.id === delId);
             setActiveBlockId(null);
             onDeleteBlock(delId);
-            // 삭제 후 인접 텍스트 블록으로 포커스 복원 (setTimeout으로 DOM 커밋 후 실행)
-            let ti = delIdx - 1;
-            while (ti >= 0 && docBlocks[ti].type !== 'text') ti--;
-            if (ti < 0) {
-              ti = delIdx + 1;
+            // 현재 포커스가 data-text-id 텍스트 블록 안이면 그대로 유지 (블록이 삭제되지 않으니까)
+            // 표 셀이나 포커스 없는 경우엔 인접 텍스트 블록으로 이동 필요
+            const focused = document.activeElement;
+            const focusedInTextBlock = focused?.isContentEditable && focused?.hasAttribute('data-text-id');
+            if (!focusedInTextBlock) {
+              // 삭제된 블록 기준으로 뒤쪽 → 앞쪽 순서로 인접 텍스트 블록 탐색
+              let ti = delIdx + 1;
               while (ti < docBlocks.length && docBlocks[ti].type !== 'text') ti++;
-            }
-            if (ti >= 0 && ti < docBlocks.length) {
-              const targetId = docBlocks[ti].id;
-              setTimeout(() => {
-                const el = document.querySelector(`[data-text-id="${targetId}"]`);
-                if (el) {
-                  el.focus();
-                  const s = window.getSelection();
-                  s.removeAllRanges();
-                  const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); s.addRange(r);
-                }
-              }, 0);
+              if (ti >= docBlocks.length) {
+                ti = delIdx - 1;
+                while (ti >= 0 && docBlocks[ti].type !== 'text') ti--;
+              }
+              if (ti >= 0 && ti < docBlocks.length) {
+                const targetId = docBlocks[ti].id;
+                setTimeout(() => {
+                  const el = document.querySelector(`[data-text-id="${targetId}"]`);
+                  if (el) {
+                    el.focus();
+                    const s = window.getSelection();
+                    s.removeAllRanges();
+                    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); s.addRange(r);
+                  }
+                }, 0);
+              }
             }
             return;
           }
