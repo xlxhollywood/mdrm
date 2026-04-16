@@ -7,7 +7,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        {children}
+        <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+      </body>
     </html>
   );
 }
