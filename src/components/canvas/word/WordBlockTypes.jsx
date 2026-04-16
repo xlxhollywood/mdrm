@@ -44,23 +44,26 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
 }
 
 /* ── 행/열 구분선 삽입 포인트 ── */
-function SepDot({ hovered, onClick, onEnter, onLeave }) {
+/* position:absolute 로 부모 td 전체를 호버 영역으로 사용 */
+/* align: 'row' → 하단 중앙 (행 거터), 'col' → 하단 우측 (열 거터) */
+function SepDot({ hovered, onClick, onEnter, onLeave, align = 'row' }) {
   return (
-    <div onMouseEnter={onEnter} onMouseLeave={onLeave} className="flex items-center justify-center">
-      <button
-        onMouseDown={e => e.preventDefault()}
-        onClick={e => { e.stopPropagation(); onClick(); }}
-        className={`rounded-full transition-all duration-100 select-none flex items-center justify-center
-          ${hovered
-            ? 'w-[14px] h-[14px] bg-[#0056a4] shadow-sm hover:bg-[#004a8f]'
-            : 'w-[4px] h-[4px] bg-[#c8cdd3] cursor-default'}`}
-      >
+    <div
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      onMouseDown={e => e.preventDefault()}
+      onClick={e => { e.stopPropagation(); onClick(); }}
+      style={{ position: 'absolute', inset: 0 }}
+      className={`cursor-pointer flex items-end pb-[2px] ${align === 'col' ? 'justify-end pr-[2px]' : 'justify-center'}`}
+    >
+      <div className={`rounded-full transition-all duration-100 select-none flex items-center justify-center
+        ${hovered ? 'w-[14px] h-[14px] bg-[#0056a4] shadow-sm' : 'w-[4px] h-[4px] bg-[#c8cdd3]'}`}>
         {hovered && (
           <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
             <path d="M4 1v6M1 4h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         )}
-      </button>
+      </div>
     </div>
   );
 }
@@ -320,7 +323,7 @@ export function TableBlock({
         </colgroup>
         <tbody>
           {/* 상단 거터: 열 삽입 포인트 + 열 선택 밴드 */}
-          <tr key="top-gutter" style={{ height: 16 }}>
+          <tr key="top-gutter" style={{ height: 20 }}>
             <td style={{ padding: 0, border: 0 }} />
             {Array.from({ length: cols }, (_, c) => {
               const isFullColRange   = sel && sel.r1 === 0 && sel.r2 === rows - 1;
@@ -332,7 +335,7 @@ export function TableBlock({
                 <td key={c} colSpan={colGutterSpan}
                   style={isColAnchor
                     ? { padding: 0, border: 0, position: 'relative' }
-                    : { padding: '0 2px 0 0', border: 0, position: 'relative' }}>
+                    : { padding: 0, border: 0, position: 'relative' }}>
                   {isColAnchor ? (
                     <button
                       onMouseDown={e => e.preventDefault()}
@@ -346,14 +349,13 @@ export function TableBlock({
                       </svg>
                     </button>
                   ) : (
-                    <div className="h-full flex items-center justify-end">
-                      <SepDot
-                        hovered={hovSepCol === c}
-                        onClick={() => onAddCol?.(block.id, c)}
-                        onEnter={() => setHovSepCol(c)}
-                        onLeave={() => setHovSepCol(null)}
-                      />
-                    </div>
+                    <SepDot
+                      align="col"
+                      hovered={hovSepCol === c}
+                      onClick={() => onAddCol?.(block.id, c)}
+                      onEnter={() => setHovSepCol(c)}
+                      onLeave={() => setHovSepCol(null)}
+                    />
                   )}
                 </td>
               );
@@ -374,7 +376,7 @@ export function TableBlock({
                   rowSpan={gutterSpan}
                   style={isRowAnchor
                     ? { padding: 0, border: 0, position: 'relative', width: 16 }
-                    : { padding: '0 0 2px 0', border: 0, verticalAlign: 'bottom', position: 'relative' }}
+                    : { padding: 0, border: 0, position: 'relative' }}
                 >
                   {isRowAnchor ? (
                     <button
@@ -389,14 +391,12 @@ export function TableBlock({
                       </svg>
                     </button>
                   ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <SepDot
-                        hovered={hovSepRow === r}
-                        onClick={() => onAddRow?.(block.id, r)}
-                        onEnter={() => setHovSepRow(r)}
-                        onLeave={() => setHovSepRow(null)}
-                      />
-                    </div>
+                    <SepDot
+                      hovered={hovSepRow === r}
+                      onClick={() => onAddRow?.(block.id, r)}
+                      onEnter={() => setHovSepRow(r)}
+                      onLeave={() => setHovSepRow(null)}
+                    />
                   )}
                 </td>
               )}
