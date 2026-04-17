@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import WidgetPreview from '../../widgets/WidgetPreview';
 import WidgetPlaceholder from '../WidgetPlaceholder';
 
@@ -39,6 +39,217 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
         onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}
         className="opacity-0 group-hover:opacity-100 ml-2 w-5 h-5 flex items-center justify-center text-[#c0c7ce] hover:text-danger text-[14px] shrink-0 transition-opacity mt-2"
       >×</button>
+    </div>
+  );
+}
+
+/* ── 열 레이아웃 블록 ── */
+function LayoutCellBlock({ block, onUpdateBlock, onFocusBlock, onSlashTrigger, onSlashClose, slashMenuRef, isSlashOpen }) {
+  const ref = useRef(null);
+  const slashStartRef = useRef(null);
+
+  useEffect(() => {
+    if (ref.current && !ref.current.dataset.init) {
+      ref.current.dataset.init = '1';
+      ref.current.innerHTML = block.html || '';
+      // 초기 비어있을 때만 placeholder 표시
+      const isEmpty = !(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
+      if (isEmpty) ref.current.setAttribute('data-placeholder', '텍스트를 입력하세요');
+    }
+  });
+
+  const getCaretRect = () => {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return { left: 0, right: 0, top: 0, bottom: 0 };
+    return sel.getRangeAt(0).getBoundingClientRect();
+  };
+
+  const handleInput = (e) => {
+    const html  = e.currentTarget.innerHTML;
+    const text  = (e.currentTarget.textContent || '').trim();
+    // 내용 있으면 placeholder 숨김, 비면 다시 표시
+    if (text) e.currentTarget.removeAttribute('data-placeholder');
+    else      e.currentTarget.setAttribute('data-placeholder', '텍스트를 입력하세요');
+    onUpdateBlock(block.id, { html });
+
+    if (slashStartRef.current !== null) {
+      const query = text.slice(slashStartRef.current);
+      if (query.includes(' ') || text.length < slashStartRef.current) {
+        slashStartRef.current = null;
+        onSlashClose?.();
+      } else {
+        onSlashTrigger?.(block.id, getCaretRect(), query);
+      }
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (isSlashOpen && slashMenuRef?.current) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); slashMenuRef.current.navigate(e.key); return; }
+      if (e.key === 'Enter')  { e.preventDefault(); slashMenuRef.current.select(); return; }
+      if (e.key === 'Escape') { onSlashClose?.(); return; }
+    }
+    if (e.key === '/') {
+      const text = ref.current?.textContent || '';
+      slashStartRef.current = text.length + 1;
+      setTimeout(() => onSlashTrigger?.(block.id, getCaretRect(), ''), 0);
+    }
+  };
+
+  if (block.type === 'divider') {
+    return <div className="py-1"><div className="h-px bg-[#d9dfe5]" /></div>;
+  }
+  if (block.type === 'text') {
+    return (
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        data-text-id={block.id}
+        className="outline-none text-[13px] text-[#1a222b] min-h-[20px] px-1 relative"
+        onFocus={() => onFocusBlock?.()}
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+      />
+    );
+  }
+  if (block.type === 'widget') {
+    return (
+      <div className="text-[12px] text-[#5b646f] px-2 py-1.5 bg-[#f5f5f5] rounded-[4px]">
+        위젯: {block.widgetId}
+      </div>
+    );
+  }
+  return null;
+}
+
+export function LayoutBlock({ block, colBlocks, registerColRef, hoveredColKey, onUpdateBlock, onFocusBlock, onSlashTrigger, onSlashClose, slashMenuRef, slashBlockId, onCreateColumnBlock }) {
+  const { cols = 2 } = block;
+
+  const defaultWidths = useCallback(() => Array.from({ length: cols }, () => 100 / cols), [cols]);
+
+  const [colWidths,  setColWidths]  = useState(() => block.colWidths ?? defaultWidths());
+  const [minHeight,  setMinHeight]  = useState(block.colMinHeight ?? 0);
+  const containerRef  = useRef(null);
+  const resizeRef     = useRef(null);
+  const colWidthsRef  = useRef(colWidths);
+  const minHeightRef  = useRef(minHeight);
+
+  // cols 변경 시 너비 초기화
+  useEffect(() => {
+    const w = block.colWidths ?? Array.from({ length: cols }, () => 100 / cols);
+    setColWidths(w);
+    colWidthsRef.current = w;
+  }, [cols]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 리사이즈 마우스 이벤트
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!resizeRef.current) return;
+      if (resizeRef.current.type === 'col') {
+        const { colIdx, startX, startWidths } = resizeRef.current;
+        const cw = containerRef.current?.getBoundingClientRect().width || 500;
+        const deltaP = ((e.clientX - startX) / cw) * 100;
+        const nw = [...startWidths];
+        nw[colIdx]     = Math.max(8, startWidths[colIdx]     + deltaP);
+        nw[colIdx + 1] = Math.max(8, startWidths[colIdx + 1] - deltaP);
+        const sum  = nw.reduce((a, b) => a + b, 0);
+        const norm = nw.map(w => (w / sum) * 100);
+        colWidthsRef.current = norm;
+        setColWidths(norm);
+      } else if (resizeRef.current.type === 'height') {
+        const { startY, startHeight } = resizeRef.current;
+        const h = Math.max(0, startHeight + (e.clientY - startY));
+        minHeightRef.current = h;
+        setMinHeight(h);
+      }
+    };
+    const onUp = () => {
+      if (!resizeRef.current) return;
+      document.body.style.userSelect = '';
+      if (resizeRef.current.type === 'col')    onUpdateBlock(block.id, { colWidths:    colWidthsRef.current });
+      if (resizeRef.current.type === 'height') onUpdateBlock(block.id, { colMinHeight: minHeightRef.current });
+      resizeRef.current = null;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [block.id, onUpdateBlock]);
+
+  return (
+    <div className="w-full py-1">
+      {/* 열 컨테이너 */}
+      <div ref={containerRef} className="flex w-full">
+        {Array.from({ length: cols }, (_, colIdx) => {
+          const blocks  = colBlocks?.[colIdx] || [];
+          const colKey  = `${block.id}::${colIdx}`;
+          const isHover = hoveredColKey === colKey;
+          const isLast  = colIdx === cols - 1;
+          const width   = colWidths[colIdx] ?? (100 / cols);
+
+          return (
+            <React.Fragment key={colIdx}>
+              <div
+                ref={el => registerColRef?.(colKey, el)}
+                className={`rounded-[4px] transition-colors overflow-hidden px-2 py-1
+                  ${isHover ? 'bg-[#eef4ff]' : ''}`}
+                style={{ width: `${width}%`, minHeight: minHeight || undefined }}
+              >
+                {blocks.length === 0 ? (
+                  <div
+                    className="text-[13px] text-[#c0c7ce] cursor-text py-0.5"
+                    onClick={e => { e.stopPropagation(); onCreateColumnBlock?.(block.id, colIdx); }}
+                  >
+                    {isHover ? '여기에 놓기' : '텍스트를 입력하세요'}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {blocks.map(b => (
+                      <LayoutCellBlock
+                        key={b.id}
+                        block={b}
+                        onUpdateBlock={onUpdateBlock}
+                        onFocusBlock={onFocusBlock}
+                        onSlashTrigger={onSlashTrigger}
+                        onSlashClose={onSlashClose}
+                        slashMenuRef={slashMenuRef}
+                        isSlashOpen={slashBlockId === b.id}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 열 너비 조절 핸들 */}
+              {!isLast && (
+                <div
+                  className="w-[9px] shrink-0 cursor-col-resize flex items-stretch justify-center group self-stretch"
+                  onMouseDown={e => {
+                    e.preventDefault();
+                    document.body.style.userSelect = 'none';
+                    resizeRef.current = { type: 'col', colIdx, startX: e.clientX, startWidths: [...colWidthsRef.current] };
+                  }}
+                >
+                  <div className="w-px self-stretch bg-[#e2e5e9] group-hover:bg-[#3571ce] group-hover:w-[3px] transition-all rounded-full" />
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* 높이 조절 핸들 (호버 시 표시) */}
+      <div
+        className="h-[12px] cursor-row-resize flex items-center justify-center group mt-0.5"
+        onMouseDown={e => {
+          e.preventDefault();
+          document.body.style.userSelect = 'none';
+          const curH = containerRef.current?.getBoundingClientRect().height || 0;
+          resizeRef.current = { type: 'height', startY: e.clientY, startHeight: minHeightRef.current || curH };
+        }}
+      >
+        <div className="w-8 h-[3px] rounded-full opacity-0 group-hover:opacity-100 bg-[#3571ce] transition-opacity" />
+      </div>
     </div>
   );
 }

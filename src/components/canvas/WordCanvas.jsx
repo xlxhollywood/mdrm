@@ -7,8 +7,9 @@ import TextBlock         from './word/TextBlock';
 import TodoListBlock     from './word/TodoListBlock';
 import BlockPlusMenu     from './word/BlockPlusMenu';
 import SlashMenu         from './word/SlashMenu';
-import TableSizePicker   from './word/TableSizePicker';
-import { DragHandleIcon, WidgetBlock, TableBlock } from './word/WordBlockTypes';
+import TableSizePicker      from './word/TableSizePicker';
+import LayoutColumnPicker   from './word/LayoutColumnPicker';
+import { DragHandleIcon, WidgetBlock, TableBlock, LayoutBlock } from './word/WordBlockTypes';
 import useDragBlocks     from './word/useDragBlocks';
 
 export default function WordCanvas({
@@ -34,13 +35,39 @@ export default function WordCanvas({
   const [plusMenu,       setPlusMenu]       = useState(null);
   const [slashMenu,        setSlashMenu]        = useState(null);
   const [tableSizePicker,  setTableSizePicker]  = useState(null); // { blockId, blockIdx, anchorRect }
+  const [layoutPicker,     setLayoutPicker]     = useState(null); // { blockId, blockIdx, anchorRect }
   const [tableSync,        setTableSync]        = useState(0);   // 행/열 이동 후 DOM 강제 동기화 트리거
   const slashMenuRef    = useRef(null);
   const prevTableCellsRef = useRef({});
   const pendingResetFocus = useRef(false);
 
-  const { draggingIdx, dropIdx, handleDragHandleMouseDown } = useDragBlocks({
-    docBlocks, blockRefs, onReorderBlocks,
+  const layoutColRefsMap = useRef({});
+
+  const registerColRef = useCallback((key, el) => {
+    if (el) layoutColRefsMap.current[key] = el;
+    else delete layoutColRefsMap.current[key];
+  }, []);
+
+  const handleDropToColumn = useCallback((fromIdx, layoutBlockId, colIdx) => {
+    const block = docBlocks[fromIdx];
+    if (!block || block.type === 'layout') return;
+    onUpdateBlock(block.id, { layoutRef: { layoutId: layoutBlockId, colIdx } });
+  }, [docBlocks, onUpdateBlock]);
+
+  const handleCreateColumnBlock = useCallback((layoutBlockId, colIdx) => {
+    const layoutIdx = docBlocks.findIndex(b => b.id === layoutBlockId);
+    if (layoutIdx === -1) return;
+    const newId = `text-${Date.now()}`;
+    onInsertBlock(layoutIdx, { id: newId, type: 'text', html: '', layoutRef: { layoutId: layoutBlockId, colIdx } });
+    pendingFocusRef.current = { id: newId, position: 'start' };
+  }, [docBlocks, onInsertBlock]);
+
+  const { draggingIdx, dropIdx, hoveredColKey, handleDragHandleMouseDown } = useDragBlocks({
+    docBlocks,
+    blockRefs,
+    onReorderBlocks,
+    layoutColRefs:   layoutColRefsMap,
+    onDropToColumn:  handleDropToColumn,
   });
 
   // 외부에서 cells가 교체된 경우 DOM 강제 동기화
@@ -282,6 +309,34 @@ export default function WordCanvas({
     if (block) setTableSizePicker({ blockId: block.id, blockIdx, anchorRect });
   }, [docBlocks]);
 
+  const handleLayoutPick = useCallback((blockIdx, anchorRect) => {
+    const block = docBlocks[blockIdx];
+    if (block) setLayoutPicker({ blockId: block.id, blockIdx, anchorRect });
+  }, [docBlocks]);
+
+  const handleLayoutCreate = useCallback((cols) => {
+    if (!layoutPicker) return;
+    const { blockId, blockIdx } = layoutPicker;
+    setLayoutPicker(null);
+
+    // 현재 블록을 layout으로 변환
+    onUpdateBlock(blockId, { type: 'layout', cols, cells: undefined, subtype: undefined, html: undefined, items: undefined });
+
+    // 각 컬럼에 빈 텍스트 블록 자동 삽입 (React 18 updater 체이닝 활용)
+    const now = Date.now();
+    for (let i = 0; i < cols; i++) {
+      onInsertBlock(blockIdx + i, {
+        id: `text-${now + i}`,
+        type: 'text',
+        html: '',
+        layoutRef: { layoutId: blockId, colIdx: i },
+      });
+    }
+
+    // 첫 번째 컬럼에 포커스
+    pendingFocusRef.current = { id: `text-${now}`, position: 'start' };
+  }, [layoutPicker, onUpdateBlock, onInsertBlock]);
+
   const handleDeleteTableRow = useCallback((blockId, r1, r2) => {
     const block = docBlocks.find(b => b.id === blockId);
     if (!block) return;
@@ -467,6 +522,9 @@ export default function WordCanvas({
     } else if (type === 'table') {
       onUpdateText(blockId, cleanHtml);
       setTableSizePicker({ blockId, blockIdx, anchorRect: slashMenu.anchorRect });
+    } else if (type === 'layout') {
+      onUpdateText(blockId, cleanHtml);
+      setLayoutPicker({ blockId, blockIdx, anchorRect: slashMenu.anchorRect });
     }
   }, [slashMenu, docBlocks, onUpdateBlock, onUpdateText, onInsertBlock]);
 
@@ -480,6 +538,7 @@ export default function WordCanvas({
           onInsert={handleInsertBlockFromMenu}
           onClose={() => setPlusMenu(null)}
           onTablePick={handleTablePick}
+          onLayoutPick={handleLayoutPick}
         />
       )}
       {tableSizePicker && (
@@ -487,6 +546,13 @@ export default function WordCanvas({
           anchorRect={tableSizePicker.anchorRect}
           onSelect={handleTableCreate}
           onClose={() => setTableSizePicker(null)}
+        />
+      )}
+      {layoutPicker && (
+        <LayoutColumnPicker
+          anchorRect={layoutPicker.anchorRect}
+          onSelect={handleLayoutCreate}
+          onClose={() => setLayoutPicker(null)}
         />
       )}
       {slashMenu && (
@@ -584,109 +650,163 @@ export default function WordCanvas({
           <div className="h-[2px] bg-primary rounded-full mb-1" />
         )}
 
-        {docBlocks.map((block, i) => (
-          <React.Fragment key={block.id}>
-            <div
-              ref={el => blockRefs.current[i] = el}
-              style={{ marginBottom: docConfig.blockSpacing ?? 3 }}
-              className={`relative rounded-[6px] transition-all duration-100
-                ${draggingIdx === i
-                  ? 'opacity-40 bg-[#e8f0fc] shadow-[0_2px_12px_rgba(53,113,206,0.18)] cursor-grabbing scale-[0.99]'
-                  : allSelected || activeBlockId === block.id ? 'bg-[#dce8ff]' : ''}`}
-            >
-              {/* 드래그 핸들 + + 버튼 */}
-              {(() => {
-                const isHovered = hoveredBlockId === block.id;
-                return (
-                  <div className={`absolute -left-[52px] top-[3px] flex items-center gap-[3px] transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-                    <button
-                      onMouseDown={e => e.stopPropagation()}
-                      onClick={e => { e.stopPropagation(); setPlusMenu({ blockIdx: i, anchorRect: e.currentTarget.getBoundingClientRect() }); }}
-                      className="w-[18px] h-[18px] flex items-center justify-center rounded text-[#8c959e] text-[15px] font-normal leading-none hover:bg-[#e2e6ea] hover:text-[#3d4a56] select-none transition-colors"
-                    >+</button>
-                    <div
-                      onMouseDown={(e) => { e.stopPropagation(); window.getSelection()?.removeAllRanges(); handleDragHandleMouseDown(e, i, block.id, setActiveBlockId); }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[#8c959e] cursor-grab active:cursor-grabbing"
-                    >
-                      <DragHandleIcon />
+        {docBlocks.map((block, i) => {
+          // layoutRef가 있는 블록은 레이아웃 컬럼 안에서 렌더링 → 숨김 placeholder만
+          if (block.layoutRef) {
+            return (
+              <div key={block.id} ref={el => { blockRefs.current[i] = el; }} style={{ display: 'none' }} />
+            );
+          }
+
+          const colBlocks = block.type === 'layout'
+            ? Array.from({ length: block.cols }, (_, col) =>
+                docBlocks.filter(b => b.layoutRef?.layoutId === block.id && b.layoutRef?.colIdx === col)
+              )
+            : null;
+
+          return (
+            <React.Fragment key={block.id}>
+              <div
+                ref={el => blockRefs.current[i] = el}
+                style={{ marginBottom: docConfig.blockSpacing ?? 3 }}
+                className={`relative rounded-[6px] transition-all duration-100
+                  ${draggingIdx === i
+                    ? 'opacity-40 bg-[#e8f0fc] shadow-[0_2px_12px_rgba(53,113,206,0.18)] cursor-grabbing scale-[0.99]'
+                    : allSelected || activeBlockId === block.id ? 'bg-[#dce8ff]' : ''}`}
+              >
+                {/* 드래그 핸들 + + 버튼 */}
+                {(() => {
+                  const isHovered = hoveredBlockId === block.id;
+                  return (
+                    <div className={`absolute -left-[52px] top-[3px] flex items-center gap-[3px] transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                      <button
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); setPlusMenu({ blockIdx: i, anchorRect: e.currentTarget.getBoundingClientRect() }); }}
+                        className="w-[18px] h-[18px] flex items-center justify-center rounded text-[#8c959e] text-[15px] font-normal leading-none hover:bg-[#e2e6ea] hover:text-[#3d4a56] select-none transition-colors"
+                      >+</button>
+                      <div
+                        onMouseDown={(e) => { e.stopPropagation(); window.getSelection()?.removeAllRanges(); handleDragHandleMouseDown(e, i, block.id, setActiveBlockId); }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[#8c959e] cursor-grab active:cursor-grabbing"
+                      >
+                        <DragHandleIcon />
+                      </div>
                     </div>
+                  );
+                })()}
+
+                {block.type === 'text' && block.subtype === 'todo' ? (
+                  <TodoListBlock
+                    block={block}
+                    onUpdateBlock={onUpdateBlock}
+                    onEnterAfterBlock={handleEnterBlock}
+                    onBackspaceAtStart={handleBackspaceAtStart}
+                    onArrowOut={handleArrow}
+                    onFocusBlock={() => setAllSelected(false)}
+                    lineHeight={docConfig.lineHeight}
+                    letterSpacing={docConfig.letterSpacing}
+                  />
+                ) : block.type === 'text' ? (
+                  <TextBlock
+                    block={block}
+                    onChange={onUpdateText}
+                    onDelete={onDeleteBlock}
+                    onEnter={handleEnterBlock}
+                    onArrow={handleArrow}
+                    onBackspaceAtStart={handleBackspaceAtStart}
+                    onFocusBlock={() => { setAllSelected(false); if (slashMenu?.blockId !== block.id) setSlashMenu(null); }}
+                    onBlurBlock={() => {}}
+                    isBlockActive={activeBlockId === block.id}
+                    allSelected={allSelected}
+                    bulletNumber={block.subtype === 'numbered'
+                      ? docBlocks.slice(0, i).filter(b => b.subtype === 'numbered').length + 1
+                      : null}
+                    onConvertToSubtype={handleConvertToSubtype}
+                    lineHeight={docConfig.lineHeight}
+                    letterSpacing={docConfig.letterSpacing}
+                    onSlashTrigger={handleSlashTrigger}
+                    onSlashClose={handleSlashClose}
+                    isSlashOpen={slashMenu?.blockId === block.id}
+                    slashMenuRef={slashMenuRef}
+                  />
+                ) : block.type === 'divider' ? (
+                  <div
+                    className={`py-2 cursor-pointer rounded-[4px] ${activeBlockId === block.id ? 'ring-1 ring-[#3571ce]' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); setActiveBlockId(block.id); }}
+                  >
+                    <div style={{ height: 1, background: activeBlockId === block.id ? '#3571ce' : '#d9dfe5', borderRadius: 1 }} />
                   </div>
-                );
-              })()}
+                ) : block.type === 'table' ? (
+                  <TableBlock
+                    block={block}
+                    onUpdateBlock={onUpdateBlock}
+                    onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); setActiveBlockId(null); }}
+                    onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); }}
+                    onAddRow={handleAddTableRow}
+                    onAddCol={handleAddTableCol}
+                    onDeleteRow={handleDeleteTableRow}
+                    onDeleteCol={handleDeleteTableCol}
+                    onMoveRow={handleMoveTableRow}
+                    onMoveCol={handleMoveTableCol}
+                    forceSync={tableSync}
+                  />
+                ) : block.type === 'layout' ? (
+                  <LayoutBlock
+                    block={block}
+                    colBlocks={colBlocks}
+                    registerColRef={registerColRef}
+                    hoveredColKey={draggingIdx !== null ? hoveredColKey : null}
+                    onUpdateBlock={onUpdateBlock}
+                    onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); }}
+                    onSlashTrigger={handleSlashTrigger}
+                    onSlashClose={handleSlashClose}
+                    slashMenuRef={slashMenuRef}
+                    slashBlockId={slashMenu?.blockId}
+                    onCreateColumnBlock={handleCreateColumnBlock}
+                  />
+                ) : (
+                  <WidgetBlock
+                    block={block}
+                    config={config}
+                    widgetDef={findWidgetDef(block.widgetId)}
+                    isActive={selectedWidget?.instanceId === block.instanceId}
+                    onClick={onCardClick}
+                    onDelete={onDeleteBlock}
+                  />
+                )}
+              </div>
 
-              {block.type === 'text' && block.subtype === 'todo' ? (
-                <TodoListBlock
-                  block={block}
-                  onUpdateBlock={onUpdateBlock}
-                  onEnterAfterBlock={handleEnterBlock}
-                  onBackspaceAtStart={handleBackspaceAtStart}
-                  onArrowOut={handleArrow}
-                  onFocusBlock={() => setAllSelected(false)}
-                  lineHeight={docConfig.lineHeight}
-                  letterSpacing={docConfig.letterSpacing}
-                />
-              ) : block.type === 'text' ? (
-                <TextBlock
-                  block={block}
-                  onChange={onUpdateText}
-                  onDelete={onDeleteBlock}
-                  onEnter={handleEnterBlock}
-                  onArrow={handleArrow}
-                  onBackspaceAtStart={handleBackspaceAtStart}
-                  onFocusBlock={() => { setAllSelected(false); if (slashMenu?.blockId !== block.id) setSlashMenu(null); }}
-                  onBlurBlock={() => {}}
-                  isBlockActive={activeBlockId === block.id}
-                  allSelected={allSelected}
-                  bulletNumber={block.subtype === 'numbered'
-                    ? docBlocks.slice(0, i).filter(b => b.subtype === 'numbered').length + 1
-                    : null}
-                  onConvertToSubtype={handleConvertToSubtype}
-                  lineHeight={docConfig.lineHeight}
-                  letterSpacing={docConfig.letterSpacing}
-                  onSlashTrigger={handleSlashTrigger}
-                  onSlashClose={handleSlashClose}
-                  isSlashOpen={slashMenu?.blockId === block.id}
-                  slashMenuRef={slashMenuRef}
-                />
-              ) : block.type === 'divider' ? (
-                <div
-                  className={`py-2 cursor-pointer rounded-[4px] ${activeBlockId === block.id ? 'ring-1 ring-[#3571ce]' : ''}`}
-                  onClick={(e) => { e.stopPropagation(); setActiveBlockId(block.id); }}
-                >
-                  <div style={{ height: 1, background: activeBlockId === block.id ? '#3571ce' : '#d9dfe5', borderRadius: 1 }} />
-                </div>
-              ) : block.type === 'table' ? (
-                <TableBlock
-                  block={block}
-                  onUpdateBlock={onUpdateBlock}
-                  onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); setActiveBlockId(null); }}
-                  onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); }}
-                  onAddRow={handleAddTableRow}
-                  onAddCol={handleAddTableCol}
-                  onDeleteRow={handleDeleteTableRow}
-                  onDeleteCol={handleDeleteTableCol}
-                  onMoveRow={handleMoveTableRow}
-                  onMoveCol={handleMoveTableCol}
-                  forceSync={tableSync}
-                />
-              ) : (
-                <WidgetBlock
-                  block={block}
-                  config={config}
-                  widgetDef={findWidgetDef(block.widgetId)}
-                  isActive={selectedWidget?.instanceId === block.instanceId}
-                  onClick={onCardClick}
-                  onDelete={onDeleteBlock}
-                />
+              {draggingIdx !== null && dropIdx === i + 1 && draggingIdx !== i && draggingIdx !== i + 1 && (
+                <div className="h-[2px] bg-primary rounded-full my-0.5" />
               )}
-            </div>
+            </React.Fragment>
+          );
+        })}
 
-            {draggingIdx !== null && dropIdx === i + 1 && draggingIdx !== i && draggingIdx !== i + 1 && (
-              <div className="h-[2px] bg-primary rounded-full my-0.5" />
-            )}
-          </React.Fragment>
-        ))}
+        {/* 문서 끝 클릭 영역: 마지막 블록이 비텍스트여도 커서를 둘 수 있음 */}
+        <div
+          className="min-h-[60px] cursor-text"
+          onClick={(e) => {
+            e.stopPropagation();
+            const lastMain = [...docBlocks].reverse().find(b => !b.layoutRef);
+            if (lastMain?.type === 'text') {
+              const el = document.querySelector(`[data-text-id="${lastMain.id}"]`);
+              if (el) {
+                el.focus();
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                const r = document.createRange();
+                r.selectNodeContents(el);
+                r.collapse(false);
+                sel.addRange(r);
+              }
+            } else {
+              const newId = `text-${Date.now()}`;
+              pendingFocusRef.current = { id: newId, position: 'end' };
+              onInsertText(docBlocks.length - 1, newId);
+            }
+          }}
+        />
       </div>
     </>
   );

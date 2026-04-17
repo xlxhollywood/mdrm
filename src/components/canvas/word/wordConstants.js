@@ -26,6 +26,7 @@ export const PLUS_MENU_ITEMS = [
   { id: 'quote',    label: '인용',             icon: '❝' },
   { id: 'table',    label: '표',               icon: '⊞' },
   { id: 'divider',  label: '구분선',           icon: '―' },
+  { id: 'layout',   label: '열 레이아웃',      icon: '◫' },
 ];
 
 export const HEADING_FORMATS = [
