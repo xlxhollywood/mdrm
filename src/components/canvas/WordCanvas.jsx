@@ -15,7 +15,7 @@ import useDragBlocks     from './word/useDragBlocks';
 export default function WordCanvas({
   docBlocks, config, selectedWidget, docConfig, findWidgetDef,
   onCardClick, onDeleteBlock, onUpdateText, onDeselectWidget, onReorderBlocks, onInsertText, onDeleteBlocksInRange,
-  onInsertBlock, onUpdateBlock, onCellFocus,
+  onInsertBlock, onUpdateBlock, onCellFocus, onUndo, onDropColToMain, onMoveColBlock,
 }) {
   const paper = PAPER_SIZES[docConfig.paperSize] || PAPER_SIZES.A4;
   const isLand = docConfig.orientation === 'landscape';
@@ -41,18 +41,120 @@ export default function WordCanvas({
   const prevTableCellsRef = useRef({});
   const pendingResetFocus = useRef(false);
 
-  const layoutColRefsMap = useRef({});
+  const layoutColRefsMap  = useRef({});
+  const colBlockRefsMap   = useRef({});
 
   const registerColRef = useCallback((key, el) => {
     if (el) layoutColRefsMap.current[key] = el;
     else delete layoutColRefsMap.current[key];
   }, []);
 
+  const registerColBlockRef = useCallback((blockId, el) => {
+    if (el) colBlockRefsMap.current[blockId] = el;
+    else delete colBlockRefsMap.current[blockId];
+  }, []);
+
   const handleDropToColumn = useCallback((fromIdx, layoutBlockId, colIdx) => {
     const block = docBlocks[fromIdx];
     if (!block || block.type === 'layout') return;
     onUpdateBlock(block.id, { layoutRef: { layoutId: layoutBlockId, colIdx } });
-  }, [docBlocks, onUpdateBlock]);
+    if (block.type === 'widget') {
+      // 빈 텍스트 블록 제거 후 위젯 뒤에 새 텍스트 블록 삽입
+      const emptyInCol = docBlocks.filter(b =>
+        b.id !== block.id &&
+        b.layoutRef?.layoutId === layoutBlockId &&
+        b.layoutRef?.colIdx === colIdx &&
+        b.type === 'text' &&
+        !(b.html || '').replace(/<br\s*\/?>/gi, '').trim()
+      );
+      emptyInCol.forEach(b => onDeleteBlock(b.id));
+      const newTextId = `text-${Date.now()}`;
+      onInsertBlock(fromIdx, { id: newTextId, type: 'text', html: '', layoutRef: { layoutId: layoutBlockId, colIdx } });
+      pendingFocusRef.current = { id: newTextId, position: 'start' };
+      const layoutBlock = docBlocks.find(b => b.id === layoutBlockId);
+      if (layoutBlock && !layoutBlock.colMinHeight) {
+        onUpdateBlock(layoutBlockId, { colMinHeight: 80 });
+      }
+    }
+  }, [docBlocks, onUpdateBlock, onDeleteBlock, onInsertBlock]);
+
+  // ── 열 내부 블록 조작 핸들러 ──
+  const handleColumnEnter = useCallback((blockId) => {
+    const idx = docBlocks.findIndex(b => b.id === blockId);
+    if (idx === -1) return;
+    const block = docBlocks[idx];
+    const newId = `text-${Date.now()}`;
+    pendingFocusRef.current = { id: newId, position: 'start' };
+    onInsertBlock(idx, { id: newId, type: 'text', html: '', layoutRef: block.layoutRef });
+  }, [docBlocks, onInsertBlock]);
+
+  const handleColumnBackspace = useCallback((blockId, currentHtml) => {
+    const idx = docBlocks.findIndex(b => b.id === blockId);
+    if (idx === -1) return;
+    const block = docBlocks[idx];
+    const isListSubtype = block?.subtype === 'bullet' || block?.subtype === 'numbered' || block?.subtype === 'todo';
+    const hasContent = !!(currentHtml || '').replace(/<br\s*\/?>/gi, '').trim();
+
+    if (isListSubtype && hasContent) {
+      onUpdateBlock(blockId, { subtype: undefined, checked: undefined, html: currentHtml, items: undefined });
+      pendingFocusRef.current = { id: blockId, position: 'start' };
+      return;
+    }
+    if (block?.subtype && !hasContent) {
+      onUpdateBlock(blockId, { subtype: undefined, checked: undefined, html: '', items: undefined });
+      pendingFocusRef.current = { id: blockId, position: 'start' };
+      return;
+    }
+
+    const { layoutRef } = block;
+    if (!layoutRef) return;
+    const sameCol = docBlocks.filter(b =>
+      b.layoutRef?.layoutId === layoutRef.layoutId && b.layoutRef?.colIdx === layoutRef.colIdx
+    );
+    const colPos = sameCol.findIndex(b => b.id === blockId);
+    if (colPos <= 0) return; // 첫 번째 블록 — 열 밖으로 나가지 않음
+
+    let prevPos = colPos - 1;
+    while (prevPos >= 0 && sameCol[prevPos].type !== 'text') prevPos--;
+    if (prevPos < 0) return;
+    const prevBlock = sameCol[prevPos];
+
+    if (!hasContent) {
+      pendingFocusRef.current = { id: prevBlock.id, position: 'end' };
+      onDeleteBlock(blockId);
+    } else {
+      const prevHtml = prevBlock.html || '';
+      const tmp = document.createElement('div');
+      tmp.innerHTML = prevHtml;
+      const prevTextLen = tmp.textContent.length;
+      onUpdateText(prevBlock.id, prevHtml + currentHtml);
+      onDeleteBlock(blockId);
+      pendingFocusRef.current = { id: prevBlock.id, position: 'offset', charOffset: prevTextLen };
+    }
+  }, [docBlocks, onDeleteBlock, onUpdateText, onUpdateBlock]);
+
+  const handleColumnArrow = useCallback((blockId, direction, caretX = 0) => {
+    const block = docBlocks.find(b => b.id === blockId);
+    if (!block?.layoutRef) return;
+    const { layoutId, colIdx } = block.layoutRef;
+    const colTextBlocks = docBlocks.filter(b =>
+      b.layoutRef?.layoutId === layoutId && b.layoutRef?.colIdx === colIdx && b.type === 'text'
+    );
+    const ci = colTextBlocks.findIndex(b => b.id === blockId);
+    const step = (direction === 'up' || direction === 'left') ? -1 : 1;
+    const ti = ci + step;
+    if (ti < 0 || ti >= colTextBlocks.length) return;
+    const targetEl = document.querySelector(`[data-text-id="${colTextBlocks[ti].id}"]`);
+    if (!targetEl) return;
+    targetEl.focus();
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    if (step === -1) {
+      const r = document.createRange(); r.selectNodeContents(targetEl); r.collapse(false); sel.addRange(r);
+    } else {
+      const r = document.createRange(); r.setStart(targetEl, 0); r.collapse(true); sel.addRange(r);
+    }
+  }, [docBlocks]);
 
   const handleCreateColumnBlock = useCallback((layoutBlockId, colIdx) => {
     const layoutIdx = docBlocks.findIndex(b => b.id === layoutBlockId);
@@ -62,12 +164,15 @@ export default function WordCanvas({
     pendingFocusRef.current = { id: newId, position: 'start' };
   }, [docBlocks, onInsertBlock]);
 
-  const { draggingIdx, dropIdx, hoveredColKey, handleDragHandleMouseDown } = useDragBlocks({
+  const { draggingIdx, draggingColBlockId, dropIdx, hoveredColKey, colDropInfo, handleDragHandleMouseDown, handleColDragHandleMouseDown } = useDragBlocks({
     docBlocks,
     blockRefs,
     onReorderBlocks,
     layoutColRefs:   layoutColRefsMap,
     onDropToColumn:  handleDropToColumn,
+    colBlockRefs:    colBlockRefsMap,
+    onDropColToMain,
+    onMoveColBlock,
   });
 
   // 외부에서 cells가 교체된 경우 DOM 강제 동기화
@@ -609,6 +714,15 @@ export default function WordCanvas({
             }
             return;
           }
+          if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+            const activeEl = document.activeElement;
+            const isInLayoutCol = !!activeEl?.closest?.('[data-layout-col]');
+            if (!activeEl?.isContentEditable || isInLayoutCol) {
+              e.preventDefault();
+              onUndo?.();
+              return;
+            }
+          }
           if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             e.preventDefault();
             sel.removeAllRanges();
@@ -755,14 +869,28 @@ export default function WordCanvas({
                     block={block}
                     colBlocks={colBlocks}
                     registerColRef={registerColRef}
-                    hoveredColKey={draggingIdx !== null ? hoveredColKey : null}
+                    registerColBlockRef={registerColBlockRef}
+                    hoveredColKey={(draggingIdx !== null || draggingColBlockId !== null) ? hoveredColKey : null}
+                    colDropInfo={(draggingIdx !== null || draggingColBlockId !== null) ? colDropInfo : null}
+                    draggingColBlockId={draggingColBlockId}
+                    onColDragHandleMouseDown={handleColDragHandleMouseDown}
                     onUpdateBlock={onUpdateBlock}
+                    onUpdateText={onUpdateText}
                     onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); }}
                     onSlashTrigger={handleSlashTrigger}
                     onSlashClose={handleSlashClose}
                     slashMenuRef={slashMenuRef}
                     slashBlockId={slashMenu?.blockId}
                     onCreateColumnBlock={handleCreateColumnBlock}
+                    onColumnEnter={handleColumnEnter}
+                    onColumnBackspace={handleColumnBackspace}
+                    onColumnArrow={handleColumnArrow}
+                    onConvertToSubtype={handleConvertToSubtype}
+                    config={config}
+                    findWidgetDef={findWidgetDef}
+                    selectedWidget={selectedWidget}
+                    onCardClick={onCardClick}
+                    onDeleteBlock={onDeleteBlock}
                   />
                 ) : (
                   <WidgetBlock

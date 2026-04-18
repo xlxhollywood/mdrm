@@ -3,6 +3,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import WidgetPreview from '../../widgets/WidgetPreview';
 import WidgetPlaceholder from '../WidgetPlaceholder';
+import TextBlock from './TextBlock';
+import TodoListBlock from './TodoListBlock';
 
 export function DragHandleIcon() {
   return (
@@ -43,87 +45,148 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
   );
 }
 
-/* ── 열 레이아웃 블록 ── */
-function LayoutCellBlock({ block, onUpdateBlock, onFocusBlock, onSlashTrigger, onSlashClose, slashMenuRef, isSlashOpen }) {
-  const ref = useRef(null);
-  const slashStartRef = useRef(null);
+/* ── 위젯 자동 스케일 래퍼 ── */
+function ScaledWidget({ children }) {
+  const outerRef = useRef(null);
+  const innerRef = useRef(null);
+  const lastWidthRef = useRef(0);
 
   useEffect(() => {
-    if (ref.current && !ref.current.dataset.init) {
-      ref.current.dataset.init = '1';
-      ref.current.innerHTML = block.html || '';
-      // 초기 비어있을 때만 placeholder 표시
-      const isEmpty = !(block.html || '').replace(/<br\s*\/?>/gi, '').trim();
-      if (isEmpty) ref.current.setAttribute('data-placeholder', '텍스트를 입력하세요');
-    }
-  });
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
 
-  const getCaretRect = () => {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return { left: 0, right: 0, top: 0, bottom: 0 };
-    return sel.getRangeAt(0).getBoundingClientRect();
-  };
+    const apply = () => {
+      const outerW = outer.offsetWidth;
+      if (!outerW || Math.abs(outerW - lastWidthRef.current) < 0.5) return;
+      lastWidthRef.current = outerW;
+      // 자연 크기 측정 위해 transform 초기화
+      inner.style.transform = '';
+      const innerW = inner.offsetWidth;
+      const innerH = inner.offsetHeight;
+      const s = innerW > 0 ? Math.min(1, outerW / innerW) : 1;
+      inner.style.transform = `scale(${s})`;
+      inner.style.transformOrigin = 'top left';
+      outer.style.height = `${innerH * s}px`;
+    };
 
-  const handleInput = (e) => {
-    const html  = e.currentTarget.innerHTML;
-    const text  = (e.currentTarget.textContent || '').trim();
-    // 내용 있으면 placeholder 숨김, 비면 다시 표시
-    if (text) e.currentTarget.removeAttribute('data-placeholder');
-    else      e.currentTarget.setAttribute('data-placeholder', '텍스트를 입력하세요');
-    onUpdateBlock(block.id, { html });
+    const obs = new ResizeObserver(apply);
+    obs.observe(outer);
+    setTimeout(apply, 0);
+    return () => obs.disconnect();
+  }, []);
 
-    if (slashStartRef.current !== null) {
-      const query = text.slice(slashStartRef.current);
-      if (query.includes(' ') || text.length < slashStartRef.current) {
-        slashStartRef.current = null;
-        onSlashClose?.();
-      } else {
-        onSlashTrigger?.(block.id, getCaretRect(), query);
-      }
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (isSlashOpen && slashMenuRef?.current) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); slashMenuRef.current.navigate(e.key); return; }
-      if (e.key === 'Enter')  { e.preventDefault(); slashMenuRef.current.select(); return; }
-      if (e.key === 'Escape') { onSlashClose?.(); return; }
-    }
-    if (e.key === '/') {
-      const text = ref.current?.textContent || '';
-      slashStartRef.current = text.length + 1;
-      setTimeout(() => onSlashTrigger?.(block.id, getCaretRect(), ''), 0);
-    }
-  };
-
-  if (block.type === 'divider') {
-    return <div className="py-1"><div className="h-px bg-[#d9dfe5]" /></div>;
-  }
-  if (block.type === 'text') {
-    return (
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        data-text-id={block.id}
-        className="outline-none text-[13px] text-[#1a222b] min-h-[20px] px-1 relative"
-        onFocus={() => onFocusBlock?.()}
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-      />
-    );
-  }
-  if (block.type === 'widget') {
-    return (
-      <div className="text-[12px] text-[#5b646f] px-2 py-1.5 bg-[#f5f5f5] rounded-[4px]">
-        위젯: {block.widgetId}
+  return (
+    <div ref={outerRef} style={{ overflow: 'hidden', width: '100%' }}>
+      <div ref={innerRef} style={{ display: 'inline-block' }}>
+        {children}
       </div>
-    );
-  }
-  return null;
+    </div>
+  );
 }
 
-export function LayoutBlock({ block, colBlocks, registerColRef, hoveredColKey, onUpdateBlock, onFocusBlock, onSlashTrigger, onSlashClose, slashMenuRef, slashBlockId, onCreateColumnBlock }) {
+/* ── 열 레이아웃 셀 블록 — TextBlock/TodoListBlock 재사용 ── */
+function LayoutCellBlock({
+  block, onUpdateBlock, onUpdateText, onFocusBlock,
+  onEnterBlock, onBackspaceBlock, onArrowBlock, onDeleteBlock, onConvertToSubtype,
+  onSlashTrigger, onSlashClose, slashMenuRef, isSlashOpen,
+  config, findWidgetDef, selectedWidget, onCardClick,
+  bulletNumber, onDragHandleMouseDown, isDragging, blockRef,
+}) {
+  const [hovered, setHovered] = React.useState(false);
+
+  const inner = (() => {
+    if (block.type === 'divider') {
+      return <div className="py-1"><div className="h-px bg-[#d9dfe5]" /></div>;
+    }
+    if (block.type === 'text') {
+      if (block.subtype === 'todo') {
+        return (
+          <TodoListBlock
+            block={block}
+            onUpdateBlock={onUpdateBlock}
+            onEnterAfterBlock={onEnterBlock}
+            onBackspaceAtStart={onBackspaceBlock}
+            onArrowOut={onArrowBlock}
+            onFocusBlock={onFocusBlock}
+            lineHeight={1.6}
+            letterSpacing={0}
+          />
+        );
+      }
+      return (
+        <TextBlock
+          block={block}
+          onChange={onUpdateText}
+          onDelete={onDeleteBlock}
+          onEnter={onEnterBlock}
+          onArrow={onArrowBlock}
+          onBackspaceAtStart={onBackspaceBlock}
+          onFocusBlock={() => { onFocusBlock?.(); }}
+          onBlurBlock={() => {}}
+          isBlockActive={false}
+          allSelected={false}
+          bulletNumber={bulletNumber}
+          onConvertToSubtype={onConvertToSubtype}
+          lineHeight={1.6}
+          letterSpacing={0}
+          onSlashTrigger={onSlashTrigger}
+          onSlashClose={onSlashClose}
+          isSlashOpen={isSlashOpen}
+          slashMenuRef={slashMenuRef}
+        />
+      );
+    }
+    if (block.type === 'widget') {
+      const widgetDef = findWidgetDef?.(block.widgetId);
+      if (!widgetDef) return null;
+      return (
+        <ScaledWidget>
+          <WidgetBlock
+            block={block}
+            config={config}
+            widgetDef={widgetDef}
+            isActive={selectedWidget?.instanceId === block.instanceId}
+            onClick={onCardClick}
+            onDelete={onDeleteBlock}
+          />
+        </ScaledWidget>
+      );
+    }
+    return null;
+  })();
+
+  return (
+    <div
+      ref={blockRef}
+      className={`relative group/cell transition-opacity ${isDragging ? 'opacity-30' : ''}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* 드래그 핸들 */}
+      <div
+        className={`absolute left-0 top-[3px] transition-opacity ${hovered ? 'opacity-100' : 'opacity-0'}`}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          window.getSelection()?.removeAllRanges();
+          onDragHandleMouseDown?.(e, block.id);
+        }}
+        onClick={(e) => e.stopPropagation()}
+        style={{ cursor: 'grab', transform: 'translateX(-100%)' }}
+      >
+        <DragHandleIcon />
+      </div>
+      {inner}
+    </div>
+  );
+}
+
+export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlockRef, hoveredColKey,
+  colDropInfo, draggingColBlockId, onColDragHandleMouseDown,
+  onUpdateBlock, onUpdateText, onFocusBlock,
+  onSlashTrigger, onSlashClose, slashMenuRef, slashBlockId, onCreateColumnBlock,
+  onColumnEnter, onColumnBackspace, onColumnArrow, onConvertToSubtype,
+  config, findWidgetDef, selectedWidget, onCardClick, onDeleteBlock }) {
   const { cols = 2 } = block;
 
   const defaultWidths = useCallback(() => Array.from({ length: cols }, () => 100 / cols), [cols]);
@@ -191,9 +254,33 @@ export function LayoutBlock({ block, colBlocks, registerColRef, hoveredColKey, o
             <React.Fragment key={colIdx}>
               <div
                 ref={el => registerColRef?.(colKey, el)}
-                className={`rounded-[4px] transition-colors overflow-hidden px-2 py-1
+                data-layout-col="true"
+                data-layout-id={block.id}
+                data-col-idx={String(colIdx)}
+                className={`rounded-[4px] transition-colors px-2 py-1 cursor-text
                   ${isHover ? 'bg-[#eef4ff]' : ''}`}
                 style={{ width: `${width}%`, minHeight: minHeight || undefined }}
+                onClick={(e) => {
+                  if (e.target.isContentEditable || e.target.closest('[data-text-id]')) return;
+                  e.stopPropagation();
+                  const lastBlock = blocks[blocks.length - 1];
+                  if (!lastBlock) {
+                    onCreateColumnBlock?.(block.id, colIdx);
+                  } else if (lastBlock.type === 'text') {
+                    const el = document.querySelector(`[data-text-id="${lastBlock.id}"]`);
+                    if (el) {
+                      el.focus();
+                      const sel = window.getSelection();
+                      sel.removeAllRanges();
+                      const r = document.createRange();
+                      r.selectNodeContents(el);
+                      r.collapse(false);
+                      sel.addRange(r);
+                    }
+                  } else {
+                    onColumnEnter?.(lastBlock.id);
+                  }
+                }}
               >
                 {blocks.length === 0 ? (
                   <div
@@ -203,19 +290,47 @@ export function LayoutBlock({ block, colBlocks, registerColRef, hoveredColKey, o
                     {isHover ? '여기에 놓기' : '텍스트를 입력하세요'}
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    {blocks.map(b => (
-                      <LayoutCellBlock
-                        key={b.id}
-                        block={b}
-                        onUpdateBlock={onUpdateBlock}
-                        onFocusBlock={onFocusBlock}
-                        onSlashTrigger={onSlashTrigger}
-                        onSlashClose={onSlashClose}
-                        slashMenuRef={slashMenuRef}
-                        isSlashOpen={slashBlockId === b.id}
-                      />
-                    ))}
+                  <div className="space-y-1 cursor-text pb-6">
+                    {(() => {
+                      const thisColKey = `${block.id}::${colIdx}`;
+                      const isActiveCol = colDropInfo?.colKey === thisColKey;
+                      return blocks.map((b, bIdx) => (
+                        <React.Fragment key={b.id}>
+                          {isActiveCol && colDropInfo?.insertBeforeBlockId === b.id && (
+                            <div className="h-[2px] bg-primary rounded-full my-0.5" />
+                          )}
+                          <LayoutCellBlock
+                            block={b}
+                            onUpdateBlock={onUpdateBlock}
+                            onUpdateText={onUpdateText}
+                            onFocusBlock={onFocusBlock}
+                            onEnterBlock={onColumnEnter ? (id) => onColumnEnter(id) : undefined}
+                            onBackspaceBlock={onColumnBackspace ? (id, html) => onColumnBackspace(id, html) : undefined}
+                            onArrowBlock={onColumnArrow ? (id, dir, x) => onColumnArrow(id, dir, x) : undefined}
+                            onDeleteBlock={onDeleteBlock}
+                            onConvertToSubtype={onConvertToSubtype}
+                            onSlashTrigger={onSlashTrigger}
+                            onSlashClose={onSlashClose}
+                            slashMenuRef={slashMenuRef}
+                            isSlashOpen={slashBlockId === b.id}
+                            bulletNumber={b.subtype === 'numbered'
+                              ? blocks.slice(0, bIdx).filter(x => x.subtype === 'numbered').length + 1
+                              : null}
+                            config={config}
+                            findWidgetDef={findWidgetDef}
+                            selectedWidget={selectedWidget}
+                            onCardClick={onCardClick}
+                            onDragHandleMouseDown={onColDragHandleMouseDown}
+                            isDragging={draggingColBlockId === b.id}
+                            blockRef={el => registerColBlockRef?.(b.id, el)}
+                          />
+                        </React.Fragment>
+                      ));
+                    })()}
+                    {/* 맨 끝 드롭 표시선 */}
+                    {colDropInfo?.colKey === `${block.id}::${colIdx}` && colDropInfo?.insertBeforeBlockId === null && (
+                      <div className="h-[2px] bg-primary rounded-full my-0.5" />
+                    )}
                   </div>
                 )}
               </div>

@@ -56,6 +56,33 @@ export default function WidgetDashboard() {
   const [selectedTable,  setSelectedTable]  = useState(null); // { blockId, rows, cols, row, col }
   const selectedTableRef = useRef(null);
   useEffect(() => { selectedTableRef.current = selectedTable; }, [selectedTable]);
+
+  // ── 레이아웃 열 커서 추적 (focusin 기준 — 프로그래매틱 포커스도 감지) ──
+  const activeLayoutContextRef = useRef(null);
+  useEffect(() => {
+    const onFocusIn = (e) => {
+      // 위젯 목록 클릭은 컨텍스트 유지
+      if (e.target.closest('[data-widget-list]')) return;
+      const textId = e.target?.dataset?.textId;
+      if (textId) {
+        const colEl = e.target.closest('[data-layout-col]');
+        if (colEl) {
+          activeLayoutContextRef.current = {
+            layoutId: colEl.dataset.layoutId,
+            colIdx: parseInt(colEl.dataset.colIdx, 10),
+          };
+          return;
+        }
+      }
+      // 레이아웃 열 밖으로 포커스 이동 → 컨텍스트 초기화
+      activeLayoutContextRef.current = null;
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
+  }, []);
+
+  // ── 구조적 변경 히스토리 (Ctrl+Z용) ──
+  const historyRef = useRef([]);
   const [config,         setConfig]         = useState({});
   const [canvasMode,     setCanvasMode]     = useState('grid');
   const [docBlocks,      setDocBlocks]      = useState([{ id: 'init', type: 'text', html: '' }]);
@@ -70,13 +97,39 @@ export default function WidgetDashboard() {
     blockSpacing: 3,
   });
 
+  const handleUndo = useCallback(() => {
+    if (historyRef.current.length === 0) return;
+    const previous = historyRef.current.pop();
+    setDocBlocks(previous);
+  }, []);
+
   const handleAddWidget = useCallback((widgetId) => {
     const instanceId = `${widgetId}-${Date.now()}`;
     const def = findWidgetDef(widgetId);
     setConfig(prev => ({ ...prev, [instanceId]: makeConfig(def) }));
     setSelectedWidget({ instanceId, widgetDef: def });
     if (canvasMode === 'word') {
-      setDocBlocks(prev => [...prev, { id: instanceId, type: 'widget', instanceId, widgetId }]);
+      const layoutCtx = activeLayoutContextRef.current;
+      setDocBlocks(prev => {
+        historyRef.current = [...historyRef.current.slice(-30), prev];
+        const newBlock = { id: instanceId, type: 'widget', instanceId, widgetId };
+        if (layoutCtx) {
+          const { layoutId, colIdx } = layoutCtx;
+          newBlock.layoutRef = { layoutId, colIdx };
+          // 같은 열의 빈 텍스트 블록 제거
+          const emptyInCol = prev.filter(b =>
+            b.layoutRef?.layoutId === layoutId &&
+            b.layoutRef?.colIdx === colIdx &&
+            b.type === 'text' &&
+            !(b.html || '').replace(/<br\s*\/?>/gi, '').trim()
+          );
+          const base = emptyInCol.length > 0
+            ? prev.filter(b => !emptyInCol.includes(b))
+            : prev;
+          return [...base, newBlock];
+        }
+        return [...prev, newBlock];
+      });
     } else {
       setCanvasWidgets(prev => [...prev, { id: instanceId, widgetId }]);
     }
@@ -84,7 +137,10 @@ export default function WidgetDashboard() {
 
   const handleRemove = useCallback((instanceId) => {
     setCanvasWidgets(prev => prev.filter(w => w.id !== instanceId));
-    setDocBlocks(prev => prev.filter(b => b.instanceId !== instanceId));
+    setDocBlocks(prev => {
+      historyRef.current = [...historyRef.current.slice(-30), prev];
+      return prev.filter(b => b.instanceId !== instanceId);
+    });
     setConfig(prev => { const n = { ...prev }; delete n[instanceId]; return n; });
     if (selectedWidget?.instanceId === instanceId) setSelectedWidget(null);
   }, [selectedWidget]);
@@ -97,21 +153,27 @@ export default function WidgetDashboard() {
 
   const handleInsertText = useCallback((afterIdx, id) => {
     const newBlock = { id: id || `text-${Date.now()}`, type: 'text', html: '' };
-    setDocBlocks(prev => { const a = [...prev]; a.splice(afterIdx + 1, 0, newBlock); return a; });
+    setDocBlocks(prev => {
+      historyRef.current = [...historyRef.current.slice(-30), prev];
+      const a = [...prev]; a.splice(afterIdx + 1, 0, newBlock); return a;
+    });
   }, []);
 
   const handleDeleteBlocksInRange = useCallback((keepId, deleteIds) => {
     if (keepId === null) {
-      // 전체 선택 삭제 → 빈 블록 하나로 리셋
-      setDocBlocks([{ id: `text-${Date.now()}`, type: 'text', html: '' }]);
+      setDocBlocks(prev => {
+        historyRef.current = [...historyRef.current.slice(-30), prev];
+        return [{ id: `text-${Date.now()}`, type: 'text', html: '' }];
+      });
       setSelectedWidget(null);
       return;
     }
-    setDocBlocks(prev =>
-      prev
+    setDocBlocks(prev => {
+      historyRef.current = [...historyRef.current.slice(-30), prev];
+      return prev
         .filter(b => !deleteIds.includes(b.id) && !deleteIds.includes(b.instanceId))
-        .map(b => b.id === keepId ? { ...b, html: '' } : b)
-    );
+        .map(b => b.id === keepId ? { ...b, html: '' } : b);
+    });
     deleteIds.forEach(id => {
       setConfig(c => { const n = { ...c }; delete n[id]; return n; });
     });
@@ -120,6 +182,7 @@ export default function WidgetDashboard() {
 
   const handleReorderBlocks = useCallback((fromIdx, toIdx) => {
     setDocBlocks(prev => {
+      historyRef.current = [...historyRef.current.slice(-30), prev];
       const arr = [...prev];
       const [item] = arr.splice(fromIdx, 1);
       arr.splice(toIdx > fromIdx ? toIdx - 1 : toIdx, 0, item);
@@ -127,8 +190,53 @@ export default function WidgetDashboard() {
     });
   }, []);
 
+  // 열 블록 → 메인 캔버스로 드래그
+  const handleDropColToMain = useCallback((fromDocIdx, toDocIdx) => {
+    setDocBlocks(prev => {
+      if (fromDocIdx < 0 || fromDocIdx >= prev.length) return prev;
+      historyRef.current = [...historyRef.current.slice(-30), prev];
+      const arr = [...prev];
+      const [item] = arr.splice(fromDocIdx, 1);
+      const updated = { ...item };
+      delete updated.layoutRef;
+      const insertAt = toDocIdx > fromDocIdx ? Math.max(0, toDocIdx - 1) : toDocIdx;
+      arr.splice(Math.min(insertAt, arr.length), 0, updated);
+      return arr;
+    });
+  }, []);
+
+  // 열 블록 → 열로 이동 (같은 열 재정렬 포함)
+  const handleMoveColBlock = useCallback((fromBlockId, targetLayoutId, targetColIdx, insertBeforeBlockId) => {
+    setDocBlocks(prev => {
+      const fromIdx = prev.findIndex(b => b.id === fromBlockId);
+      if (fromIdx === -1) return prev;
+      historyRef.current = [...historyRef.current.slice(-30), prev];
+      const arr = prev.filter((_, i) => i !== fromIdx);
+      const updatedBlock = { ...prev[fromIdx], layoutRef: { layoutId: targetLayoutId, colIdx: targetColIdx } };
+
+      if (insertBeforeBlockId) {
+        const targetIdx = arr.findIndex(b => b.id === insertBeforeBlockId);
+        if (targetIdx !== -1) {
+          arr.splice(targetIdx, 0, updatedBlock);
+          return arr;
+        }
+      }
+      // 대상 열의 마지막 블록 뒤에 추가
+      const colBlocks = arr.filter(b => b.layoutRef?.layoutId === targetLayoutId && b.layoutRef?.colIdx === targetColIdx);
+      if (colBlocks.length > 0) {
+        const lastIdx = arr.findIndex(b => b.id === colBlocks[colBlocks.length - 1].id);
+        arr.splice(lastIdx + 1, 0, updatedBlock);
+      } else {
+        const layoutIdx = arr.findIndex(b => b.id === targetLayoutId);
+        arr.splice(layoutIdx + 1, 0, updatedBlock);
+      }
+      return arr;
+    });
+  }, []);
+
   const handleDeleteBlock = useCallback((blockId) => {
     setDocBlocks(prev => {
+      historyRef.current = [...historyRef.current.slice(-30), prev];
       const b = prev.find(x => x.id === blockId);
       if (b?.type === 'widget') {
         setConfig(c => { const n = { ...c }; delete n[b.instanceId]; return n; });
@@ -140,11 +248,20 @@ export default function WidgetDashboard() {
   }, [selectedWidget]);
 
   const handleInsertBlock = useCallback((afterIdx, blockDef) => {
-    setDocBlocks(prev => { const a = [...prev]; a.splice(afterIdx + 1, 0, blockDef); return a; });
+    setDocBlocks(prev => {
+      historyRef.current = [...historyRef.current.slice(-30), prev];
+      const a = [...prev]; a.splice(afterIdx + 1, 0, blockDef); return a;
+    });
   }, []);
 
   const handleUpdateBlock = useCallback((id, fields) => {
-    setDocBlocks(prev => prev.map(b => b.id === id ? { ...b, ...fields } : b));
+    setDocBlocks(prev => {
+      // 타입 변경(layout·table·divider 변환)은 history 저장
+      if (fields.type !== undefined) {
+        historyRef.current = [...historyRef.current.slice(-30), prev];
+      }
+      return prev.map(b => b.id === id ? { ...b, ...fields } : b);
+    });
   }, []);
 
   const handleCellFocus = useCallback((blockId, row, col) => {
@@ -299,7 +416,7 @@ export default function WidgetDashboard() {
               ))}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto py-3">
+          <div className="flex-1 overflow-y-auto py-3" data-widget-list="true">
             {(isAllTab
               ? Object.values(WIDGET_CATEGORIES).flatMap(c => c.widgets)
               : currentCategory.widgets
@@ -356,7 +473,10 @@ export default function WidgetDashboard() {
               onDeleteBlocksInRange={handleDeleteBlocksInRange}
               onDeselectWidget={() => { setSelectedWidget(null); setSelectedTable(null); }}
               onReorderBlocks={handleReorderBlocks}
+              onDropColToMain={handleDropColToMain}
+              onMoveColBlock={handleMoveColBlock}
               onCellFocus={handleCellFocus}
+              onUndo={handleUndo}
             />
           )}
         </div>
