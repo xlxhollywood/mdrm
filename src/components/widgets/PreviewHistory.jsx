@@ -7,7 +7,7 @@ const rows = [
 
 export default function PreviewHistory() {
   return (
-    <div className="flex flex-col gap-2 p-4 bg-white border border-border rounded-[10px] w-[240px] shrink-0">
+    <div className="flex flex-col gap-2 p-4 bg-white w-full">
       {rows.map(r => (
         <div key={r.label} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.color }} />

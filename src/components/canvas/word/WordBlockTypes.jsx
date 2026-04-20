@@ -28,61 +28,26 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
   const showLabel   = cfg.showLabel  !== false;
 
   return (
-    <div className="flex items-start">
+    <div className="flex items-start w-full">
       <div
-        className={`relative cursor-pointer rounded-[10px] ${isActive ? 'ring-2 ring-[#3571ce] ring-offset-2 shadow-[0_0_0_4px_rgba(53,113,206,0.12)]' : ''}`}
+        className={`relative cursor-pointer rounded-[10px] flex-1 min-w-0 ${isActive ? 'ring-2 ring-[#3571ce] ring-offset-2 shadow-[0_0_0_4px_rgba(53,113,206,0.12)]' : ''}`}
         onClick={(e) => { e.stopPropagation(); onClick(block.instanceId, widgetDef); }}
       >
         {showPreview
-          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} />
+          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} />
           : <WidgetPlaceholder widgetDef={widgetDef} />}
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}
-        className="opacity-0 group-hover:opacity-100 ml-2 w-5 h-5 flex items-center justify-center text-[#c0c7ce] hover:text-danger text-[14px] shrink-0 transition-opacity mt-2"
+        className="opacity-0 group-hover:opacity-100 absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-[#c0c7ce] hover:text-danger text-[14px] transition-opacity bg-white rounded-full border border-[#e2e5e9] shadow-sm z-10"
       >×</button>
     </div>
   );
 }
 
-/* ── 위젯 자동 스케일 래퍼 ── */
+/* ── 위젯 래퍼: 너비 100% 채움 ── */
 function ScaledWidget({ children }) {
-  const outerRef = useRef(null);
-  const innerRef = useRef(null);
-  const lastWidthRef = useRef(0);
-
-  useEffect(() => {
-    const outer = outerRef.current;
-    const inner = innerRef.current;
-    if (!outer || !inner) return;
-
-    const apply = () => {
-      const outerW = outer.offsetWidth;
-      if (!outerW || Math.abs(outerW - lastWidthRef.current) < 0.5) return;
-      lastWidthRef.current = outerW;
-      // 자연 크기 측정 위해 transform 초기화
-      inner.style.transform = '';
-      const innerW = inner.offsetWidth;
-      const innerH = inner.offsetHeight;
-      const s = innerW > 0 ? Math.min(1, outerW / innerW) : 1;
-      inner.style.transform = `scale(${s})`;
-      inner.style.transformOrigin = 'top left';
-      outer.style.height = `${innerH * s}px`;
-    };
-
-    const obs = new ResizeObserver(apply);
-    obs.observe(outer);
-    setTimeout(apply, 0);
-    return () => obs.disconnect();
-  }, []);
-
-  return (
-    <div ref={outerRef} style={{ overflow: 'hidden', width: '100%' }}>
-      <div ref={innerRef} style={{ display: 'inline-block' }}>
-        {children}
-      </div>
-    </div>
-  );
+  return <div className="w-full">{children}</div>;
 }
 
 /* ── 열 레이아웃 셀 블록 — TextBlock/TodoListBlock 재사용 ── */

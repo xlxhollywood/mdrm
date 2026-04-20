@@ -1,4 +1,4 @@
-import { imgDatacenter, imgDrag1, imgIconOk, imgIconWarn, imgIconOffline, imgStatus1 } from '@/lib/assets';
+import { imgDatacenter, imgIconOk, imgIconWarn, imgIconOffline, imgStatus1 } from '@/lib/assets';
 
 /* ── 공통 데이터 ── */
 const DATA = [
@@ -12,20 +12,20 @@ const TOTAL = DATA.reduce((s, d) => s + d.count, 0);
 function Legend({ rows }) {
   return (
     <div className="flex flex-col gap-0">
-      <div className="flex items-center gap-1 mb-[10px]">
-        <img src={imgDatacenter} alt="dc" className="w-[14px] h-[14px] shrink-0" />
-        <span className="text-[12px] text-link whitespace-nowrap">Datacenter</span>
+      <div className="flex items-center gap-1.5 mb-[12px]">
+        <img src={imgDatacenter} alt="dc" className="w-[16px] h-[16px] shrink-0" />
+        <span className="text-[13px] text-link whitespace-nowrap">Datacenter</span>
       </div>
-      <div className="flex flex-col gap-[7px]">
+      <div className="flex flex-col gap-[10px]">
         {rows.map(r => (
-          <div key={r.label} className="flex items-center gap-2 h-[18px]">
-            <span className="w-[10px] h-[10px] shrink-0 flex items-center justify-center">
+          <div key={r.label} className="flex items-center gap-2 h-[20px]">
+            <span className="w-[14px] h-[14px] shrink-0 flex items-center justify-center">
               {r.icon
-                ? <img src={r.icon} alt={r.label} className="w-[10px] h-[10px]" />
-                : <span className="w-[8px] h-[8px] rounded-full block" style={{ background: r.color }} />}
+                ? <img src={r.icon} alt={r.label} className="w-[14px] h-[14px]" />
+                : <span className="w-[10px] h-[10px] rounded-full block" style={{ background: r.color }} />}
             </span>
-            <span className="text-[10px] text-muted flex-1">{r.label}</span>
-            <span className="text-[10px] font-semibold text-dark">{r.count}</span>
+            <span className="text-[12px] text-muted flex-1">{r.label}</span>
+            <span className="text-[13px] font-bold text-dark">{r.count}</span>
           </div>
         ))}
       </div>
@@ -36,14 +36,12 @@ function Legend({ rows }) {
 /* ── 공통 카드 래퍼 ── */
 function StatusCard({ chart, legendRows, showBorder = true, showLabel = true }) {
   return (
-    <div className={`w-[274px] h-[153px] bg-white rounded-[10px] overflow-hidden shrink-0 relative ${showBorder ? 'border border-border' : ''}`}>
-      <div className={`absolute left-[10px] top-[13px] right-[32px] ${showLabel ? '' : 'invisible'}`}>
+    <div className={`w-full h-[180px] bg-white overflow-hidden shrink-0 relative ${showBorder ? 'border border-border rounded-[10px]' : ''}`}>
+      <div className={`absolute left-[12px] top-[14px] right-[12px] ${showLabel ? '' : 'invisible'}`}>
         <span className="text-[12px] text-muted">시스템 상태</span>
       </div>
-      <img src={imgDrag1} alt="drag"
-        className="absolute right-2 top-3 w-4 h-4 pointer-events-none opacity-40" />
-      <div className="absolute left-0 right-10 top-[28px] bottom-0 flex items-center px-[14px] gap-[14px]">
-        <div className="w-[100px] flex items-center justify-center shrink-0">
+      <div className="absolute left-0 right-0 top-[34px] bottom-0 flex items-center px-[16px] gap-[16px]">
+        <div className="w-[120px] flex items-center justify-center shrink-0">
           {chart}
         </div>
         <div className="flex-1">
@@ -55,7 +53,7 @@ function StatusCard({ chart, legendRows, showBorder = true, showLabel = true }) 
 }
 
 /* ── 파이 차트 ── */
-function PieChart({ size = 96 }) {
+function PieChart({ size = 116 }) {
   const cx = size / 2, cy = size / 2, r = size / 2 - 1;
   let angle = -Math.PI / 2;
   const slices = DATA.map(d => {
@@ -80,16 +78,14 @@ function PieChart({ size = 96 }) {
 /* ── Export: 세 variant ── */
 export function PreviewSimpleStatus({ showBorder = true, showLabel = true }) {
   return (
-    <div className={`w-[274px] h-[153px] bg-white rounded-[10px] overflow-hidden shrink-0 relative ${showBorder ? 'border border-border' : ''}`}>
-      <div className={`absolute left-[10px] top-[13px] right-[32px] ${showLabel ? '' : 'invisible'}`}>
+    <div className={`w-full h-[180px] bg-white overflow-hidden shrink-0 relative ${showBorder ? 'border border-border rounded-[10px]' : ''}`}>
+      <div className={`absolute left-[12px] top-[14px] right-[12px] ${showLabel ? '' : 'invisible'}`}>
         <span className="text-[12px] text-muted">시스템 상태</span>
       </div>
-      <img src={imgDrag1} alt="drag"
-        className="absolute right-2 top-3 w-4 h-4 pointer-events-none opacity-40" />
-      <div className="absolute left-0 right-10 top-[28px] bottom-0 flex items-center px-[14px] gap-[14px]">
-        <div className="w-[100px] flex items-center justify-center shrink-0">
+      <div className="absolute left-0 right-0 top-[34px] bottom-0 flex items-center px-[16px] gap-[16px]">
+        <div className="w-[120px] flex items-center justify-center shrink-0">
           <img src={imgStatus1} alt="status"
-            className="w-[96px] h-[96px] object-contain pointer-events-none" />
+            className="w-[112px] h-[112px] object-contain pointer-events-none" />
         </div>
         <div className="flex-1">
           <Legend rows={DATA} />
@@ -102,7 +98,7 @@ export function PreviewSimpleStatus({ showBorder = true, showLabel = true }) {
 export function PreviewDonutStatus({ showBorder = true, showLabel = true }) {
   return (
     <StatusCard
-      chart={<PieChart size={96} />}
+      chart={<PieChart size={116} />}
       legendRows={DATA.map(d => ({ ...d, icon: null }))}
       showBorder={showBorder}
       showLabel={showLabel}
@@ -112,17 +108,15 @@ export function PreviewDonutStatus({ showBorder = true, showLabel = true }) {
 
 export function PreviewBarStatus({ showBorder = true, showLabel = true }) {
   return (
-    <div className={`relative w-[298px] h-[124px] bg-white rounded-[10px] overflow-hidden shrink-0 ${showBorder ? 'border border-border' : ''}`}>
-      <span className={`absolute left-[10px] top-[13px] text-[12px] text-muted ${showLabel ? '' : 'invisible'}`}>시스템 상태</span>
-      <img src={imgDrag1} alt="drag"
-        className="absolute right-2 top-3 w-4 h-4 pointer-events-none opacity-40" />
+    <div className={`relative w-full h-[148px] bg-white overflow-hidden shrink-0 ${showBorder ? 'border border-border rounded-[10px]' : ''}`}>
+      <span className={`absolute left-[12px] top-[14px] text-[12px] text-muted ${showLabel ? '' : 'invisible'}`}>시스템 상태</span>
 
-      <div className="absolute left-0 right-0 top-[34px] flex items-center justify-center gap-1">
-        <img src={imgDatacenter} alt="dc" className="w-[14px] h-[14px] shrink-0" />
-        <span className="text-[12px] text-link">Datacenter</span>
+      <div className="absolute left-0 right-0 top-[38px] flex items-center justify-center gap-1.5">
+        <img src={imgDatacenter} alt="dc" className="w-[16px] h-[16px] shrink-0" />
+        <span className="text-[13px] text-link">Datacenter</span>
       </div>
 
-      <div className="absolute left-[12px] right-[12px] top-[56px] h-[18px] rounded-full overflow-hidden flex">
+      <div className="absolute left-[14px] right-[14px] top-[64px] h-[22px] rounded-full overflow-hidden flex">
         {DATA.map((d, i) => (
           <div
             key={d.label}
@@ -135,12 +129,12 @@ export function PreviewBarStatus({ showBorder = true, showLabel = true }) {
         ))}
       </div>
 
-      <div className="absolute left-0 right-0 bottom-[12px] flex items-center justify-center gap-4">
+      <div className="absolute left-0 right-0 bottom-[14px] flex items-center justify-center gap-5">
         {DATA.map(d => (
-          <div key={d.label} className="flex items-center gap-1">
-            <span className="w-[8px] h-[8px] rounded-full shrink-0" style={{ background: d.color }} />
-            <span className="text-[11px] text-muted">{d.label}</span>
-            <span className="text-[11px] font-semibold text-dark ml-0.5">{d.count}</span>
+          <div key={d.label} className="flex items-center gap-1.5">
+            <span className="w-[10px] h-[10px] rounded-full shrink-0" style={{ background: d.color }} />
+            <span className="text-[12px] text-muted">{d.label}</span>
+            <span className="text-[13px] font-bold text-dark ml-0.5">{d.count}</span>
           </div>
         ))}
       </div>

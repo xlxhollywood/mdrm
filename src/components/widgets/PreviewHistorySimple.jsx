@@ -1,4 +1,4 @@
-import { imgDrag1, imgServerBox } from '@/lib/assets';
+import { imgServerBox } from '@/lib/assets';
 
 const rows = [
   { name: 'MDRMMSL-Agent-01', badge: 'Kernel', before: '10.0.14393.0',       after: '10.0.14393.1' },
@@ -8,12 +8,7 @@ const rows = [
 
 export default function PreviewHistorySimple() {
   return (
-    <div className="w-[360px] bg-white border border-border rounded-[10px] shrink-0 shadow-[0_1px_4px_rgba(26,34,43,0.08)] p-[13px_14px_14px]">
-      <div className="flex items-center justify-between mb-[10px]">
-        <span className="text-[12px] text-muted">시스템 변경 이력</span>
-        <img src={imgDrag1} alt="drag" className="w-4 h-4 opacity-40 pointer-events-none" />
-      </div>
-
+    <div className="w-full bg-white p-[13px_14px_14px]">
       <div className="flex flex-col gap-2">
         {rows.map((r, i) => (
           <div key={i} className="flex items-center gap-2">

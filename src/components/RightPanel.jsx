@@ -123,6 +123,21 @@ export default function RightPanel({
           </>
         )}
 
+        {/* 패널 제목 */}
+        <>
+          <Sep />
+          <div className="flex flex-col gap-2">
+            <SectionLabel>패널 제목</SectionLabel>
+            <input
+              type="text"
+              value={cfg.widgetTitle ?? widgetDef.name}
+              onChange={e => onConfigChange(instanceId, { ...cfg, widgetTitle: e.target.value })}
+              placeholder={widgetDef.name}
+              className="w-full text-[12px] border border-border rounded px-2.5 py-1.5 text-dark outline-none focus:border-primary bg-white"
+            />
+          </div>
+        </>
+
         {/* 표시 설정 */}
         <>
           <Sep />

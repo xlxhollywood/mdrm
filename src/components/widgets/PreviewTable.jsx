@@ -6,7 +6,7 @@ const rows = [
 
 export default function PreviewTable() {
   return (
-    <div className="bg-white border border-border rounded-[10px] overflow-hidden shrink-0 shadow-[0_1px_4px_rgba(26,34,43,0.08)]">
+    <div className="bg-white overflow-hidden shrink-0">
       <table className="w-full border-collapse text-[11px]">
         <thead>
           <tr className="bg-[#f8f9fb] border-b border-[#eaedf1]">

@@ -1,6 +1,6 @@
-import { imgDrag1, imgServerBox } from '@/lib/assets';
+import { imgServerBox } from '@/lib/assets';
 
-const GRID = '26px 140px 120px 140px 130px 72px';
+const GRID = '26px 1fr 1fr 1fr 1fr 72px';
 
 const rows = [
   { name: 'MDRMMSL-Agent-01', item: 'Kernel',       before: '10.0.14393.0',            after: '10.0.14393.1',            date: '25-08-19' },
@@ -29,13 +29,7 @@ const headers = [
 
 export default function PreviewHistoryTable() {
   return (
-    <div className="w-[700px] bg-white border border-border rounded-[10px] shrink-0 shadow-[0_1px_4px_rgba(26,34,43,0.08)] p-[13px_14px_14px]">
-      <div className="flex items-center justify-between mb-[10px]">
-        <span className="text-[12px] text-muted">시스템 변경 이력</span>
-        <img src={imgDrag1} alt="drag" className="w-4 h-4 opacity-40 pointer-events-none" />
-      </div>
-
-      <div className="rounded-lg border border-[#e4e8ee] overflow-hidden shadow-[0_1px_3px_rgba(26,34,43,0.06)]">
+    <div className="w-full bg-white border border-[#e4e8ee] overflow-hidden">
         {/* 헤더 */}
         <div
           className="grid items-center bg-[#f8f9fb] border-b border-[#eaedf1] px-4 h-[34px]"
@@ -77,7 +71,6 @@ export default function PreviewHistoryTable() {
             <div className="text-[12px] text-[#9ba4ad] text-right whitespace-nowrap">{r.date}</div>
           </div>
         ))}
-      </div>
     </div>
   );
 }
