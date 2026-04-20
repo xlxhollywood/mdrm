@@ -6,6 +6,7 @@ import RightPanel from './RightPanel';
 import GridCanvas from './canvas/GridCanvas';
 import WordCanvas from './canvas/WordCanvas';
 import { WIDGET_CATEGORIES, TODAY, MONTH_AGO } from '@/lib/constants';
+import { createWeeklyTemplate } from '@/lib/weeklyTemplate';
 
 const allWidgets = Object.values(WIDGET_CATEGORIES).flatMap(c => c.widgets);
 
@@ -91,7 +92,7 @@ export default function WidgetDashboard() {
   const [docConfig,      setDocConfig]      = useState({
     paperSize: 'A4',
     orientation: 'portrait',
-    margins: { top: 25, bottom: 25, left: 25, right: 25 },
+    margins: { top: 10, bottom: 10, left: 10, right: 10 },
     lineHeight: 1.6,
     letterSpacing: 0,
     blockSpacing: 3,
@@ -101,6 +102,15 @@ export default function WidgetDashboard() {
     if (historyRef.current.length === 0) return;
     const previous = historyRef.current.pop();
     setDocBlocks(previous);
+  }, []);
+
+  const handleLoadTemplate = useCallback((templateFn) => {
+    const { blocks, configs } = templateFn();
+    historyRef.current = [];
+    setDocBlocks(blocks);
+    setConfig(configs);
+    setSelectedWidget(null);
+    setCanvasMode('word');
   }, []);
 
   const handleAddWidget = useCallback((widgetId) => {
@@ -423,6 +433,25 @@ export default function WidgetDashboard() {
             ).map(widget => (
               <WidgetListItem key={widget.id} widget={widget} onAdd={handleAddWidget} />
             ))}
+          </div>
+
+          {/* 템플릿 섹션 */}
+          <div className="shrink-0 border-t border-border px-4 py-3">
+            <div className="text-[11px] font-semibold text-muted mb-2">템플릿</div>
+            <div
+              onClick={() => handleLoadTemplate(createWeeklyTemplate)}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-white cursor-pointer
+                hover:border-primary hover:bg-primary-light transition-colors group"
+            >
+              <span className="text-[18px] shrink-0">📋</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-medium text-dark group-hover:text-primary">주간 점검 보고서</div>
+                <div className="text-[10px] text-muted mt-px">번다운·타임라인·히트맵 포함</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-muted group-hover:text-primary">
+                <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </div>
         </div>
 

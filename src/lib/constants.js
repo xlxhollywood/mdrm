@@ -78,6 +78,55 @@ export const WIDGET_CATEGORIES = {
       },
     ],
   },
+  weekly: {
+    label: '주간 점검',
+    widgets: [
+      {
+        id: 'insp-sys-list',
+        name: '점검 시스템 목록',
+        desc: '이번 주 점검 대상 시스템 현황',
+        icon: '🖥',
+        viewTypes: [],
+        hasPeriod: true,
+        hasSystemSelect: true,
+      },
+      {
+        id: 'insp-weekly-list',
+        name: '주간 점검 목록',
+        desc: '주간 점검 항목 및 결과 목록',
+        icon: '📋',
+        viewTypes: [],
+        hasPeriod: true,
+      },
+      {
+        id: 'insp-burndown',
+        name: '번다운 차트',
+        desc: '주간 점검 진행·잔여·실패 현황',
+        icon: '📉',
+        viewTypes: [],
+        hasPeriod: true,
+      },
+      {
+        id: 'insp-result-chart',
+        name: '점검 결과 차트',
+        desc: '성공·경고·실패 비율 차트',
+        icon: '🥧',
+        viewTypes: [
+          { id: 'donut', label: '도넛 차트', icon: '◎' },
+          { id: 'pie',   label: '파이 차트', icon: '◕' },
+        ],
+        hasPeriod: true,
+      },
+      {
+        id: 'insp-priority',
+        name: '점검 우선순위',
+        desc: '우선순위별 점검 항목 목록',
+        icon: '🚨',
+        viewTypes: [],
+        hasPeriod: false,
+      },
+    ],
+  },
   inspection: {
     label: '점검 작업',
     widgets: [
@@ -88,6 +137,7 @@ export const WIDGET_CATEGORIES = {
         icon: '📝',
         viewTypes: [],
         hasPeriod: true,
+        hasSystemSelect: true,
       },
       {
         id: 'insp-schedule',
@@ -100,6 +150,8 @@ export const WIDGET_CATEGORIES = {
     ],
   },
 };
+
+export const WEEKLY_INSPECTION_TEMPLATE_ID = 'weekly-inspection-report';
 
 export const TODAY      = new Date().toISOString().split('T')[0];
 export const MONTH_AGO  = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];

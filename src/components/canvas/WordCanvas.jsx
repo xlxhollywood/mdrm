@@ -71,10 +71,6 @@ export default function WordCanvas({
       const newTextId = `text-${Date.now()}`;
       onInsertBlock(fromIdx, { id: newTextId, type: 'text', html: '', layoutRef: { layoutId: layoutBlockId, colIdx } });
       pendingFocusRef.current = { id: newTextId, position: 'start' };
-      const layoutBlock = docBlocks.find(b => b.id === layoutBlockId);
-      if (layoutBlock && !layoutBlock.colMinHeight) {
-        onUpdateBlock(layoutBlockId, { colMinHeight: 80 });
-      }
     }
   }, [docBlocks, onUpdateBlock, onDeleteBlock, onInsertBlock]);
 
@@ -876,7 +872,9 @@ export default function WordCanvas({
                     onColDragHandleMouseDown={handleColDragHandleMouseDown}
                     onUpdateBlock={onUpdateBlock}
                     onUpdateText={onUpdateText}
-                    onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); }}
+                    activeBlockId={activeBlockId}
+                    allSelected={allSelected}
+                    onFocusBlock={(id) => { setAllSelected(false); setActiveBlockId(id ?? null); }}
                     onSlashTrigger={handleSlashTrigger}
                     onSlashClose={handleSlashClose}
                     slashMenuRef={slashMenuRef}
@@ -893,14 +891,16 @@ export default function WordCanvas({
                     onDeleteBlock={onDeleteBlock}
                   />
                 ) : (
-                  <WidgetBlock
-                    block={block}
-                    config={config}
-                    widgetDef={findWidgetDef(block.widgetId)}
-                    isActive={selectedWidget?.instanceId === block.instanceId}
-                    onClick={onCardClick}
-                    onDelete={onDeleteBlock}
-                  />
+                  <div className="px-[10px] py-[10px]">
+                    <WidgetBlock
+                      block={block}
+                      config={config}
+                      widgetDef={findWidgetDef(block.widgetId)}
+                      isActive={selectedWidget?.instanceId === block.instanceId}
+                      onClick={onCardClick}
+                      onDelete={onDeleteBlock}
+                    />
+                  </div>
                 )}
               </div>
 

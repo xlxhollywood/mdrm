@@ -164,49 +164,34 @@ export default function RightPanel({
             {(widgetDef.viewTypes.length > 0 || widgetDef.hasSystemSelect) && <Sep />}
             <div className="flex flex-col gap-2">
               <SectionLabel>기간 설정</SectionLabel>
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] text-dark">기간 필터 사용</span>
-                <button
-                  onClick={() => setPeriodOn(!cfg.periodOn)}
-                  className={`w-9 h-5 rounded-full transition-colors relative ${cfg.periodOn ? 'bg-primary' : 'bg-[#c0c7ce]'}`}
-                >
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-150
-                    ${cfg.periodOn ? 'left-[18px]' : 'left-0.5'}`} />
-                </button>
+              <div className="flex flex-wrap gap-1">
+                {QUICK_PERIODS.map(q => (
+                  <button
+                    key={q}
+                    onClick={() => setQuick(cfg.quick === q ? null : q)}
+                    className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors
+                      ${cfg.quick === q
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white text-muted border-border hover:border-primary hover:text-primary'}`}
+                  >
+                    {q}
+                  </button>
+                ))}
               </div>
-
-              {cfg.periodOn && (
-                <>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {QUICK_PERIODS.map(q => (
-                      <button
-                        key={q}
-                        onClick={() => setQuick(cfg.quick === q ? null : q)}
-                        className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors
-                          ${cfg.quick === q
-                            ? 'bg-primary text-white border-primary'
-                            : 'bg-white text-muted border-border hover:border-primary hover:text-primary'}`}
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                  {!cfg.quick && (
-                    <div className="flex flex-col gap-2 mt-1">
-                      {[['시작', cfg.from || MONTH_AGO, setFrom], ['종료', cfg.to || TODAY, setTo]].map(([label, val, setter]) => (
-                        <div key={label} className="flex items-center gap-2">
-                          <span className="text-[11px] text-muted w-6 shrink-0">{label}</span>
-                          <input
-                            type="date"
-                            value={val}
-                            onChange={e => setter(e.target.value)}
-                            className="flex-1 text-[11px] border border-border rounded px-2 py-1 text-dark outline-none focus:border-primary"
-                          />
-                        </div>
-                      ))}
+              {!cfg.quick && (
+                <div className="flex flex-col gap-2 mt-1">
+                  {[['시작', cfg.from || MONTH_AGO, setFrom], ['종료', cfg.to || TODAY, setTo]].map(([label, val, setter]) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted w-6 shrink-0">{label}</span>
+                      <input
+                        type="date"
+                        value={val}
+                        onChange={e => setter(e.target.value)}
+                        className="flex-1 text-[11px] border border-border rounded px-2 py-1 text-dark outline-none focus:border-primary"
+                      />
                     </div>
-                  )}
-                </>
+                  ))}
+                </div>
               )}
             </div>
           </>

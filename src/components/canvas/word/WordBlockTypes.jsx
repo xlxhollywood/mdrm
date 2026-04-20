@@ -47,18 +47,20 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
 
 /* ── 위젯 래퍼: 너비 100% 채움 ── */
 function ScaledWidget({ children }) {
-  return <div className="w-full">{children}</div>;
+  return <div className="px-[10px] py-[10px]">{children}</div>;
 }
 
 /* ── 열 레이아웃 셀 블록 — TextBlock/TodoListBlock 재사용 ── */
 function LayoutCellBlock({
   block, onUpdateBlock, onUpdateText, onFocusBlock,
+  activeBlockId, allSelected,
   onEnterBlock, onBackspaceBlock, onArrowBlock, onDeleteBlock, onConvertToSubtype,
   onSlashTrigger, onSlashClose, slashMenuRef, isSlashOpen,
   config, findWidgetDef, selectedWidget, onCardClick,
   bulletNumber, onDragHandleMouseDown, isDragging, blockRef,
 }) {
   const [hovered, setHovered] = React.useState(false);
+  const isActive = allSelected || activeBlockId === block.id;
 
   const inner = (() => {
     if (block.type === 'divider') {
@@ -87,10 +89,10 @@ function LayoutCellBlock({
           onEnter={onEnterBlock}
           onArrow={onArrowBlock}
           onBackspaceAtStart={onBackspaceBlock}
-          onFocusBlock={() => { onFocusBlock?.(); }}
+          onFocusBlock={() => { onFocusBlock?.(block.id); }}
           onBlurBlock={() => {}}
-          isBlockActive={false}
-          allSelected={false}
+          isBlockActive={activeBlockId === block.id}
+          allSelected={allSelected}
           bulletNumber={bulletNumber}
           onConvertToSubtype={onConvertToSubtype}
           lineHeight={1.6}
@@ -124,7 +126,7 @@ function LayoutCellBlock({
   return (
     <div
       ref={blockRef}
-      className={`relative group/cell transition-opacity ${isDragging ? 'opacity-30' : ''}`}
+      className={`relative group/cell transition-all duration-100 rounded-[6px] ${isDragging ? 'opacity-30' : isActive ? 'bg-[#dce8ff]' : ''}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -149,6 +151,7 @@ function LayoutCellBlock({
 export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlockRef, hoveredColKey,
   colDropInfo, draggingColBlockId, onColDragHandleMouseDown,
   onUpdateBlock, onUpdateText, onFocusBlock,
+  activeBlockId, allSelected,
   onSlashTrigger, onSlashClose, slashMenuRef, slashBlockId, onCreateColumnBlock,
   onColumnEnter, onColumnBackspace, onColumnArrow, onConvertToSubtype,
   config, findWidgetDef, selectedWidget, onCardClick, onDeleteBlock }) {
@@ -205,7 +208,7 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
   }, [block.id, onUpdateBlock]);
 
   return (
-    <div className="w-full py-1">
+    <div className="w-full py-[5px]">
       {/* 열 컨테이너 */}
       <div ref={containerRef} className="flex w-full">
         {Array.from({ length: cols }, (_, colIdx) => {
@@ -222,7 +225,7 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
                 data-layout-col="true"
                 data-layout-id={block.id}
                 data-col-idx={String(colIdx)}
-                className={`rounded-[4px] transition-colors px-2 py-1 cursor-text
+                className={`rounded-[4px] transition-colors px-2 cursor-text
                   ${isHover ? 'bg-[#eef4ff]' : ''}`}
                 style={{ width: `${width}%`, minHeight: minHeight || undefined }}
                 onClick={(e) => {
@@ -255,7 +258,7 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
                     {isHover ? '여기에 놓기' : '텍스트를 입력하세요'}
                   </div>
                 ) : (
-                  <div className="space-y-1 cursor-text pb-6">
+                  <div className="space-y-1 cursor-text">
                     {(() => {
                       const thisColKey = `${block.id}::${colIdx}`;
                       const isActiveCol = colDropInfo?.colKey === thisColKey;
@@ -268,6 +271,8 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
                             block={b}
                             onUpdateBlock={onUpdateBlock}
                             onUpdateText={onUpdateText}
+                            activeBlockId={activeBlockId}
+                            allSelected={allSelected}
                             onFocusBlock={onFocusBlock}
                             onEnterBlock={onColumnEnter ? (id) => onColumnEnter(id) : undefined}
                             onBackspaceBlock={onColumnBackspace ? (id, html) => onColumnBackspace(id, html) : undefined}
@@ -310,7 +315,7 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
                     resizeRef.current = { type: 'col', colIdx, startX: e.clientX, startWidths: [...colWidthsRef.current] };
                   }}
                 >
-                  <div className="w-px self-stretch bg-[#e2e5e9] group-hover:bg-[#3571ce] group-hover:w-[3px] transition-all rounded-full" />
+                  <div className="w-px h-[60%] my-auto bg-[#e2e5e9] group-hover:bg-[#3571ce] group-hover:w-[3px] transition-all rounded-full" />
                 </div>
               )}
             </React.Fragment>
@@ -318,18 +323,6 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
         })}
       </div>
 
-      {/* 높이 조절 핸들 (호버 시 표시) */}
-      <div
-        className="h-[12px] cursor-row-resize flex items-center justify-center group mt-0.5"
-        onMouseDown={e => {
-          e.preventDefault();
-          document.body.style.userSelect = 'none';
-          const curH = containerRef.current?.getBoundingClientRect().height || 0;
-          resizeRef.current = { type: 'height', startY: e.clientY, startHeight: minHeightRef.current || curH };
-        }}
-      >
-        <div className="w-8 h-[3px] rounded-full opacity-0 group-hover:opacity-100 bg-[#3571ce] transition-opacity" />
-      </div>
     </div>
   );
 }
