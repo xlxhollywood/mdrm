@@ -29,17 +29,20 @@ export default function WordCanvas({
   const paperRef        = useRef(null);
   const blockRefs       = useRef([]);
 
-  const [hoveredBlockId, setHoveredBlockId] = useState(null);
-  const [activeBlockId,  setActiveBlockId]  = useState(null);
-  const [allSelected,    setAllSelected]    = useState(false);
-  const [plusMenu,       setPlusMenu]       = useState(null);
+  const [hoveredBlockId,   setHoveredBlockId]   = useState(null);
+  const [activeBlockId,    setActiveBlockId]    = useState(null);
+  const [allSelected,      setAllSelected]      = useState(false);
+  const [selectedBlockIds, setSelectedBlockIds] = useState(new Set());
+  const [dragSelRect,      setDragSelRect]      = useState(null); // { x1,y1,x2,y2 } in viewport coords
+  const [plusMenu,         setPlusMenu]         = useState(null);
   const [slashMenu,        setSlashMenu]        = useState(null);
-  const [tableSizePicker,  setTableSizePicker]  = useState(null); // { blockId, blockIdx, anchorRect }
-  const [layoutPicker,     setLayoutPicker]     = useState(null); // { blockId, blockIdx, anchorRect }
-  const [tableSync,        setTableSync]        = useState(0);   // 행/열 이동 후 DOM 강제 동기화 트리거
-  const slashMenuRef    = useRef(null);
+  const [tableSizePicker,  setTableSizePicker]  = useState(null);
+  const [layoutPicker,     setLayoutPicker]     = useState(null);
+  const [tableSync,        setTableSync]        = useState(0);
+  const slashMenuRef      = useRef(null);
   const prevTableCellsRef = useRef({});
   const pendingResetFocus = useRef(false);
+  const dragSelStartRef   = useRef(null); // { startX, startY }
 
   const layoutColRefsMap  = useRef({});
   const colBlockRefsMap   = useRef({});
@@ -221,6 +224,38 @@ export default function WordCanvas({
     paper.addEventListener('mousemove', onMove);
     paper.addEventListener('mouseleave', onLeave);
     return () => { paper.removeEventListener('mousemove', onMove); paper.removeEventListener('mouseleave', onLeave); };
+  }, [docBlocks]);
+
+  // 드래그 멀티 블록 선택
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragSelStartRef.current) return;
+      const { startX, startY } = dragSelStartRef.current;
+      const x1 = Math.min(startX, e.clientX);
+      const y1 = Math.min(startY, e.clientY);
+      const x2 = Math.max(startX, e.clientX);
+      const y2 = Math.max(startY, e.clientY);
+      if (x2 - x1 < 4 && y2 - y1 < 4) return;
+      setDragSelRect({ x1, y1, x2, y2 });
+      const ids = new Set();
+      blockRefs.current.forEach((el, i) => {
+        if (!el || el.style.display === 'none') return;
+        const r = el.getBoundingClientRect();
+        if (r.right > x1 && r.left < x2 && r.bottom > y1 && r.top < y2) {
+          const block = docBlocks[i];
+          if (block && !block.layoutRef) ids.add(block.id);
+        }
+      });
+      setSelectedBlockIds(ids);
+    };
+    const onUp = () => {
+      if (!dragSelStartRef.current) return;
+      dragSelStartRef.current = null;
+      setDragSelRect(null);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, [docBlocks]);
 
   // pendingFocus 처리
@@ -631,6 +666,19 @@ export default function WordCanvas({
 
   return (
     <>
+      {dragSelRect && dragSelRect.x2 - dragSelRect.x1 > 4 && (
+        <div
+          className="fixed pointer-events-none z-50 rounded-[3px]"
+          style={{
+            left:   dragSelRect.x1,
+            top:    dragSelRect.y1,
+            width:  dragSelRect.x2 - dragSelRect.x1,
+            height: dragSelRect.y2 - dragSelRect.y1,
+            background: 'rgba(53,113,206,0.10)',
+            border: '1px solid rgba(53,113,206,0.35)',
+          }}
+        />
+      )}
       <FloatingToolbar />
       {plusMenu && (
         <BlockPlusMenu
@@ -671,7 +719,21 @@ export default function WordCanvas({
         tabIndex={-1}
         className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10 outline-none"
         style={{ width: docW, minHeight: docH, padding: pad }}
-        onClick={(e) => { onDeselectWidget(e); setActiveBlockId(null); setAllSelected(false); }}
+        onClick={(e) => { onDeselectWidget(e); setActiveBlockId(null); setAllSelected(false); setSelectedBlockIds(new Set()); }}
+        onMouseDown={(e) => {
+          if (e.button !== 0) return;
+          if (
+            e.target.isContentEditable ||
+            e.target.closest('[contenteditable="true"]') ||
+            e.target.closest('button') ||
+            e.target.closest('[data-text-id]') ||
+            e.target.closest('[data-layout-col]')
+          ) return;
+          dragSelStartRef.current = { startX: e.clientX, startY: e.clientY };
+          setSelectedBlockIds(new Set());
+          setActiveBlockId(null);
+          setAllSelected(false);
+        }}
         onKeyDown={(e) => {
           const sel = window.getSelection();
           const container = e.currentTarget;
@@ -726,6 +788,15 @@ export default function WordCanvas({
             setActiveBlockId(null);
             return;
           }
+          if (selectedBlockIds.size > 0 && (e.key === 'Backspace' || e.key === 'Delete')) {
+            e.preventDefault();
+            const ids = [...selectedBlockIds];
+            setSelectedBlockIds(new Set());
+            pendingResetFocus.current = true;
+            onDeleteBlocksInRange(null, ids);
+            return;
+          }
+          if (selectedBlockIds.size > 0) setSelectedBlockIds(new Set());
           if (allSelected && (e.key === 'Backspace' || e.key === 'Delete')) {
             e.preventDefault();
             setAllSelected(false);
@@ -782,7 +853,7 @@ export default function WordCanvas({
                 className={`relative rounded-[6px] transition-all duration-100
                   ${draggingIdx === i
                     ? 'opacity-40 bg-[#e8f0fc] shadow-[0_2px_12px_rgba(53,113,206,0.18)] cursor-grabbing scale-[0.99]'
-                    : allSelected || activeBlockId === block.id ? 'bg-[#dce8ff]' : ''}`}
+                    : allSelected || activeBlockId === block.id || selectedBlockIds.has(block.id) ? 'bg-[#dce8ff]' : ''}`}
               >
                 {/* 드래그 핸들 + + 버튼 */}
                 {(() => {

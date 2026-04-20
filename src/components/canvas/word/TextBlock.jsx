@@ -176,7 +176,7 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
       style={{
         color: isSlashOpen ? '#0056a4' : block.subtype === 'quote' ? '#5b646f' : '#1a222b',
         fontStyle: block.subtype === 'quote' ? 'italic' : undefined,
-        fontSize: '13px',
+        fontSize: '14px',
         lineHeight: lineHeight ?? 1.6,
         letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
         ...headingStyle,
@@ -254,7 +254,7 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
     );
   }
   return (
-    <div className="flex items-start min-h-[32px]">
+    <div className="flex items-center min-h-[32px]">
       {editableDiv}
     </div>
   );
