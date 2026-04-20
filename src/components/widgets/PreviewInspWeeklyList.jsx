@@ -24,16 +24,58 @@ const SortIcon = () => (
   </svg>
 );
 
-export default function PreviewInspWeeklyList() {
+const W = 300, H = 130, CX = 55, CY = H / 2;
+
+function SummaryChart({ summary, total }) {
+  const r = 48, ri = r * 0.56;
+  let angle = -Math.PI / 2;
+  const slices = summary.map(d => {
+    const sweep = (d.count / total) * 2 * Math.PI;
+    const toXY = (a, rad) => [CX + rad * Math.cos(a), CY + rad * Math.sin(a)];
+    const [x1o, y1o] = toXY(angle, r);
+    const [x1i, y1i] = toXY(angle, ri);
+    angle += sweep;
+    const [x2o, y2o] = toXY(angle, r);
+    const [x2i, y2i] = toXY(angle, ri);
+    const lg = sweep > Math.PI ? 1 : 0;
+    return {
+      d: `M ${x1i} ${y1i} L ${x1o} ${y1o} A ${r} ${r} 0 ${lg} 1 ${x2o} ${y2o} L ${x2i} ${y2i} A ${ri} ${ri} 0 ${lg} 0 ${x1i} ${y1i} Z`,
+      color: d.color,
+    };
+  });
+  const LX = CX + 58;
+  return (
+    <div className="w-full bg-white px-3 pt-3 pb-2 border-b border-[#eaedf1]">
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
+        {slices.map((s, i) => <path key={i} d={s.d} fill={s.color} />)}
+        <text x={CX} y={CY - 5} fontSize="13" fontWeight="bold" fill="#1a222b" textAnchor="middle">{total}</text>
+        <text x={CX} y={CY + 8}  fontSize="8"  fill="#8a9299"   textAnchor="middle">총 건수</text>
+        {summary.map((d, i) => {
+          const y = CY - 22 + i * 22;
+          return (
+            <g key={d.label}>
+              <circle cx={LX} cy={y} r="5" fill={d.color} />
+              <text x={LX + 10} y={y + 4} fontSize="10" fill="#5b646f">{d.label}</text>
+              <text x={LX + 60} y={y + 4} fontSize="11" fontWeight="bold" fill="#1a222b" textAnchor="end">{d.count}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+export default function PreviewInspWeeklyList({ showSummary }) {
   const total = ITEMS.length;
   const summary = [
     { label: '정상',   color: '#00bc7d', count: ITEMS.filter(i => i.result === '정상').length },
-    { label: '비정상',   color: '#fd9a00', count: ITEMS.filter(i => i.result === '비정상').length },
-    { label: '실패', color: '#fb2c36', count: ITEMS.filter(i => i.result === '실패').length },
+    { label: '비정상', color: '#fd9a00', count: ITEMS.filter(i => i.result === '비정상').length },
+    { label: '실패',   color: '#fb2c36', count: ITEMS.filter(i => i.result === '실패').length },
   ];
 
   return (
     <div className="w-full bg-white border border-[#e4e8ee] overflow-hidden">
+      {showSummary && <SummaryChart summary={summary} total={total} />}
       {/* 요약 */}
       <div className="flex items-center gap-[6px] px-4 h-[32px] bg-[#f8f9fb] border-b border-[#eaedf1]">
         <span className="text-[11px] text-[#9ba4ad]">총 {total}건</span>

@@ -97,6 +97,7 @@ export const WIDGET_CATEGORIES = {
         icon: '📋',
         viewTypes: [],
         hasPeriod: true,
+        hasSummaryToggle: true,
       },
       {
         id: 'insp-burndown',
@@ -130,6 +131,15 @@ export const WIDGET_CATEGORIES = {
   inspection: {
     label: '점검 작업',
     widgets: [
+      {
+        id: 'insp-summary',
+        name: '점검 결과 요약',
+        desc: '준수율 및 정상/비정상/실패 현황',
+        icon: '📊',
+        viewTypes: [],
+        hasPeriod: true,
+        hasSystemSelect: true,
+      },
       {
         id: 'insp-result',
         name: '점검 결과',

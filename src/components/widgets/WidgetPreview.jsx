@@ -5,6 +5,7 @@ import PreviewTable           from './PreviewTable';
 import PreviewFlowchart       from './PreviewFlowchart';
 import PreviewHistory         from './PreviewHistory';
 import PreviewInspResult      from './PreviewInspResult';
+import PreviewInspSummary     from './PreviewInspSummary';
 import PreviewInspSysList     from './PreviewInspSysList';
 import PreviewInspWeeklyList  from './PreviewInspWeeklyList';
 import PreviewInspBurndown    from './PreviewInspBurndown';
@@ -28,16 +29,16 @@ function WidgetPanel({ widgetId, viewType, title: titleProp, children }) {
   const { title: defaultTitle, viewTypeLabel } = getWidgetInfo(widgetId, viewType);
   const title = titleProp || defaultTitle;
   return (
-    <div className="w-full overflow-hidden shadow-[0_1px_5px_rgba(26,34,43,0.10)]">
-      <div className="bg-[#3571ce] h-[28px] px-[14px] flex items-center border-b border-[#2d62be] shrink-0">
-        <span className="text-[12px] font-semibold text-white">{title}</span>
+    <div className="w-full rounded-[10px] overflow-hidden border border-[#e4e8ee] shadow-[0_1px_5px_rgba(26,34,43,0.08)]">
+      <div className="bg-[#f8f9fb] h-[40px] px-[14px] flex items-center shrink-0">
+        <span className="text-[12px] font-semibold text-[#3d4e60]">{title}</span>
       </div>
       {children}
     </div>
   );
 }
 
-export default function WidgetPreview({ widgetId, viewType, title }) {
+export default function WidgetPreview({ widgetId, viewType, title, showSummary }) {
   const p = { showBorder: false, showLabel: false };
 
   let content;
@@ -65,6 +66,8 @@ export default function WidgetPreview({ widgetId, viewType, title }) {
     content = <PreviewHistory />;
 
   /* ── 점검 작업 위젯 ── */
+  } else if (widgetId === 'insp-summary') {
+    content = <PreviewInspSummary />;
   } else if (widgetId === 'insp-result') {
     content = <PreviewInspResult />;
   } else if (widgetId === 'insp-schedule') {
@@ -74,7 +77,7 @@ export default function WidgetPreview({ widgetId, viewType, title }) {
   } else if (widgetId === 'insp-sys-list') {
     content = <PreviewInspSysList />;
   } else if (widgetId === 'insp-weekly-list') {
-    content = <PreviewInspWeeklyList />;
+    content = <PreviewInspWeeklyList showSummary={showSummary} />;
   } else if (widgetId === 'insp-burndown') {
     content = <PreviewInspBurndown />;
   } else if (widgetId === 'insp-result-chart') {

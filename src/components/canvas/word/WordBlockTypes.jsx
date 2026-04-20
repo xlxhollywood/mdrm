@@ -34,7 +34,7 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
         onClick={(e) => { e.stopPropagation(); onClick(block.instanceId, widgetDef); }}
       >
         {showPreview
-          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} />
+          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} showSummary={cfg.showSummary} />
           : <WidgetPlaceholder widgetDef={widgetDef} />}
       </div>
       <button
@@ -225,7 +225,7 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
                 data-layout-col="true"
                 data-layout-id={block.id}
                 data-col-idx={String(colIdx)}
-                className={`rounded-[4px] transition-colors px-2 cursor-text
+                className={`rounded-[4px] transition-colors cursor-text
                   ${isHover ? 'bg-[#eef4ff]' : ''}`}
                 style={{ width: `${width}%`, minHeight: minHeight || undefined }}
                 onClick={(e) => {
@@ -308,7 +308,7 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
               {/* 열 너비 조절 핸들 */}
               {!isLast && (
                 <div
-                  className="w-[9px] shrink-0 cursor-col-resize flex items-stretch justify-center group self-stretch"
+                  className="w-[1px] shrink-0 cursor-col-resize flex items-stretch justify-center group self-stretch"
                   onMouseDown={e => {
                     e.preventDefault();
                     document.body.style.userSelect = 'none';

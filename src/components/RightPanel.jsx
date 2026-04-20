@@ -158,6 +158,26 @@ export default function RightPanel({
           </div>
         </>
 
+        {/* 요약 차트 토글 */}
+        {widgetDef.hasSummaryToggle && (
+          <>
+            <Sep />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[12px] font-medium text-dark">요약 차트</div>
+                <div className="text-[11px] text-muted mt-0.5">결과 도넛 차트 표시</div>
+              </div>
+              <button
+                onClick={() => onConfigChange(instanceId, { ...cfg, showSummary: !cfg.showSummary })}
+                className={`w-9 h-5 rounded-full transition-colors relative ${cfg.showSummary ? 'bg-primary' : 'bg-[#c0c7ce]'}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-150
+                  ${cfg.showSummary ? 'left-[18px]' : 'left-0.5'}`} />
+              </button>
+            </div>
+          </>
+        )}
+
         {/* 기간 설정 */}
         {widgetDef.hasPeriod && (
           <>
