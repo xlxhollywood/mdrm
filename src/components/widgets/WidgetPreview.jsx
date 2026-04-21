@@ -7,7 +7,8 @@ import PreviewHistory         from './PreviewHistory';
 import PreviewInspResult      from './PreviewInspResult';
 import PreviewInspSummary     from './PreviewInspSummary';
 import PreviewInspSysList     from './PreviewInspSysList';
-import PreviewInspWeeklyList  from './PreviewInspWeeklyList';
+import PreviewInspWeeklyList      from './PreviewInspWeeklyList';
+import PreviewInspWeeklyListTable from './PreviewInspWeeklyListTable';
 import PreviewInspBurndown    from './PreviewInspBurndown';
 import PreviewInspResultChart from './PreviewInspResultChart';
 import PreviewInspTimeline    from './PreviewInspTimeline';
@@ -38,7 +39,7 @@ function WidgetPanel({ widgetId, viewType, title: titleProp, children }) {
   );
 }
 
-export default function WidgetPreview({ widgetId, viewType, title, showSummary }) {
+export default function WidgetPreview({ widgetId, viewType, title, showSummary, headerRow = true, headerCol = false }) {
   const p = { showBorder: false, showLabel: false };
 
   let content;

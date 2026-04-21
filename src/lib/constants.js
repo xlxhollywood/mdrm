@@ -101,6 +101,14 @@ export const WIDGET_CATEGORIES = {
         hasSummaryToggle: true,
       },
       {
+        id: 'insp-weekly-list-table',
+        name: '주간 점검 목록 (테이블)',
+        desc: '편집 가능한 테이블 형식으로 삽입',
+        icon: '📋',
+        viewTypes: [],
+        isTableTemplate: true,
+      },
+      {
         id: 'insp-burndown',
         name: '번다운 차트',
         desc: '주간 점검 진행·잔여·실패 현황',

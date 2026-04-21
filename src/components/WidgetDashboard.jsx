@@ -18,19 +18,22 @@ const makeConfig = (def) => ({
 });
 
 /* ── 위젯 목록 아이템 ── */
-function WidgetListItem({ widget, onAdd }) {
+function WidgetListItem({ widget, onAdd, canvasMode }) {
+  const disabled = widget.isTableTemplate && canvasMode !== 'word';
   return (
     <div
-      onClick={() => onAdd(widget.id)}
-      className="flex items-center gap-2 px-4 py-[9px] cursor-pointer border-l-[3px] border-transparent
-        transition-colors hover:bg-primary-light hover:border-primary active:bg-blue-50"
+      onClick={() => !disabled && onAdd(widget.id)}
+      className={`flex items-center gap-2 px-4 py-[9px] border-l-[3px] border-transparent transition-colors
+        ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-primary-light hover:border-primary active:bg-blue-50'}`}
     >
       <div className="w-7 h-7 rounded bg-primary-light flex items-center justify-center shrink-0 text-[14px]">
         {widget.icon}
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[12px] font-medium text-dark truncate">{widget.name}</div>
-        <div className="text-[11px] text-muted mt-px truncate">{widget.desc}</div>
+        <div className="text-[11px] text-muted mt-px truncate">
+          {widget.isTableTemplate ? 'Word 모드 전용' : widget.desc}
+        </div>
       </div>
       <span className="text-[11px] text-border shrink-0">+</span>
     </div>
@@ -117,6 +120,41 @@ export default function WidgetDashboard() {
   }, []);
 
   const handleAddWidget = useCallback((widgetId) => {
+    // 테이블 템플릿 위젯: widget 블록 대신 pre-filled table 블록으로 삽입 (Word 모드 전용)
+    const def0 = findWidgetDef(widgetId);
+    if (def0?.isTableTemplate) {
+      if (canvasMode !== 'word') return;
+    }
+    if (widgetId === 'insp-weekly-list-table' && canvasMode === 'word') {
+      const tableId = `table-${Date.now()}`;
+      const tableBlock = {
+        id: tableId, type: 'table',
+        rows: 9, cols: 5,
+        headerRow: true, headerCol: false,
+        cells: {
+          '0,0': '#',  '0,1': '점검명',        '0,2': '대상 시스템',    '0,3': '결과',   '0,4': '점검일',
+          '1,0': '1',  '1,1': 'CPU 사용률 점검',  '1,2': 'MDRM-Web-01',  '1,3': '정상',   '1,4': '04-14',
+          '2,0': '2',  '2,1': '메모리 사용률',    '2,2': 'MDRM-Web-01',  '2,3': '비정상', '2,4': '04-14',
+          '3,0': '3',  '3,1': '디스크 여유 공간', '3,2': 'MDRM-Web-01',  '3,3': '정상',   '3,4': '04-14',
+          '4,0': '4',  '4,1': 'DB 연결 상태',    '4,2': 'MDRM-DB-01',   '4,3': '정상',   '4,4': '04-15',
+          '5,0': '5',  '5,1': '쿼리 응답시간',   '5,2': 'MDRM-DB-01',   '5,3': '실패',   '5,4': '04-15',
+          '6,0': '6',  '6,1': '포트 상태 점검',  '6,2': 'Switch-Core-01','6,3': '정상',   '6,4': '04-16',
+          '7,0': '7',  '7,1': '라우팅 테이블',   '7,2': 'Router-Main',  '7,3': '정상',   '7,4': '04-16',
+          '8,0': '8',  '8,1': 'BGP 세션 상태',   '8,2': 'Router-Main',  '8,3': '비정상', '8,4': '04-17',
+        },
+      };
+      setDocBlocks(prev => {
+        historyRef.current = [...historyRef.current.slice(-30), prev];
+        const activeId = activeBlockIdRef.current;
+        const activeIdx = activeId ? prev.findIndex(b => b.id === activeId) : -1;
+        if (activeIdx !== -1) {
+          const arr = [...prev]; arr.splice(activeIdx + 1, 0, tableBlock); return arr;
+        }
+        return [...prev, tableBlock];
+      });
+      return;
+    }
+
     const instanceId = `${widgetId}-${Date.now()}`;
     const def = findWidgetDef(widgetId);
     setConfig(prev => ({ ...prev, [instanceId]: makeConfig(def) }));
@@ -442,7 +480,7 @@ export default function WidgetDashboard() {
               ? Object.values(WIDGET_CATEGORIES).flatMap(c => c.widgets)
               : currentCategory.widgets
             ).map(widget => (
-              <WidgetListItem key={widget.id} widget={widget} onAdd={handleAddWidget} />
+              <WidgetListItem key={widget.id} widget={widget} onAdd={handleAddWidget} canvasMode={canvasMode} />
             ))}
           </div>
 

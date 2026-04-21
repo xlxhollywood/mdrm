@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import WidgetPreview from '../../widgets/WidgetPreview';
 import WidgetPlaceholder from '../WidgetPlaceholder';
 import TextBlock from './TextBlock';
@@ -34,7 +34,7 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
         onClick={(e) => { e.stopPropagation(); onClick(block.instanceId, widgetDef); }}
       >
         {showPreview
-          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} showSummary={cfg.showSummary} />
+          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} showSummary={cfg.showSummary} headerRow={cfg.headerRow !== false} headerCol={!!cfg.headerCol} />
           : <WidgetPlaceholder widgetDef={widgetDef} className="w-full min-h-[120px]" />}
       </div>
       <button
@@ -450,27 +450,94 @@ export function TableBlock({
   const { rows = 3, cols = 3, cells = {}, cellBg = {}, headerRow = true, headerCol = false } = block;
   const cellRefs     = useRef({});
   const colWidthsRef = useRef(null);
+  const rowHeightsRef = useRef(null);
   const tableWrapRef = useRef(null);
+  const tableRef     = useRef(null);
 
   const [colWidths, setColWidths] = useState(() =>
-    block.colWidths ?? Array.from({ length: cols }, () => 100)
+    block.colWidths ?? Array.from({ length: cols }, () => 100 / cols)
   );
-  const [draggingCol, setDraggingCol] = useState(null); // { col, startX, startWidth }
+  const [rowHeights, setRowHeights] = useState(() =>
+    block.rowHeights ?? Array.from({ length: rows }, () => null)
+  );
+  const [colBoundaryXs, setColBoundaryXs] = useState([]); // 열 경계 x 좌표 (오버레이용)
+  const [hovColHandle, setHovColHandle]   = useState(null); // 호버 중인 열 핸들 인덱스
+  const [draggingCol, setDraggingCol] = useState(null); // { col } — 시각 표시용
+  const [draggingRow, setDraggingRow] = useState(null); // { row } — 시각 표시용
   const [hovSepRow,   setHovSepRow]   = useState(null);
   const [hovSepCol,   setHovSepCol]   = useState(null);
   const [sel,         setSel]         = useState(null);  // { r1,r2,c1,c2 }
   const [isDragging,  setIsDragging]  = useState(false);
   const [dragOrigin,  setDragOrigin]  = useState(null);
   const [ctxMenu,     setCtxMenu]     = useState(null);  // { type, idx, rect }
+  const dragStartPosRef = useRef(null); // mousedown 위치 — 드래그 임계값 판단용
 
   /* 열 수 변경 시 colWidths 동기화 */
   useEffect(() => {
     setColWidths(prev => {
       if (prev.length === cols) return prev;
-      if (prev.length < cols) return [...prev, ...Array.from({ length: cols - prev.length }, () => 100)];
+      if (prev.length < cols) return [...prev, ...Array.from({ length: cols - prev.length }, () => 100 / cols)];
       return prev.slice(0, cols);
     });
   }, [cols]);
+
+  /* 행 수 변경 시 rowHeights 동기화 */
+  useEffect(() => {
+    setRowHeights(prev => {
+      if (prev.length === rows) return prev;
+      if (prev.length < rows) return [...prev, ...Array.from({ length: rows - prev.length }, () => null)];
+      return prev.slice(0, rows);
+    });
+  }, [rows]);
+
+  /* 열 너비 드래그 시작 (race condition 없이 즉시 리스너 등록) */
+  const startColResize = (e, colIdx) => {
+    e.preventDefault(); e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = colWidths[colIdx] ?? (100 / cols);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    setDraggingCol({ col: colIdx });
+    const onMove = (ev) => {
+      const tableWidth = tableWrapRef.current?.getBoundingClientRect().width || 600;
+      const w = Math.max(3, startWidth + ((ev.clientX - startX) / tableWidth) * 100);
+      setColWidths(prev => { const next = [...prev]; next[colIdx] = w; colWidthsRef.current = next; return next; });
+    };
+    const onUp = () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      setDraggingCol(null);
+      if (colWidthsRef.current) { onUpdateBlock(block.id, { colWidths: colWidthsRef.current }); colWidthsRef.current = null; }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  /* 행 높이 드래그 시작 */
+  const startRowResize = (e, rowIdx) => {
+    e.preventDefault(); e.stopPropagation();
+    const startY = e.clientY;
+    const startHeight = rowHeights[rowIdx] || 32;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'row-resize';
+    setDraggingRow({ row: rowIdx });
+    const onMove = (ev) => {
+      const h = Math.max(24, startHeight + (ev.clientY - startY));
+      setRowHeights(prev => { const next = [...prev]; next[rowIdx] = h; rowHeightsRef.current = next; return next; });
+    };
+    const onUp = () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      setDraggingRow(null);
+      if (rowHeightsRef.current) { onUpdateBlock(block.id, { rowHeights: rowHeightsRef.current }); rowHeightsRef.current = null; }
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   /* 구조 변경(삽입/삭제/이동) 후 DOM 콘텐츠 동기화 */
   useEffect(() => {
@@ -481,25 +548,23 @@ export function TableBlock({
     });
   }, [rows, cols, forceSync]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* 열 너비 드래그 */
-  useEffect(() => {
-    if (!draggingCol) return;
-    const onMove = (e) => {
-      const delta = e.clientX - draggingCol.startX;
-      const w = Math.max(50, draggingCol.startWidth + delta);
-      setColWidths(prev => {
-        const next = [...prev]; next[draggingCol.col] = w;
-        colWidthsRef.current = next; return next;
-      });
-    };
-    const onUp = () => {
-      if (colWidthsRef.current) onUpdateBlock(block.id, { colWidths: colWidthsRef.current });
-      setDraggingCol(null);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup',   onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [draggingCol]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* 열 경계 x 좌표 측정 — 오버레이 핸들 위치 계산용 */
+  useLayoutEffect(() => {
+    if (!tableRef.current || !tableWrapRef.current) return;
+    const wrapRect = tableWrapRef.current.getBoundingClientRect();
+    // 첫 번째 데이터 행(top-gutter 다음 행)의 td들로 경계 측정
+    const rows2 = tableRef.current.querySelectorAll('tbody tr');
+    const dataRow = rows2[1]; // index 0 = top-gutter, 1 = first data row
+    if (!dataRow) return;
+    const tds = Array.from(dataRow.querySelectorAll('td')).slice(1); // 왼쪽 거터 td 제외
+    // 마지막 열 오른쪽 경계는 불필요(표 끝), cols-1 개만 필요
+    const xs = tds.slice(0, tds.length - 1).map(td => {
+      const rect = td.getBoundingClientRect();
+      return rect.right - wrapRect.left;
+    });
+    setColBoundaryXs(xs);
+  }, [cols, colWidths, rows]);
 
   /* 셀 드래그 선택 종료 */
   useEffect(() => {
@@ -536,25 +601,22 @@ export function TableBlock({
   const isFullColSel = (c) =>
     sel && sel.c1 <= c && c <= sel.c2 && sel.r1 === 0 && sel.r2 === rows - 1;
 
-  /* 셀 마우스다운: sel을 초기화하고 드래그 원점만 기록 */
+  /* 셀 마우스다운: 다른 셀로 드래그 시 범위 선택 시작 */
   const handleCellMouseDown = (e, r, c) => {
     if (e.shiftKey && sel) {
-      // Shift+클릭: 기존 선택 확장
       setSel({ r1: Math.min(sel.r1, r), r2: Math.max(sel.r2, r), c1: Math.min(sel.c1, c), c2: Math.max(sel.c2, c) });
     } else {
-      // 새 드래그 시작 — 아직 sel은 설정하지 않음 (다른 셀에 진입 시 설정)
       setSel(null);
       setDragOrigin({ r, c });
       setIsDragging(true);
+      dragStartPosRef.current = { x: e.clientX, y: e.clientY };
     }
     setCtxMenu(null);
   };
 
-  /* 셀 마우스엔터: 다른 셀로 진입할 때만 범위 선택 시작 */
+  /* 셀 마우스엔터: 드래그 중 진입한 셀 기준으로 범위 갱신 */
   const handleCellMouseEnter = (r, c) => {
     if (!isDragging || !dragOrigin) return;
-    if (r === dragOrigin.r && c === dragOrigin.c) return; // 원점 셀 복귀 → 선택 해제
-    // 텍스트 드래그 취소하고 셀 범위 선택으로 전환
     window.getSelection()?.removeAllRanges();
     setSel({
       r1: Math.min(dragOrigin.r, r), r2: Math.max(dragOrigin.r, r),
@@ -581,7 +643,28 @@ export function TableBlock({
   };
 
   return (
-    <div ref={tableWrapRef} className="py-1 overflow-x-auto" style={{ cursor: draggingCol ? 'col-resize' : undefined }} onClick={e => e.stopPropagation()}>
+    <div ref={tableWrapRef} className="py-1 overflow-x-auto" style={{ position: 'relative', cursor: draggingCol ? 'col-resize' : draggingRow ? 'row-resize' : undefined }} onClick={e => e.stopPropagation()}>
+      {/* 열 너비 조절 오버레이 핸들 — 표 전체 높이에 걸쳐 렌더링 */}
+      {colBoundaryXs.map((x, i) => (
+        <div
+          key={i}
+          onMouseDown={e => startColResize(e, i)}
+          onMouseEnter={() => setHovColHandle(i)}
+          onMouseLeave={() => setHovColHandle(null)}
+          style={{
+            position: 'absolute', top: 0, bottom: 0,
+            left: x - 6, width: 12,
+            cursor: 'col-resize', zIndex: 40,
+            display: 'flex', alignItems: 'stretch',
+          }}
+        >
+          <div style={{
+            margin: '0 auto', width: 2,
+            background: (draggingCol?.col === i || hovColHandle === i) ? '#0056a4' : 'transparent',
+            transition: 'background 0.1s',
+          }} />
+        </div>
+      ))}
       {ctxMenu && (
         <TableCtxMenu
           type={ctxMenu.type}
@@ -598,12 +681,13 @@ export function TableBlock({
       )}
 
       <table
-        className="border-collapse"
-        style={{ tableLayout: 'fixed', userSelect: isDragging ? 'none' : undefined }}
+        ref={tableRef}
+        className="border-collapse w-full"
+        style={{ tableLayout: 'fixed', userSelect: (isDragging && sel && (sel.r1 !== sel.r2 || sel.c1 !== sel.c2)) ? 'none' : undefined }}
       >
         <colgroup>
           <col style={{ width: 16 }} />
-          {Array.from({ length: cols }, (_, c) => <col key={c} style={{ width: colWidths[c] ?? 100 }} />)}
+          {Array.from({ length: cols }, (_, c) => <col key={c} style={{ width: `${colWidths[c] ?? (100 / cols)}%` }} />)}
         </colgroup>
         <tbody>
           {/* 상단 거터: 열 삽입 포인트 + 열 선택 밴드 */}
@@ -653,8 +737,8 @@ export function TableBlock({
             const gutterSkip     = isFullRowRange && r > sel.r1 && r <= sel.r2;
             const gutterSpan     = isRowAnchor ? sel.r2 - sel.r1 + 1 : 1;
             return (
-            <tr key={r}>
-              {/* 좌측 거터: 행 삽입 포인트 + 행 선택 밴드 */}
+            <tr key={r} style={rowHeights[r] ? { height: rowHeights[r] } : undefined}>
+              {/* 좌측 거터: 행 삽입 포인트 + 행 선택 밴드 + 행 높이 조절 핸들 */}
               {!gutterSkip && (
                 <td
                   rowSpan={gutterSpan}
@@ -675,13 +759,24 @@ export function TableBlock({
                       </svg>
                     </button>
                   ) : (
-                    <SepDot
-                      hovered={hovSepRow === r}
-                      onClick={() => onAddRow?.(block.id, r)}
-                      onEnter={() => setHovSepRow(r)}
-                      onLeave={() => setHovSepRow(null)}
-                    />
+                    <div style={{ position: 'absolute', inset: '0 0 8px 0' }}>
+                      <SepDot
+                        hovered={hovSepRow === r}
+                        onClick={() => onAddRow?.(block.id, r)}
+                        onEnter={() => setHovSepRow(r)}
+                        onLeave={() => setHovSepRow(null)}
+                      />
+                    </div>
                   )}
+                  {/* 행 높이 조절 핸들 */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-[8px] cursor-row-resize z-20 group/rowresize"
+                    style={{ pointerEvents: 'auto' }}
+                    onMouseDown={e => startRowResize(e, r)}
+                  >
+                    <div className={`w-full h-[3px] mt-auto transition-colors
+                      ${draggingRow?.row === r ? 'bg-[#0056a4]' : 'group-hover/rowresize:bg-[#0056a4]/50'}`} />
+                  </div>
                 </td>
               )}
 
@@ -700,6 +795,14 @@ export function TableBlock({
                     style={{ background: selBg }}
                     onMouseDown={e => { handleCellMouseDown(e, r, c); }}
                     onMouseEnter={() => handleCellMouseEnter(r, c)}
+                    onMouseLeave={e => {
+                      if (!isDragging || !dragOrigin || dragOrigin.r !== r || dragOrigin.c !== c || sel || !dragStartPosRef.current) return;
+                      const dx = e.clientX - dragStartPosRef.current.x;
+                      const dy = e.clientY - dragStartPosRef.current.y;
+                      if (Math.sqrt(dx * dx + dy * dy) < 8) return;
+                      window.getSelection()?.removeAllRanges();
+                      setSel({ r1: r, r2: r, c1: c, c2: c });
+                    }}
                   >
                     <div
                       ref={el => {
@@ -733,19 +836,6 @@ export function TableBlock({
                       }}
                     />
 
-                    {/* 열 너비 조절 핸들 (첫 행만) */}
-                    {r === 0 && (
-                      <div
-                        onMouseDown={e => {
-                          e.preventDefault(); e.stopPropagation();
-                          setDraggingCol({ col: c, startX: e.clientX, startWidth: colWidths[c] ?? 100 });
-                        }}
-                        className="absolute top-0 right-0 w-[4px] h-full cursor-col-resize z-10 group"
-                      >
-                        <div className={`w-full h-full transition-colors
-                          ${draggingCol?.col === c ? 'bg-[#0056a4]' : 'group-hover:bg-[#0056a4]/40'}`} />
-                      </div>
-                    )}
                   </td>
                 );
               })}

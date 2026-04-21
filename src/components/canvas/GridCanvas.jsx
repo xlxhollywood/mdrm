@@ -22,7 +22,7 @@ function PlacedCard({ instance, widgetDef, config, isActive, isDragOver, isDragg
       onClick={() => !isDragging && onClick(instance.id, widgetDef)}
     >
       {showPreview
-        ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} showSummary={cfg.showSummary} />
+        ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} showSummary={cfg.showSummary} headerRow={cfg.headerRow !== false} headerCol={!!cfg.headerCol} />
         : <WidgetPlaceholder widgetDef={widgetDef} />}
 
       {isActive && (
