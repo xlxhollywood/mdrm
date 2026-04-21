@@ -208,6 +208,12 @@ export default function WordCanvas({
     const paper = paperRef.current;
     if (!paper) return;
     const onMove = (e) => {
+      // 테이블 셀 내부에서 마우스 이동 시 블록 호버 비활성화
+      const target = e.target;
+      if (target?.closest?.('td') && target.closest('[data-cell-id]')) {
+        setHoveredBlockId(null);
+        return;
+      }
       let found = null;
       for (let i = 0; i < blockRefs.current.length; i++) {
         const el = blockRefs.current[i];
@@ -921,8 +927,8 @@ export default function WordCanvas({
                   <TableBlock
                     block={block}
                     onUpdateBlock={onUpdateBlock}
-                    onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); setActiveBlockId(null); }}
-                    onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); }}
+                    onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); setActiveBlockId(null); setSelectedBlockIds(new Set()); }}
+                    onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); setSelectedBlockIds(new Set()); }}
                     onAddRow={handleAddTableRow}
                     onAddCol={handleAddTableCol}
                     onDeleteRow={handleDeleteTableRow}
