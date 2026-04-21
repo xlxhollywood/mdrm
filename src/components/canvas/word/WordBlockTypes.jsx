@@ -35,7 +35,7 @@ export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDel
       >
         {showPreview
           ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} showSummary={cfg.showSummary} />
-          : <WidgetPlaceholder widgetDef={widgetDef} />}
+          : <WidgetPlaceholder widgetDef={widgetDef} className="w-full min-h-[120px]" />}
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}

@@ -1,6 +1,6 @@
-export default function WidgetPlaceholder({ widgetDef }) {
+export default function WidgetPlaceholder({ widgetDef, className = 'w-[274px] h-[153px]' }) {
   return (
-    <div className="w-[274px] h-[153px] bg-white border-2 border-dashed border-border rounded-[10px] flex flex-col items-center justify-center gap-2 shrink-0">
+    <div className={`${className} bg-white border-2 border-dashed border-border rounded-[10px] flex flex-col items-center justify-center gap-2`}>
       <span className="text-[26px]">{widgetDef.icon}</span>
       <span className="text-[12px] font-medium text-dark">{widgetDef.name}</span>
       <span className="text-[10px] text-muted text-center leading-[1.5]">
