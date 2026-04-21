@@ -79,11 +79,11 @@ export function createInspReportTemplate() {
       const c2 = uid('callout');
       return [
         { id: layoutId, type: 'layout', cols: 2 },
-        { id: c1, type: 'text', subtype: 'callout', calloutIcon: '🚨',
+        { id: c1, type: 'text', subtype: 'callout', calloutIcon: '🚨', calloutBg: '#fef2f2', calloutBorder: '#fecaca',
           html: '<b>icensga01 — 일반행정DB#1</b><br/><b>현상:</b> 4/16(수) 03:22 커널 로그에 I/O 에러 다수 발생<br/><b>원인:</b> 스토리지 HBA 포트 간헐적 링크 다운<br/><b>조치:</b> HBA 펌웨어 업데이트 및 멀티패스 경로 전환 (4/16 09:15 완료)<br/><b>현재:</b> 정상 운영 중, 48시간 모니터링 후 종결 예정',
           layoutRef: { layoutId, colIdx: 0 },
         },
-        { id: c2, type: 'text', subtype: 'callout', calloutIcon: '⚠️',
+        { id: c2, type: 'text', subtype: 'callout', calloutIcon: '⚠️', calloutBg: '#fff7ed', calloutBorder: '#fed7aa',
           html: '<b>icenspp02 — 업무포털DB#2</b><br/><b>현상:</b> 메모리 사용률 92% 지속 (임계치 90%)<br/><b>원인:</b> 배치 쿼리 실행 후 PGA 미반환<br/><b>조치:</b> DBA팀 협조하여 세션 정리 및 PGA_AGGREGATE_TARGET 조정<br/><b>현재:</b> 메모리 사용률 71%로 안정화',
           layoutRef: { layoutId, colIdx: 1 },
         },

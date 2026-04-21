@@ -3,14 +3,25 @@
 import { useState, useRef, useEffect } from 'react';
 
 const CALLOUT_EMOJIS = ['💡', '⚠️', '❌', '✅', '📌', '🔔', '📋', '🛠️', '🚨', '💬', '📎', '🔍'];
+const CALLOUT_COLORS = [
+  { bg: '#f0f4ff', border: '#c5d3f0', label: '파랑' },
+  { bg: '#fef2f2', border: '#fecaca', label: '빨강' },
+  { bg: '#fff7ed', border: '#fed7aa', label: '주황' },
+  { bg: '#fefce8', border: '#fde68a', label: '노랑' },
+  { bg: '#f0fdf4', border: '#bbf7d0', label: '초록' },
+  { bg: '#faf5ff', border: '#e9d5ff', label: '보라' },
+  { bg: '#f8fafc', border: '#e2e8f0', label: '회색' },
+];
 
 function CalloutWrapper({ block, onUpdateBlock, children }) {
   const [showPicker, setShowPicker] = useState(false);
   const emoji = block.calloutIcon || '💡';
+  const bgColor = block.calloutBg || '#f0f4ff';
+  const borderColor = block.calloutBorder || '#c5d3f0';
 
   return (
     <div className="px-1">
-    <div className="flex items-start min-h-[32px] gap-2 px-3 py-2 rounded-[8px] bg-[#f0f4ff] border border-[#c5d3f0]">
+    <div className="flex items-start min-h-[32px] gap-2 px-3 py-2 rounded-[8px]" style={{ background: bgColor, border: `1px solid ${borderColor}` }}>
       <div className="relative shrink-0">
         <button
           onMouseDown={e => e.preventDefault()}
@@ -19,18 +30,34 @@ function CalloutWrapper({ block, onUpdateBlock, children }) {
         >{emoji}</button>
         {showPicker && (
           <div
-            className="absolute top-full left-0 mt-1 bg-white border border-[#d9dfe5] rounded-[8px] shadow-lg p-2 z-50 flex flex-wrap gap-1 w-[160px]"
+            className="absolute top-full left-0 mt-1 bg-white border border-[#d9dfe5] rounded-[8px] shadow-lg p-2.5 z-50 w-[180px]"
             onMouseDown={e => e.stopPropagation()}
           >
-            {CALLOUT_EMOJIS.map(e => (
-              <button
-                key={e}
-                onMouseDown={ev => ev.preventDefault()}
-                onClick={() => { onUpdateBlock?.(block.id, { calloutIcon: e }); setShowPicker(false); }}
-                className={`w-[28px] h-[28px] flex items-center justify-center rounded hover:bg-[#f0f4ff] text-[16px] transition-colors
-                  ${emoji === e ? 'bg-[#dce8ff]' : ''}`}
-              >{e}</button>
-            ))}
+            <div className="text-[10px] text-[#64748b] font-medium mb-1.5">아이콘</div>
+            <div className="flex flex-wrap gap-1">
+              {CALLOUT_EMOJIS.map(e => (
+                <button
+                  key={e}
+                  onMouseDown={ev => ev.preventDefault()}
+                  onClick={() => { onUpdateBlock?.(block.id, { calloutIcon: e }); setShowPicker(false); }}
+                  className={`w-[28px] h-[28px] flex items-center justify-center rounded hover:bg-[#f0f4ff] text-[16px] transition-colors
+                    ${emoji === e ? 'bg-[#dce8ff]' : ''}`}
+                >{e}</button>
+              ))}
+            </div>
+            <div className="text-[10px] text-[#64748b] font-medium mt-2.5 mb-1.5">배경색</div>
+            <div className="flex flex-wrap gap-1.5">
+              {CALLOUT_COLORS.map(c => (
+                <button
+                  key={c.bg}
+                  onMouseDown={ev => ev.preventDefault()}
+                  onClick={() => { onUpdateBlock?.(block.id, { calloutBg: c.bg, calloutBorder: c.border }); setShowPicker(false); }}
+                  title={c.label}
+                  className={`w-[20px] h-[20px] rounded-[4px] hover:scale-110 transition-transform ${bgColor === c.bg ? 'ring-2 ring-[#3571ce] ring-offset-1' : ''}`}
+                  style={{ background: c.bg, border: `1px solid ${c.border}` }}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
