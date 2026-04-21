@@ -773,13 +773,9 @@ export default function WordCanvas({
             return;
           }
           if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-            const activeEl = document.activeElement;
-            const isInLayoutCol = !!activeEl?.closest?.('[data-layout-col]');
-            if (!activeEl?.isContentEditable || isInLayoutCol) {
-              e.preventDefault();
-              onUndo?.();
-              return;
-            }
+            e.preventDefault();
+            onUndo?.();
+            return;
           }
           if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             e.preventDefault();
@@ -940,7 +936,7 @@ export default function WordCanvas({
                     hoveredColKey={(draggingIdx !== null || draggingColBlockId !== null) ? hoveredColKey : null}
                     colDropInfo={(draggingIdx !== null || draggingColBlockId !== null) ? colDropInfo : null}
                     draggingColBlockId={draggingColBlockId}
-                    onColDragHandleMouseDown={handleColDragHandleMouseDown}
+                    onColDragHandleMouseDown={(e, blockId) => { setActiveBlockId(blockId); handleColDragHandleMouseDown(e, blockId); }}
                     onUpdateBlock={onUpdateBlock}
                     onUpdateText={onUpdateText}
                     activeBlockId={activeBlockId}
