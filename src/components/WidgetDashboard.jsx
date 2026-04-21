@@ -58,6 +58,9 @@ export default function WidgetDashboard() {
   const selectedTableRef = useRef(null);
   useEffect(() => { selectedTableRef.current = selectedTable; }, [selectedTable]);
 
+  // ── 현재 활성 블록 ID 추적 (WordCanvas → 콜백으로 동기화) ──
+  const activeBlockIdRef = useRef(null);
+
   // ── 레이아웃 열 커서 추적 (focusin 기준 — 프로그래매틱 포커스도 감지) ──
   const activeLayoutContextRef = useRef(null);
   useEffect(() => {
@@ -137,6 +140,14 @@ export default function WidgetDashboard() {
             ? prev.filter(b => !emptyInCol.includes(b))
             : prev;
           return [...base, newBlock];
+        }
+        // 활성 블록 다음에 삽입, 없으면 맨 끝
+        const activeId = activeBlockIdRef.current;
+        const activeIdx = activeId ? prev.findIndex(b => b.id === activeId) : -1;
+        if (activeIdx !== -1) {
+          const arr = [...prev];
+          arr.splice(activeIdx + 1, 0, newBlock);
+          return arr;
         }
         return [...prev, newBlock];
       });
@@ -506,6 +517,7 @@ export default function WidgetDashboard() {
               onMoveColBlock={handleMoveColBlock}
               onCellFocus={handleCellFocus}
               onUndo={handleUndo}
+              onActiveBlockChange={(id) => { activeBlockIdRef.current = id; }}
             />
           )}
         </div>

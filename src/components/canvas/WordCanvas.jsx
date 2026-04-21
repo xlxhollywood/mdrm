@@ -15,7 +15,7 @@ import useDragBlocks     from './word/useDragBlocks';
 export default function WordCanvas({
   docBlocks, config, selectedWidget, docConfig, findWidgetDef,
   onCardClick, onDeleteBlock, onUpdateText, onDeselectWidget, onReorderBlocks, onInsertText, onDeleteBlocksInRange,
-  onInsertBlock, onUpdateBlock, onCellFocus, onUndo, onDropColToMain, onMoveColBlock,
+  onInsertBlock, onUpdateBlock, onCellFocus, onUndo, onDropColToMain, onMoveColBlock, onActiveBlockChange,
 }) {
   const paper = PAPER_SIZES[docConfig.paperSize] || PAPER_SIZES.A4;
   const isLand = docConfig.orientation === 'landscape';
@@ -191,7 +191,8 @@ export default function WordCanvas({
     if (activeBlockId && !document.activeElement?.isContentEditable && paperRef.current) {
       paperRef.current.focus({ preventScroll: true });
     }
-  }, [activeBlockId]);
+    onActiveBlockChange?.(activeBlockId);
+  }, [activeBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 최초 마운트 시 첫 텍스트 블록 포커스
   useEffect(() => {
@@ -879,7 +880,7 @@ export default function WordCanvas({
                     onEnterAfterBlock={handleEnterBlock}
                     onBackspaceAtStart={handleBackspaceAtStart}
                     onArrowOut={handleArrow}
-                    onFocusBlock={() => setAllSelected(false)}
+                    onFocusBlock={() => { setAllSelected(false); onActiveBlockChange?.(block.id); }}
                     lineHeight={docConfig.lineHeight}
                     letterSpacing={docConfig.letterSpacing}
                   />
@@ -891,7 +892,7 @@ export default function WordCanvas({
                     onEnter={handleEnterBlock}
                     onArrow={handleArrow}
                     onBackspaceAtStart={handleBackspaceAtStart}
-                    onFocusBlock={() => { setAllSelected(false); if (slashMenu?.blockId !== block.id) setSlashMenu(null); }}
+                    onFocusBlock={() => { setAllSelected(false); onActiveBlockChange?.(block.id); if (slashMenu?.blockId !== block.id) setSlashMenu(null); }}
                     onBlurBlock={() => {}}
                     isBlockActive={activeBlockId === block.id}
                     allSelected={allSelected}
