@@ -330,30 +330,10 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
 /* ── 행/열 구분선 삽입 포인트 ── */
 /* position:absolute 로 부모 td 전체를 호버 영역으로 사용 */
 /* align: 'row' → 하단 중앙 (행 거터), 'col' → 하단 우측 (열 거터) */
-function SepDot({ hovered, onClick, onEnter, onLeave, align = 'row' }) {
-  return (
-    <div
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
-      onMouseDown={e => e.preventDefault()}
-      onClick={e => { e.stopPropagation(); onClick(); }}
-      style={{ position: 'absolute', inset: 0 }}
-      className={`cursor-pointer flex items-end pb-[2px] ${align === 'col' ? 'justify-end pr-[2px]' : 'justify-center'}`}
-    >
-      <div className={`rounded-full transition-all duration-100 select-none flex items-center justify-center
-        ${hovered ? 'w-[14px] h-[14px] bg-[#0056a4] shadow-sm' : 'w-[4px] h-[4px] bg-[#c8cdd3]'}`}>
-        {hovered && (
-          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-            <path d="M4 1v6M1 4h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-        )}
-      </div>
-    </div>
-  );
-}
 
-/* ── 행/열 컨텍스트 메뉴 ── */
-function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelete, onClear, onBgColor, canMoveUp, canMoveDown }) {
+
+/* ── ��/열 컨텍스트 메뉴 ── */
+function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelete, onClear, onBgColor, canMoveUp, canMoveDown, onAddBefore, onAddAfter }) {
   const menuRef = useRef(null);
   const [showColor, setShowColor] = useState(false);
   const label = type === 'row' ? '행' : '열';
@@ -383,6 +363,10 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
   const downIcon = type === 'row' ? '↓' : '→';
   const upLabel  = type === 'row' ? '행 위로 이동'     : '열 왼쪽으로 이동';
   const downLabel= type === 'row' ? '행 아래로 이동'   : '열 오른쪽으로 이동';
+  const addBeforeLabel = type === 'row' ? '위에 행 추가' : '왼쪽에 열 추가';
+  const addAfterLabel  = type === 'row' ? '아래에 행 추가' : '오른쪽에 열 추가';
+  const addBeforeIcon  = type === 'row' ? '⬆' : '⬅';
+  const addAfterIcon   = type === 'row' ? '⬇' : '➡';
 
   const BG_PRESETS = ['#ffffff','#fef9c3','#fce7f3','#dbeafe','#d1fae5','#ede9fe','#fee2e2','#e5e7eb'];
 
@@ -392,6 +376,9 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
       style={{ position: 'fixed', left: anchorRect.right + 6, top: anchorRect.top, zIndex: 9999 }}
       className="bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] py-1 min-w-[168px]"
     >
+      <Item icon={addBeforeIcon} txt={addBeforeLabel} onClick={() => { onAddBefore?.(); onClose(); }} />
+      <Item icon={addAfterIcon}  txt={addAfterLabel}  onClick={() => { onAddAfter?.();  onClose(); }} />
+      <div className="h-px bg-[#eef0f2] my-1" />
       <Item icon={upIcon}   txt={upLabel}   onClick={() => { onMoveUp();   onClose(); }} disabled={!canMoveUp}   />
       <Item icon={downIcon} txt={downLabel} onClick={() => { onMoveDown(); onClose(); }} disabled={!canMoveDown} />
       <div className="h-px bg-[#eef0f2] my-1" />
@@ -461,16 +448,21 @@ export function TableBlock({
     block.rowHeights ?? Array.from({ length: rows }, () => null)
   );
   const [colBoundaryXs, setColBoundaryXs] = useState([]); // 열 경계 x 좌표 (오버레이용)
+  const [rowBoundaryYs, setRowBoundaryYs] = useState([]); // 행 경계 y 좌표 (오버레이용)
+  const [hovRowHandle,  setHovRowHandle]  = useState(null); // 호버 중인 행 리사이즈 핸들
   const [hovColHandle, setHovColHandle]   = useState(null); // 호버 중인 열 핸들 인덱스
   const [draggingCol, setDraggingCol] = useState(null); // { col } — 시각 표시용
   const [draggingRow, setDraggingRow] = useState(null); // { row } — 시각 표시용
   const [hovSepRow,   setHovSepRow]   = useState(null);
   const [hovSepCol,   setHovSepCol]   = useState(null);
+  const [hovGutterCol, setHovGutterCol] = useState(null); // 호버 중인 열 거터 (드래그핸들 표시용)
+  const [hovGutterRow, setHovGutterRow] = useState(null); // 호버 중인 행 거터 (드래그핸들 표시용)
   const [sel,         setSel]         = useState(null);  // { r1,r2,c1,c2 }
   const [isDragging,  setIsDragging]  = useState(false);
   const [dragOrigin,  setDragOrigin]  = useState(null);
   const [ctxMenu,     setCtxMenu]     = useState(null);  // { type, idx, rect }
   const dragStartPosRef = useRef(null); // mousedown 위치 — 드래그 임계값 판단용
+  const [cellFocused, setCellFocused] = useState(false); // 셀에 포커스 있을 때만 거터 표시
 
   /* 열 수 변경 시 colWidths 동기화 */
   useEffect(() => {
@@ -494,14 +486,20 @@ export function TableBlock({
   const startColResize = (e, colIdx) => {
     e.preventDefault(); e.stopPropagation();
     const startX = e.clientX;
-    const startWidth = colWidths[colIdx] ?? (100 / cols);
+    const startWidths = [...colWidths];
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'col-resize';
     setDraggingCol({ col: colIdx });
     const onMove = (ev) => {
       const tableWidth = tableWrapRef.current?.getBoundingClientRect().width || 600;
-      const w = Math.max(3, startWidth + ((ev.clientX - startX) / tableWidth) * 100);
-      setColWidths(prev => { const next = [...prev]; next[colIdx] = w; colWidthsRef.current = next; return next; });
+      const deltaP = ((ev.clientX - startX) / tableWidth) * 100;
+      const nw = [...startWidths];
+      nw[colIdx]     = Math.max(5, startWidths[colIdx]     + deltaP);
+      nw[colIdx + 1] = Math.max(5, startWidths[colIdx + 1] - deltaP);
+      const sum  = nw.reduce((a, b) => a + b, 0);
+      const norm = nw.map(w => (w / sum) * 100);
+      setColWidths(norm);
+      colWidthsRef.current = norm;
     };
     const onUp = () => {
       document.body.style.userSelect = '';
@@ -549,22 +547,39 @@ export function TableBlock({
   }, [rows, cols, forceSync]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
+  /* 테이블 내 셀 포커스 추적 — 거터 표시용 */
+  useEffect(() => {
+    const wrap = tableWrapRef.current;
+    if (!wrap) return;
+    const onIn  = () => setCellFocused(true);
+    const onOut = (e) => { if (!wrap.contains(e.relatedTarget)) setCellFocused(false); };
+    wrap.addEventListener('focusin',  onIn);
+    wrap.addEventListener('focusout', onOut);
+    return () => { wrap.removeEventListener('focusin', onIn); wrap.removeEventListener('focusout', onOut); };
+  }, []);
+
   /* 열 경계 x 좌표 측정 — 오버레이 핸들 위치 계산용 */
   useLayoutEffect(() => {
     if (!tableRef.current || !tableWrapRef.current) return;
     const wrapRect = tableWrapRef.current.getBoundingClientRect();
-    // 첫 번째 데이터 행(top-gutter 다음 행)의 td들로 경계 측정
     const rows2 = tableRef.current.querySelectorAll('tbody tr');
     const dataRow = rows2[1]; // index 0 = top-gutter, 1 = first data row
     if (!dataRow) return;
     const tds = Array.from(dataRow.querySelectorAll('td')).slice(1); // 왼쪽 거터 td 제외
-    // 마지막 열 오른쪽 경계는 불필요(표 끝), cols-1 개만 필요
     const xs = tds.slice(0, tds.length - 1).map(td => {
       const rect = td.getBoundingClientRect();
       return rect.right - wrapRect.left;
     });
     setColBoundaryXs(xs);
-  }, [cols, colWidths, rows]);
+
+    // 행 경계 y 좌표 측정
+    const dataRows = Array.from(rows2).slice(1); // top-gutter 제외
+    const ys = dataRows.slice(0, dataRows.length - 1).map(tr => {
+      const rect = tr.getBoundingClientRect();
+      return rect.bottom - wrapRect.top;
+    });
+    setRowBoundaryYs(ys);
+  }, [cols, colWidths, rows, rowHeights]);
 
   /* 셀 드래그 선택 종료 */
   useEffect(() => {
@@ -665,6 +680,27 @@ export function TableBlock({
           }} />
         </div>
       ))}
+      {/* 행 높이 조절 오버레이 핸들 — 표 전체 너비에 걸쳐 렌더링 */}
+      {rowBoundaryYs.map((y, i) => (
+        <div
+          key={`row-${i}`}
+          onMouseDown={e => startRowResize(e, i)}
+          onMouseEnter={() => setHovRowHandle(i)}
+          onMouseLeave={() => setHovRowHandle(null)}
+          style={{
+            position: 'absolute', left: 0, right: 0,
+            top: y - 4, height: 8,
+            cursor: 'row-resize', zIndex: 40,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <div style={{
+            width: '100%', height: 2,
+            background: (draggingRow?.row === i || hovRowHandle === i) ? '#0056a4' : 'transparent',
+            transition: 'background 0.1s',
+          }} />
+        </div>
+      ))}
       {ctxMenu && (
         <TableCtxMenu
           type={ctxMenu.type}
@@ -675,6 +711,8 @@ export function TableBlock({
           onMoveUp={()   => ctxMenu.type === 'row' ? onMoveRow?.(block.id, ctxMenu.r1, ctxMenu.r2, 'up')   : onMoveCol?.(block.id, ctxMenu.c1, ctxMenu.c2, 'left')}
           onMoveDown={()  => ctxMenu.type === 'row' ? onMoveRow?.(block.id, ctxMenu.r1, ctxMenu.r2, 'down') : onMoveCol?.(block.id, ctxMenu.c1, ctxMenu.c2, 'right')}
           onDelete={()    => ctxMenu.type === 'row' ? onDeleteRow?.(block.id, ctxMenu.r1, ctxMenu.r2)       : onDeleteCol?.(block.id, ctxMenu.c1, ctxMenu.c2)}
+          onAddBefore={() => ctxMenu.type === 'row' ? onAddRow?.(block.id, ctxMenu.r1)   : onAddCol?.(block.id, ctxMenu.c1)}
+          onAddAfter={() =>  ctxMenu.type === 'row' ? onAddRow?.(block.id, ctxMenu.r1 + 1) : onAddCol?.(block.id, ctxMenu.c1 + 1)}
           onClear={clearSelContents}
           onBgColor={applyBgColor}
         />
@@ -690,95 +728,110 @@ export function TableBlock({
           {Array.from({ length: cols }, (_, c) => <col key={c} style={{ width: `${colWidths[c] ?? (100 / cols)}%` }} />)}
         </colgroup>
         <tbody>
-          {/* 상단 거터: 열 삽입 포인트 + 열 선택 밴드 */}
+          {/* 상단 거터: 각 열 핸들 버튼 (셀 포커스 시 표시, 클릭→컨텍스트 메뉴) */}
           <tr key="top-gutter" style={{ height: 20 }}>
             <td style={{ padding: 0, border: 0 }} />
-            {Array.from({ length: cols }, (_, c) => {
-              const isFullColRange   = sel && sel.r1 === 0 && sel.r2 === rows - 1;
-              const isColAnchor      = isFullColRange && c === sel.c1;
-              const colGutterSkip    = isFullColRange && c > sel.c1 && c <= sel.c2;
-              const colGutterSpan    = isColAnchor ? sel.c2 - sel.c1 + 1 : 1;
-              if (colGutterSkip) return null;
-              return (
-                <td key={c} colSpan={colGutterSpan}
-                  style={isColAnchor
-                    ? { padding: 0, border: 0, position: 'relative' }
-                    : { padding: 0, border: 0, position: 'relative' }}>
-                  {isColAnchor ? (
-                    <button
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={e => setCtxMenu({ type: 'col', c1: sel.c1, c2: sel.c2, rect: e.currentTarget.getBoundingClientRect() })}
-                      style={{ position: 'absolute', inset: 0 }}
-                      className="flex items-center justify-center bg-[#0056a4] rounded-t-[3px] cursor-pointer hover:bg-[#004a8f]"
-                      title="열 옵션"
-                    >
-                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                        <path d="M2 1.5h6M2 3h4" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  ) : (
-                    <SepDot
-                      align="col"
-                      hovered={hovSepCol === c}
-                      onClick={() => onAddCol?.(block.id, c)}
-                      onEnter={() => setHovSepCol(c)}
-                      onLeave={() => setHovSepCol(null)}
-                    />
-                  )}
-                </td>
-              );
-            })}
+            {Array.from({ length: cols }, (_, c) => (
+              <td key={c} style={{ padding: 0, border: 0, position: 'relative' }}>
+                {/* 열 삽입 SepDot (좌측 경계 모서리) */}
+                {cellFocused && (
+                  <div
+                    style={{ position: 'absolute', left: -4, top: 0, bottom: 0, width: 10, zIndex: 15 }}
+                    className="flex items-center justify-center cursor-pointer"
+                    onMouseEnter={() => setHovSepCol(c)}
+                    onMouseLeave={() => setHovSepCol(null)}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={e => { e.stopPropagation(); onAddCol?.(block.id, c); }}
+                  >
+                    <div className={`rounded-full transition-all duration-100 select-none flex items-center justify-center
+                      ${hovSepCol === c ? 'w-[14px] h-[14px] bg-[#0056a4] shadow-sm' : 'w-[4px] h-[4px] bg-[#c8cdd3]'}`}>
+                      {hovSepCol === c && (
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <path d="M4 1v6M1 4h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* 셀 테두리 호버 영역 (하단 경계선) + 드래그핸들을 하나의 컨테이너로 묶음 */}
+                {cellFocused && (
+                  <div
+                    style={{ position: 'absolute', left: 0, right: 0, bottom: -10, height: 24, zIndex: 12 }}
+                    onMouseEnter={() => setHovGutterCol(c)}
+                    onMouseLeave={() => setHovGutterCol(null)}
+                  >
+                    {hovGutterCol === c && (
+                      <button
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={e => {
+                          setSel({ r1: 0, r2: rows - 1, c1: c, c2: c });
+                          setCtxMenu({ type: 'col', c1: c, c2: c, rect: e.currentTarget.getBoundingClientRect() });
+                        }}
+                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[14px] h-[14px] flex items-center justify-center rounded-[3px] cursor-pointer bg-[#0056a4] hover:bg-[#004a8f]"
+                        title="열 옵션"
+                      >
+                        <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                          <path d="M1 1.5h6M1 4h6" stroke="white" strokeWidth="1" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </td>
+            ))}
           </tr>
 
           {/* 실제 행들 */}
           {Array.from({ length: rows }, (_, r) => {
-            const isFullRowRange = sel && sel.c1 === 0 && sel.c2 === cols - 1;
-            const isRowAnchor    = isFullRowRange && r === sel.r1;
-            const gutterSkip     = isFullRowRange && r > sel.r1 && r <= sel.r2;
-            const gutterSpan     = isRowAnchor ? sel.r2 - sel.r1 + 1 : 1;
             return (
             <tr key={r} style={rowHeights[r] ? { height: rowHeights[r] } : undefined}>
-              {/* 좌측 거터: 행 삽입 포인트 + 행 선택 밴드 + 행 높이 조절 핸들 */}
-              {!gutterSkip && (
-                <td
-                  rowSpan={gutterSpan}
-                  style={isRowAnchor
-                    ? { padding: 0, border: 0, position: 'relative', width: 16 }
-                    : { padding: 0, border: 0, position: 'relative' }}
-                >
-                  {isRowAnchor ? (
-                    <button
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={e => setCtxMenu({ type: 'row', r1: sel.r1, r2: sel.r2, rect: e.currentTarget.getBoundingClientRect() })}
-                      style={{ position: 'absolute', inset: 0 }}
-                      className="flex items-center justify-center bg-[#0056a4] rounded-l-[3px] cursor-pointer hover:bg-[#004a8f]"
-                      title="행 옵션"
-                    >
-                      <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
-                        <path d="M1.5 2v6M3 2v6" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  ) : (
-                    <div style={{ position: 'absolute', inset: '0 0 8px 0' }}>
-                      <SepDot
-                        hovered={hovSepRow === r}
-                        onClick={() => onAddRow?.(block.id, r)}
-                        onEnter={() => setHovSepRow(r)}
-                        onLeave={() => setHovSepRow(null)}
-                      />
-                    </div>
-                  )}
-                  {/* 행 높이 조절 핸들 */}
+              {/* 좌측 거터: SepDot(행 삽입) + 테두리 호버 시 드래그핸들 */}
+              <td style={{ padding: 0, border: 0, position: 'relative', width: 16 }}>
+                {/* 행 삽입 SepDot (상단 경계 모서리) */}
+                {cellFocused && (
                   <div
-                    className="absolute bottom-0 left-0 right-0 h-[8px] cursor-row-resize z-20 group/rowresize"
-                    style={{ pointerEvents: 'auto' }}
-                    onMouseDown={e => startRowResize(e, r)}
+                    style={{ position: 'absolute', top: -4, left: 0, right: 0, height: 10, zIndex: 15 }}
+                    className="flex items-center justify-center cursor-pointer"
+                    onMouseEnter={() => setHovSepRow(r)}
+                    onMouseLeave={() => setHovSepRow(null)}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={e => { e.stopPropagation(); onAddRow?.(block.id, r); }}
                   >
-                    <div className={`w-full h-[3px] mt-auto transition-colors
-                      ${draggingRow?.row === r ? 'bg-[#0056a4]' : 'group-hover/rowresize:bg-[#0056a4]/50'}`} />
+                    <div className={`rounded-full transition-all duration-100 select-none flex items-center justify-center
+                      ${hovSepRow === r ? 'w-[14px] h-[14px] bg-[#0056a4] shadow-sm' : 'w-[4px] h-[4px] bg-[#c8cdd3]'}`}>
+                      {hovSepRow === r && (
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <path d="M4 1v6M1 4h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      )}
+                    </div>
                   </div>
-                </td>
-              )}
+                )}
+                {/* 셀 테두리 호버 영역 (오른쪽 경계선) + 드래그핸들을 하나의 컨테이너로 묶음 */}
+                {cellFocused && (
+                  <div
+                    style={{ position: 'absolute', top: 0, bottom: 8, right: -10, width: 24, zIndex: 12 }}
+                    onMouseEnter={() => setHovGutterRow(r)}
+                    onMouseLeave={() => setHovGutterRow(null)}
+                  >
+                    {hovGutterRow === r && (
+                      <button
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={e => {
+                          setSel({ r1: r, r2: r, c1: 0, c2: cols - 1 });
+                          setCtxMenu({ type: 'row', r1: r, r2: r, rect: e.currentTarget.getBoundingClientRect() });
+                        }}
+                        className="absolute right-1/2 top-1/2 translate-x-1/2 -translate-y-1/2 w-[14px] h-[14px] flex items-center justify-center rounded-[3px] cursor-pointer bg-[#0056a4] hover:bg-[#004a8f]"
+                        title="행 옵션"
+                      >
+                        <svg width="6" height="8" viewBox="0 0 6 8" fill="none">
+                          <path d="M1.5 1v6M4.5 1v6" stroke="white" strokeWidth="1" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </td>
 
               {/* 실제 셀들 */}
               {Array.from({ length: cols }, (_, c) => {
@@ -835,7 +888,6 @@ export function TableBlock({
                         if (e.key === 'ArrowDown')  { e.preventDefault(); if (r < rows - 1) focusCell(r + 1, c); return; }
                       }}
                     />
-
                   </td>
                 );
               })}
