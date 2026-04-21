@@ -1,86 +1,52 @@
-const DATA = {
-  compliance: 96,
-  total:      198,
-  systems:    6,
-  stats: [
-    { label: '정상',   count: 190, color: '#00bc7d', bg: '#edfaf4' },
-    { label: '비정상', count:   5, color: '#fd9a00', bg: '#fff8ec' },
-    { label: '실패',   count:   3, color: '#fb2c36', bg: '#fff0f1' },
-  ],
-};
+const DATA = { compliance: 96, total: 198, systems: 6 };
 
-function DonutGauge({ pct, size = 72 }) {
-  const cx = size / 2, cy = size / 2;
-  const r  = size / 2 - 6;
-  const ri = r - 10;
-  const toXY = (angle, radius) => [
-    cx + radius * Math.cos(angle),
-    cy + radius * Math.sin(angle),
-  ];
-  const start = -Math.PI / 2;
-  const sweep = (pct / 100) * 2 * Math.PI;
-  const end   = start + sweep;
-  const lg    = sweep > Math.PI ? 1 : 0;
-  const [x1o, y1o] = toXY(start, r);
-  const [x1i, y1i] = toXY(start, ri);
-  const [x2o, y2o] = toXY(end,   r);
-  const [x2i, y2i] = toXY(end,   ri);
-  const arcPath = `M ${x1i} ${y1i} L ${x1o} ${y1o} A ${r} ${r} 0 ${lg} 1 ${x2o} ${y2o} L ${x2i} ${y2i} A ${ri} ${ri} 0 ${lg} 0 ${x1i} ${y1i} Z`;
-  const bgPath  = `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.001} ${cy - r} Z M ${cx} ${cy - ri} A ${ri} ${ri} 0 1 0 ${cx + 0.001} ${cy - ri} Z`;
+function SemiGauge({ pct, w = 200, h = 110 }) {
+  const cx = w / 2, cy = h - 10;
+  const r = h - 22, ri = r - 20;
+  const toXY = (deg, rad) => {
+    const a = (deg * Math.PI) / 180;
+    return [cx + rad * Math.cos(a), cy + rad * Math.sin(a)];
+  };
+  // 반원: 180° (왼쪽) → 0° (오른쪽), 시작 180
+  const startDeg = 180;
+  const endDeg   = 180 - pct * 1.8; // 1.8 = 180/100
+  const lg = pct > 50 ? 1 : 0;
+
+  const [x1o, y1o] = toXY(startDeg, r),  [x1i, y1i] = toXY(startDeg, ri);
+  const [x2o, y2o] = toXY(endDeg,   r),  [x2i, y2i] = toXY(endDeg,   ri);
+
+  const arc = `M ${x1i} ${y1i} L ${x1o} ${y1o} A ${r} ${r} 0 ${lg} 1 ${x2o} ${y2o} L ${x2i} ${y2i} A ${ri} ${ri} 0 ${lg} 0 ${x1i} ${y1i} Z`;
+  const bgArc = () => {
+    const [ax1o, ay1o] = toXY(180, r), [ax1i, ay1i] = toXY(180, ri);
+    const [ax2o, ay2o] = toXY(0,   r), [ax2i, ay2i] = toXY(0,   ri);
+    return `M ${ax1i} ${ay1i} L ${ax1o} ${ay1o} A ${r} ${r} 0 1 1 ${ax2o} ${ay2o} L ${ax2i} ${ay2i} A ${ri} ${ri} 0 1 0 ${ax1i} ${ay1i} Z`;
+  };
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <path d={bgPath} fill="#f0f2f5" fillRule="evenodd" />
-      <path d={arcPath} fill="#0056a4" />
-      <text x={cx} y={cy - 3} textAnchor="middle" fontSize="13" fontWeight="bold" fill="#1a222b">{pct}%</text>
-      <text x={cx} y={cy + 10} textAnchor="middle" fontSize="7" fill="#8a9299">준수율</text>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      <path d={bgArc()} fill="#eef1f5" />
+      <path d={arc}    fill="#0056a4" />
+      <text x={cx} y={cy - 6} textAnchor="middle" fontSize="22" fontWeight="bold" fill="#1a222b">{pct}%</text>
+      <text x={cx} y={cy + 8} textAnchor="middle" fontSize="9"  fill="#8a9299">준수율</text>
     </svg>
   );
 }
 
 export default function PreviewInspSummary() {
   return (
-    <div className="w-full bg-white px-5 py-4 flex flex-col gap-4">
-
-      {/* 상단: 게이지 + 상태 */}
-      <div className="flex items-center gap-5">
-        <DonutGauge pct={DATA.compliance} size={72} />
-
-        <div className="flex-1 flex flex-col gap-[6px]">
-          {DATA.stats.map(s => (
-            <div key={s.label} className="flex items-center gap-2">
-              <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: s.color }} />
-              <span className="text-[12px] text-[#5b646f] w-[40px]">{s.label}</span>
-              <div className="flex-1 h-[5px] rounded-full bg-[#f0f2f5] overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${(s.count / DATA.total) * 100}%`, background: s.color }}
-                />
-              </div>
-              <span className="text-[12px] font-semibold text-[#1a222b] w-[28px] text-right">{s.count}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 하단: 메타 */}
-      <div className="flex items-center gap-0 border-t border-[#f0f2f5] pt-3">
-        <div className="flex-1 flex flex-col items-center gap-[2px]">
-          <span className="text-[18px] font-bold text-[#1a222b]">{DATA.systems}</span>
+    <div className="w-full bg-white px-5 pt-4 pb-4 flex flex-col items-center gap-3">
+      <SemiGauge pct={DATA.compliance} w={200} h={110} />
+      <div className="flex items-center gap-0 w-full border-t border-[#eaedf1] pt-3">
+        <div className="flex-1 flex flex-col items-center gap-[3px]">
+          <span className="text-[24px] font-black leading-none text-[#1a222b]">{DATA.systems}</span>
           <span className="text-[10px] text-[#8a9299]">대상 시스템</span>
         </div>
-        <div className="w-px h-[28px] bg-[#eaedf1]" />
-        <div className="flex-1 flex flex-col items-center gap-[2px]">
-          <span className="text-[18px] font-bold text-[#1a222b]">{DATA.total}</span>
+        <div className="w-px h-8 bg-[#eaedf1]" />
+        <div className="flex-1 flex flex-col items-center gap-[3px]">
+          <span className="text-[24px] font-black leading-none text-[#1a222b]">{DATA.total}</span>
           <span className="text-[10px] text-[#8a9299]">전체 항목</span>
         </div>
-        <div className="w-px h-[28px] bg-[#eaedf1]" />
-        <div className="flex-1 flex flex-col items-center gap-[2px]">
-          <span className="text-[18px] font-bold text-[#0056a4]">{DATA.compliance}%</span>
-          <span className="text-[10px] text-[#8a9299]">준수율</span>
-        </div>
       </div>
-
     </div>
   );
 }
