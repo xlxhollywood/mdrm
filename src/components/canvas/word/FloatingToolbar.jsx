@@ -3,20 +3,28 @@
 import { useState, useRef, useEffect } from 'react';
 import { BLOCK_FORMATS } from './wordConstants';
 
+const COLOR_PRESETS = ['#1a222b','#ef4444','#f59e0b','#22c55e','#3b82f6','#8b5cf6','#ec4899','#ffffff'];
+const HL_PRESETS    = ['#fef08a','#fce7f3','#dbeafe','#d1fae5','#ede9fe','#fee2e2','#fef9c3','#e5e7eb'];
+
 export default function FloatingToolbar() {
   const [pos,       setPos]       = useState(null);
   const [blockFmt,  setBlockFmt]  = useState('p');
   const [fmtOpen,   setFmtOpen]   = useState(false);
-  const [textColor, setTextColor] = useState('#ffffff');
+  const [textColor, setTextColor] = useState('#1a222b');
   const [hlColor,   setHlColor]   = useState('#fef08a');
+  const [colorMenu, setColorMenu] = useState(null); // 'text' | 'hl' | null
+  const [linkInput, setLinkInput] = useState(null);
+  const linkOpenRef   = useRef(false);
+  const colorOpenRef  = useRef(false);
   const savedRangeRef = useRef(null);
+  const linkInputRef  = useRef(null);
 
   useEffect(() => {
     const update = () => {
+      if (linkOpenRef.current || colorOpenRef.current) return;
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) {
-        setPos(null);
-        setFmtOpen(false);
+        setPos(null); setFmtOpen(false); setLinkInput(null); setColorMenu(null);
         return;
       }
       const node = sel.anchorNode;
@@ -59,12 +67,54 @@ export default function FloatingToolbar() {
     if (!r) return;
     const node = r.startContainer;
     const el = (node?.nodeType === 3 ? node.parentElement : node)?.closest('[contenteditable]');
-    if (el) {
-      el.style.fontSize   = fmt.fontSize;
-      el.style.fontWeight = fmt.fontWeight;
-    }
+    if (el) { el.style.fontSize = fmt.fontSize; el.style.fontWeight = fmt.fontWeight; }
     setBlockFmt(fmt.value);
     setFmtOpen(false);
+  };
+
+  const applyLink = (url) => {
+    linkOpenRef.current = false;
+    restoreSelection();
+    if (url) {
+      let href = url;
+      if (!/^https?:\/\//i.test(href)) href = 'https://' + href;
+      document.execCommand('createLink', false, href);
+      const sel = window.getSelection();
+      if (sel?.anchorNode) {
+        const el = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement : sel.anchorNode;
+        const link = el?.closest('a') || el?.querySelector('a');
+        if (link) { link.target = '_blank'; link.rel = 'noopener noreferrer'; link.style.color = '#0056a4'; link.style.textDecoration = 'underline'; }
+      }
+    }
+    setLinkInput(null);
+  };
+
+  const removeTextColor = () => {
+    restoreSelection();
+    document.execCommand('removeFormat');
+    colorOpenRef.current = false;
+    setColorMenu(null);
+  };
+
+  const removeHighlight = () => {
+    restoreSelection();
+    const selObj = window.getSelection();
+    if (!selObj?.rangeCount) return;
+    const range = selObj.getRangeAt(0);
+    const anchor = selObj.anchorNode;
+    const editable = (anchor?.nodeType === 3 ? anchor.parentElement : anchor)?.closest('[contenteditable]');
+    if (editable) {
+      [...editable.querySelectorAll('span')].forEach(span => {
+        if ((span.style.backgroundColor || span.style.background) && range.intersectsNode(span)) {
+          span.style.backgroundColor = '';
+          span.style.background = '';
+          const s = span.getAttribute('style') ?? '';
+          if (!s.replace(/\s|;/g, '')) span.removeAttribute('style');
+        }
+      });
+    }
+    colorOpenRef.current = false;
+    setColorMenu(null);
   };
 
   const Btn = ({ children, title, onMD }) => (
@@ -77,12 +127,37 @@ export default function FloatingToolbar() {
 
   const currentFmt = BLOCK_FORMATS.find(f => f.value === blockFmt) || BLOCK_FORMATS[0];
 
+  const ColorPalette = ({ colors, onPick, onRemove, removeLabel }) => (
+    <div
+      onMouseDown={e => e.stopPropagation()}
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-[#1a222b] border border-white/15 rounded-[8px] shadow-xl p-2.5"
+    >
+      <div className="flex flex-wrap gap-[5px] w-[140px]">
+        {colors.map(color => (
+          <button
+            key={color}
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => onPick(color)}
+            className="w-[28px] h-[28px] rounded-[4px] border border-white/15 hover:scale-110 transition-transform shrink-0"
+            style={{ background: color }}
+          />
+        ))}
+      </div>
+      <button
+        onMouseDown={e => e.preventDefault()}
+        onClick={onRemove}
+        className="mt-2 w-full text-[11px] text-white/50 hover:text-red-400 text-left px-0.5"
+      >{removeLabel}</button>
+    </div>
+  );
+
   return (
     <div
       style={{ position: 'fixed', left: pos.x, top: pos.y - 10, transform: 'translate(-50%, -100%)', zIndex: 9999 }}
       onMouseDown={(e) => e.preventDefault()}
       className="bg-[#1a222b] rounded-[8px] shadow-[0_6px_24px_rgba(0,0,0,0.40)] flex items-center gap-0.5 px-2 py-[5px]"
     >
+      {/* 블록 포맷 */}
       <div className="relative mr-1">
         <button
           onMouseDown={mb(() => setFmtOpen(o => !o))}
@@ -115,51 +190,73 @@ export default function FloatingToolbar() {
       <Btn title="기울임" onMD={() => exec('italic')}><em>I</em></Btn>
       <Btn title="밑줄"   onMD={() => exec('underline')}><span className="underline">U</span></Btn>
       <Btn title="취소선" onMD={() => exec('strikeThrough')}><span className="line-through">S</span></Btn>
+      <Btn title="하이퍼링크" onMD={() => {
+        saveRange();
+        const r = savedRangeRef.current;
+        if (!r) return;
+        const node = r.startContainer;
+        const el = (node?.nodeType === 3 ? node.parentElement : node);
+        const existingLink = el?.closest('a');
+        if (existingLink) {
+          restoreSelection();
+          document.execCommand('unlink');
+        } else {
+          linkOpenRef.current = true;
+          setLinkInput('');
+          setTimeout(() => linkInputRef.current?.focus(), 10);
+        }
+      }}>
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+          <path d="M6 8l2-2M5 9.5L3.5 11a1.5 1.5 0 01-2.1-2.1L3 7.3a1.5 1.5 0 012.1 0M9 4.5l1.5-1.5a1.5 1.5 0 012.1 2.1L11 6.7a1.5 1.5 0 01-2.1 0" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+        </svg>
+      </Btn>
       <Sep />
 
-      <label title="글자 색상" onMouseDown={saveRange}
-        className="relative w-7 h-7 flex items-center justify-center rounded hover:bg-white/15 cursor-pointer shrink-0">
-        <div className="flex flex-col items-center gap-[3px] pointer-events-none">
-          <span className="text-[12px] font-bold text-white leading-none">A</span>
-          <span className="w-[14px] h-[2.5px] rounded-sm" style={{ background: textColor }} />
-        </div>
-        <input type="color" value={textColor}
-          onChange={(e) => { setTextColor(e.target.value); exec('foreColor', e.target.value); }}
-          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-      </label>
+      {/* 글자 색상 */}
+      <div className="relative">
+        <button title="글자 색상" onMouseDown={mb(() => {
+          saveRange();
+          colorOpenRef.current = colorMenu !== 'text';
+          setColorMenu(colorMenu === 'text' ? null : 'text');
+        })}
+          className="w-7 h-7 flex items-center justify-center rounded hover:bg-white/15 cursor-pointer shrink-0"
+        >
+          <div className="flex flex-col items-center gap-[3px] pointer-events-none">
+            <span className="text-[12px] font-bold text-white leading-none">A</span>
+            <span className="w-[14px] h-[2.5px] rounded-sm" style={{ background: textColor }} />
+          </div>
+        </button>
+        {colorMenu === 'text' && (
+          <ColorPalette
+            colors={COLOR_PRESETS}
+            onPick={(c) => { setTextColor(c); exec('foreColor', c); colorOpenRef.current = false; setColorMenu(null); }}
+            onRemove={removeTextColor}
+            removeLabel="색상 제거"
+          />
+        )}
+      </div>
 
-      <label title="형광펜" onMouseDown={saveRange}
-        className="relative w-7 h-7 flex items-center justify-center rounded hover:bg-white/15 cursor-pointer shrink-0">
-        <span className="text-[10px] font-bold leading-none px-[3px] py-[1px] rounded-sm pointer-events-none"
-          style={{ background: hlColor, color: '#1a222b' }}>HI</span>
-        <input type="color" value={hlColor}
-          onChange={(e) => { setHlColor(e.target.value); exec('hiliteColor', e.target.value); }}
-          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-      </label>
-      <Btn title="형광펜 제거" onMD={() => {
-        restoreSelection();
-        const selObj = window.getSelection();
-        if (!selObj?.rangeCount) return;
-        const range = selObj.getRangeAt(0);
-        const anchor = selObj.anchorNode;
-        const editable = (anchor?.nodeType === 3 ? anchor.parentElement : anchor)?.closest('[contenteditable]');
-        if (!editable) return;
-        // DOM 직접 조작: selection 내 span의 background-color 제거
-        [...editable.querySelectorAll('span')].forEach(span => {
-          if ((span.style.backgroundColor || span.style.background) && range.intersectsNode(span)) {
-            span.style.backgroundColor = '';
-            span.style.background = '';
-            const s = span.getAttribute('style') ?? '';
-            if (!s.replace(/\s|;/g, '')) span.removeAttribute('style');
-          }
-        });
-      }}>
-        <span className="relative text-[10px] font-bold leading-none px-[3px] py-[1px] rounded-sm pointer-events-none"
-          style={{ background: '#fef08a', color: '#1a222b' }}>
-          HI
-          <span className="absolute -top-[3px] -right-[3px] text-[8px] text-red-400 font-bold leading-none">✕</span>
-        </span>
-      </Btn>
+      {/* 형광펜 */}
+      <div className="relative">
+        <button title="형광펜" onMouseDown={mb(() => {
+          saveRange();
+          colorOpenRef.current = colorMenu !== 'hl';
+          setColorMenu(colorMenu === 'hl' ? null : 'hl');
+        })}
+          className="w-7 h-7 flex items-center justify-center rounded hover:bg-white/15 cursor-pointer shrink-0"
+        >
+          <span className="text-[10px] font-bold leading-none px-[3px] py-[1px] rounded-sm pointer-events-none"
+            style={{ background: hlColor, color: '#1a222b' }}>HI</span>
+        </button>
+        {colorMenu === 'hl' && (
+          <ColorPalette
+            colors={HL_PRESETS}
+            onPick={(c) => { setHlColor(c); exec('hiliteColor', c); colorOpenRef.current = false; setColorMenu(null); }}
+            onRemove={removeHighlight}
+            removeLabel="형광펜 제거"
+          />
+        )}
+      </div>
 
       <Sep />
       <Btn title="왼쪽 정렬"   onMD={() => exec('justifyLeft')}>
@@ -171,6 +268,33 @@ export default function FloatingToolbar() {
       <Btn title="오른쪽 정렬" onMD={() => exec('justifyRight')}>
         <svg width="13" height="11" viewBox="0 0 14 12" fill="none"><path d="M1 1h12M5 4h8M1 7h12M5 10h8" stroke="white" strokeWidth="1.3" strokeLinecap="round"/></svg>
       </Btn>
+
+      {/* 하이퍼링크 인라인 입력 */}
+      {linkInput !== null && (
+        <div
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-[#1a222b] border border-white/15 rounded-[8px] shadow-xl p-2 flex items-center gap-1.5"
+          onClick={e => e.stopPropagation()}
+        >
+          <input
+            ref={linkInputRef}
+            type="text"
+            value={linkInput}
+            onChange={e => setLinkInput(e.target.value)}
+            placeholder="URL 입력 후 Enter..."
+            className="w-[220px] h-7 px-2 text-[12px] bg-white/10 text-white rounded outline-none placeholder:text-white/30"
+            onKeyDown={e => {
+              e.stopPropagation();
+              if (e.key === 'Enter') { e.preventDefault(); applyLink(linkInput); }
+              if (e.key === 'Escape') { e.preventDefault(); linkOpenRef.current = false; setLinkInput(null); }
+            }}
+          />
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => applyLink(linkInput)}
+            className="h-7 px-2.5 text-[11px] text-white bg-[#0056a4] hover:bg-[#004a8f] rounded transition-colors shrink-0"
+          >확인</button>
+        </div>
+      )}
     </div>
   );
 }

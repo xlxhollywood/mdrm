@@ -33,6 +33,22 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-thumb { background: #d9dfe5; border-radius: 2px; }
 
+/* contentEditable 내 링크 — 색상/형광펜 무시 */
+[contenteditable] a,
+[contenteditable] a span,
+[contenteditable] a font {
+  color: #0056a4 !important;
+  background-color: transparent !important;
+  background: transparent !important;
+  text-decoration: underline;
+}
+[contenteditable] a:hover,
+[contenteditable] a:hover span,
+[contenteditable] a:hover font {
+  color: #3571ce !important;
+  cursor: pointer !important;
+}
+
 /* contentEditable placeholder */
 [data-placeholder] {
   position: relative;

@@ -183,6 +183,24 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
       }}
       onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
       onBlur={() => { setIsFocused(false); onBlurBlock?.(); }}
+      onClick={(e) => {
+        const link = e.target.closest('a');
+        if (link) {
+          e.preventDefault();
+          let href = link.getAttribute('href') || '';
+          if (href && !/^https?:\/\//i.test(href)) href = 'https://' + href;
+          if (href) window.open(href, '_blank', 'noopener,noreferrer');
+        }
+      }}
+      onPaste={(e) => {
+        const html = e.clipboardData.getData('text/html');
+        if (html) {
+          e.preventDefault();
+          // 안전한 HTML만 삽입 (script 제거)
+          const clean = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/on\w+="[^"]*"/gi, '');
+          document.execCommand('insertHTML', false, clean);
+        }
+      }}
       onDragStart={(e) => e.preventDefault()}
       onCompositionStart={() => { isComposing.current = true; }}
       onCompositionEnd={() => { isComposing.current = false; }}
