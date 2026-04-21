@@ -48,7 +48,8 @@ src/
         BlockPlusMenu.jsx                블록 왼쪽 + 버튼 클릭 시 나오는 팝업 메뉴
         SlashMenu.jsx                    / 명령어 팝업 메뉴
         TableSizePicker.jsx              표 크기 선택 UI
-        WordBlockTypes.jsx               DragHandleIcon, WidgetBlock, TableBlock
+        WordBlockTypes.jsx               DragHandleIcon, WidgetBlock, LayoutBlock
+        TableBlock.jsx                   표 블록 (셀 편집, 병합, 리사이즈, 복사/붙여넣기)
         useDragBlocks.js                 블록 드래그 재정렬 커스텀 훅
     right-panel/                         RightPanel 서브 컴포넌트들
       shared.jsx                         공용 UI 요소

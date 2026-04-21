@@ -788,6 +788,9 @@ export default function WordCanvas({
             return;
           }
           if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+            // 테이블 셀 내부에서는 기본 동작(셀 내 전체 선택) 허용
+            const active = document.activeElement;
+            if (active?.closest?.('td') && active?.contentEditable === 'true') return;
             e.preventDefault();
             sel.removeAllRanges();
             setAllSelected(true);
