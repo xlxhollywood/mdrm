@@ -10,6 +10,7 @@ import SlashMenu         from './word/SlashMenu';
 import TableSizePicker      from './word/TableSizePicker';
 import LayoutColumnPicker   from './word/LayoutColumnPicker';
 import { DragHandleIcon, WidgetBlock, TableBlock, LayoutBlock } from './word/WordBlockTypes';
+import HtmlBlock from './word/HtmlBlock';
 import useDragBlocks     from './word/useDragBlocks';
 
 export default function WordCanvas({
@@ -668,6 +669,10 @@ export default function WordCanvas({
     } else if (type === 'layout') {
       onUpdateText(blockId, cleanHtml);
       setLayoutPicker({ blockId, blockIdx, anchorRect: slashMenu.anchorRect });
+    } else if (type === 'html') {
+      onUpdateText(blockId, cleanHtml);
+      const newBlock = { id: `html-${Date.now()}`, type: 'html', code: '' };
+      onInsertBlock(blockIdx, newBlock);
     }
   }, [slashMenu, docBlocks, onUpdateBlock, onUpdateText, onInsertBlock]);
 
@@ -780,9 +785,6 @@ export default function WordCanvas({
             return;
           }
           if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-            // 테이블 셀 내부에서는 브라우저 기본 undo 허용
-            const active = document.activeElement;
-            if (active?.closest?.('td') && active?.contentEditable === 'true') return;
             e.preventDefault();
             onUndo?.();
             return;
@@ -918,6 +920,13 @@ export default function WordCanvas({
                     onSlashClose={handleSlashClose}
                     isSlashOpen={slashMenu?.blockId === block.id}
                     slashMenuRef={slashMenuRef}
+                  />
+                ) : block.type === 'html' ? (
+                  <HtmlBlock
+                    block={block}
+                    onUpdateBlock={onUpdateBlock}
+                    isActive={activeBlockId === block.id}
+                    onClick={() => { setActiveBlockId(block.id); setAllSelected(false); }}
                   />
                 ) : block.type === 'divider' ? (
                   <div

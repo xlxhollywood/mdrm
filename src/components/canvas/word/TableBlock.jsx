@@ -579,27 +579,49 @@ export default function TableBlock({
           }} />
         </div>
       ))}
-      {/* 행 높이 조절 오버레이 */}
-      {rowBoundaryYs.map((y, i) => (
-        <div
-          key={`row-${i}`}
-          onMouseDown={e => startRowResize(e, i)}
-          onMouseEnter={() => setHovRowHandle(i)}
-          onMouseLeave={() => setHovRowHandle(null)}
-          style={{
-            position: 'absolute', left: 0, right: 0,
-            top: y - 4, height: 8,
-            cursor: 'row-resize', zIndex: 40,
-            display: 'flex', alignItems: 'center',
-          }}
-        >
-          <div style={{
-            width: '100%', height: 2,
-            background: (draggingRow?.row === i || hovRowHandle === i) ? '#0056a4' : 'transparent',
-            transition: 'background 0.1s',
-          }} />
-        </div>
-      ))}
+      {/* 행 높이 조절 오버레이 — 병합 구간은 제외하고 열별로 분리 */}
+      {rowBoundaryYs.map((y, i) => {
+        // 각 열이 이 행 경계(i와 i+1 사이)를 가로지르는 병합에 속하는지 체크
+        const blocked = Array.from({ length: cols }, (_, c) =>
+          merges.some(m => c >= m.c1 && c <= m.c2 && m.r1 <= i && m.r2 >= i + 1)
+        );
+        // 연속된 비병합 열을 세그먼트로 그룹핑
+        const segments = [];
+        let start = null;
+        for (let c = 0; c <= cols; c++) {
+          if (c < cols && !blocked[c]) {
+            if (start === null) start = c;
+          } else {
+            if (start !== null) {
+              const left = start === 0 ? 0 : (colBoundaryXs[start - 1] || 0);
+              const right = (c - 1) < colBoundaryXs.length ? colBoundaryXs[c - 1] : (tableRef.current?.offsetWidth || 0);
+              segments.push({ left, width: right - left });
+              start = null;
+            }
+          }
+        }
+        return segments.map((seg, si) => (
+          <div
+            key={`row-${i}-${si}`}
+            onMouseDown={e => startRowResize(e, i)}
+            onMouseEnter={() => setHovRowHandle(i)}
+            onMouseLeave={() => setHovRowHandle(null)}
+            style={{
+              position: 'absolute',
+              left: seg.left, width: seg.width,
+              top: y - 4, height: 8,
+              cursor: 'row-resize', zIndex: 40,
+              display: 'flex', alignItems: 'center',
+            }}
+          >
+            <div style={{
+              width: '100%', height: 2,
+              background: (draggingRow?.row === i || hovRowHandle === i) ? '#0056a4' : 'transparent',
+              transition: 'background 0.1s',
+            }} />
+          </div>
+        ));
+      })}
       {/* 열 드래그핸들 오버레이 */}
       {cellFocused && (() => {
         const tableTop = tableRef.current ? tableRef.current.getBoundingClientRect().top - tableWrapRef.current.getBoundingClientRect().top : 0;
@@ -742,6 +764,16 @@ export default function TableBlock({
                       className={`outline-none text-[13px] min-h-[32px] px-2 py-[6px] ${isHeader ? 'font-semibold' : ''}`}
                       style={{ color: '#1a222b' }}
                       onFocus={() => { onCellFocus?.(block.id, r, c); onFocusBlock?.(); }}
+                      onPaste={e => {
+                        // 테이블 셀 복사/붙여넣기(다중 셀)는 상위 핸들러에서 처리
+                        if (sel && (sel.r1 !== sel.r2 || sel.c1 !== sel.c2)) return;
+                        const html = e.clipboardData.getData('text/html');
+                        if (html) {
+                          e.preventDefault();
+                          const clean = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/on\w+="[^"]*"/gi, '');
+                          document.execCommand('insertHTML', false, clean);
+                        }
+                      }}
                       onInput={e => onUpdateBlock(block.id, { cells: { ...cells, [key]: e.currentTarget.innerHTML } })}
                       onKeyDown={e => {
                         if (e.key === 'Tab') {

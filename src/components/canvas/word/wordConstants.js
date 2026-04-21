@@ -27,6 +27,7 @@ export const PLUS_MENU_ITEMS = [
   { id: 'table',    label: '표',               icon: '⊞' },
   { id: 'divider',  label: '구분선',           icon: '―' },
   { id: 'layout',   label: '열 레이아웃',      icon: '◫' },
+  { id: 'html',     label: 'HTML 코드',       icon: '</>' },
 ];
 
 export const HEADING_FORMATS = [
