@@ -3,6 +3,7 @@
 import { TODAY, MONTH_AGO, QUICK_PERIODS } from '@/lib/constants';
 import { Sep, SectionLabel } from './right-panel/shared';
 import { SystemSelectSection } from './right-panel/SystemSelect';
+import { InspSelectSection } from './right-panel/InspSelect';
 import { WordDocPanel } from './right-panel/WordDocPanel';
 import { TablePanel } from './right-panel/TablePanel';
 
@@ -73,12 +74,13 @@ export default function RightPanel({
   const { widgetDef, instanceId } = selected;
   const cfg = config[instanceId] || {};
 
-  const setViewType  = (vt)  => onConfigChange(instanceId, { ...cfg, viewType: vt });
-  const setPeriodOn  = (v)   => onConfigChange(instanceId, { ...cfg, periodOn: v });
-  const setFrom      = (v)   => onConfigChange(instanceId, { ...cfg, from: v });
-  const setTo        = (v)   => onConfigChange(instanceId, { ...cfg, to: v });
-  const setQuick     = (q)   => onConfigChange(instanceId, { ...cfg, quick: q });
-  const setSystemIds = (ids) => onConfigChange(instanceId, { ...cfg, systemIds: ids });
+  const setViewType   = (vt)  => onConfigChange(instanceId, { ...cfg, viewType: vt });
+  const setPeriodOn   = (v)   => onConfigChange(instanceId, { ...cfg, periodOn: v });
+  const setFrom       = (v)   => onConfigChange(instanceId, { ...cfg, from: v });
+  const setTo         = (v)   => onConfigChange(instanceId, { ...cfg, to: v });
+  const setQuick      = (q)   => onConfigChange(instanceId, { ...cfg, quick: q });
+  const setSystemIds  = (ids) => onConfigChange(instanceId, { ...cfg, systemIds: ids });
+  const setInspSelect = (patch) => onConfigChange(instanceId, { ...cfg, ...patch });
 
   return (
     <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
@@ -178,8 +180,16 @@ export default function RightPanel({
           </>
         )}
 
+        {/* 점검 선택 (번다운·결과차트) */}
+        {widgetDef.hasInspSelect && (
+          <>
+            <Sep />
+            <InspSelectSection cfg={cfg} onCfgChange={setInspSelect} singleMode={!!widgetDef.inspHistSingle} />
+          </>
+        )}
+
         {/* 기간 설정 */}
-        {widgetDef.hasPeriod && (
+        {widgetDef.hasPeriod && !widgetDef.hasInspSelect && (
           <>
             {(widgetDef.viewTypes.length > 0 || widgetDef.hasSystemSelect) && <Sep />}
             <div className="flex flex-col gap-2">

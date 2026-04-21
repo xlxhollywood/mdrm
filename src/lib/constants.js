@@ -96,7 +96,8 @@ export const WIDGET_CATEGORIES = {
         desc: '주간 점검 항목 및 결과 목록',
         icon: '📋',
         viewTypes: [],
-        hasPeriod: true,
+        hasInspSelect: true,
+        inspHistSingle: true,
         hasSummaryToggle: true,
       },
       {
@@ -105,7 +106,7 @@ export const WIDGET_CATEGORIES = {
         desc: '주간 점검 진행·잔여·실패 현황',
         icon: '📉',
         viewTypes: [],
-        hasPeriod: true,
+        hasInspSelect: true,
       },
       {
         id: 'insp-result-chart',
@@ -116,7 +117,7 @@ export const WIDGET_CATEGORIES = {
           { id: 'donut', label: '도넛 차트', icon: '◎' },
           { id: 'pie',   label: '파이 차트', icon: '◕' },
         ],
-        hasPeriod: true,
+        hasInspSelect: true,
       },
       {
         id: 'insp-priority',
