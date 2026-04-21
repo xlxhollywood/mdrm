@@ -859,7 +859,7 @@ export default function WordCanvas({
                 {(() => {
                   const isHovered = hoveredBlockId === block.id;
                   return (
-                    <div className={`absolute -left-[52px] top-[3px] flex items-center gap-[3px] transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className={`absolute -left-[42px] top-[3px] flex items-center gap-[3px] transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
                       <button
                         onMouseDown={e => e.stopPropagation()}
                         onClick={e => { e.stopPropagation(); setPlusMenu({ blockIdx: i, anchorRect: e.currentTarget.getBoundingClientRect() }); }}

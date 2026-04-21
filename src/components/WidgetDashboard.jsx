@@ -98,7 +98,7 @@ export default function WidgetDashboard() {
   const [docConfig,      setDocConfig]      = useState({
     paperSize: 'A4',
     orientation: 'portrait',
-    margins: { top: 10, bottom: 10, left: 10, right: 10 },
+    margins: { top: 15, bottom: 15, left: 15, right: 15 },
     lineHeight: 1.6,
     letterSpacing: 0,
     blockSpacing: 3,

@@ -839,7 +839,7 @@ export function TableBlock({
   };
 
   return (
-    <div ref={tableWrapRef} className="py-1" style={{ position: 'relative', overflow: 'visible', cursor: draggingCol ? 'col-resize' : draggingRow ? 'row-resize' : undefined }} onClick={e => e.stopPropagation()}>
+    <div ref={tableWrapRef} className="py-1 px-1" style={{ position: 'relative', overflow: 'visible', cursor: draggingCol ? 'col-resize' : draggingRow ? 'row-resize' : undefined }} onClick={e => e.stopPropagation()}>
       {/* 열 너비 조절 오버레이 핸들 — 표 전체 높이에 걸쳐 렌더링 */}
       {colBoundaryXs.map((x, i) => (
         <div
