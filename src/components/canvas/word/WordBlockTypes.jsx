@@ -351,11 +351,11 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
       onMouseDown={e => e.preventDefault()}
       onClick={() => { oc(); }}
       disabled={disabled}
-      className={`w-full px-3 py-[6px] text-left text-[13px] flex items-center gap-2 transition-colors
-        ${danger   ? 'text-[#fb2c36] hover:bg-red-50'   : 'text-[#1a222b] hover:bg-[#f5f5f5]'}
+      className={`w-full px-3 py-[7px] text-left text-[13px] leading-none flex items-center gap-2 transition-colors
+        ${danger   ? 'text-red-400 hover:bg-red-400/10'   : 'text-white/90 hover:bg-white/10 hover:text-white'}
         ${disabled ? 'opacity-30 cursor-not-allowed'     : ''}`}
     >
-      <span className="w-4 text-center shrink-0 text-[12px]">{icon}</span>{txt}
+      <span className="w-4 text-center shrink-0 text-[13px] leading-none">{icon}</span><span>{txt}</span>
     </button>
   );
 
@@ -374,16 +374,16 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
     <div
       ref={menuRef}
       style={{ position: 'fixed', left: type === 'cell' ? anchorRect.left : anchorRect.right + 6, top: anchorRect.top, zIndex: 9999 }}
-      className="bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] py-1 min-w-[168px]"
+      className="bg-[#232d3b] rounded-[8px] shadow-[0_6px_24px_rgba(0,0,0,0.45)] py-1.5 min-w-[176px]"
     >
       {type !== 'cell' && (
         <>
           <Item icon={addBeforeIcon} txt={addBeforeLabel} onClick={() => { onAddBefore?.(); onClose(); }} />
           <Item icon={addAfterIcon}  txt={addAfterLabel}  onClick={() => { onAddAfter?.();  onClose(); }} />
-          <div className="h-px bg-[#eef0f2] my-1" />
+          <div className="h-px bg-white/15 my-1.5" />
           <Item icon={upIcon}   txt={upLabel}   onClick={() => { onMoveUp();   onClose(); }} disabled={!canMoveUp}   />
           <Item icon={downIcon} txt={downLabel} onClick={() => { onMoveDown(); onClose(); }} disabled={!canMoveDown} />
-          <div className="h-px bg-[#eef0f2] my-1" />
+          <div className="h-px bg-white/15 my-1.5" />
         </>
       )}
 
@@ -392,16 +392,21 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
         <button
           onMouseDown={e => e.preventDefault()}
           onClick={() => setShowColor(s => !s)}
-          className="w-full px-3 py-[6px] text-left text-[13px] text-[#1a222b] hover:bg-[#f5f5f5] flex items-center gap-2 transition-colors"
+          className="w-full px-3 py-[7px] text-left text-[13px] leading-none text-white/90 hover:bg-white/10 hover:text-white flex items-center gap-2 transition-colors"
         >
-          <span className="w-4 text-center shrink-0 text-[12px]">🎨</span>
-          배경색
-          <span className="ml-auto text-[#5b646f] text-[11px]">›</span>
+          <span className="w-4 flex items-center justify-center shrink-0">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="8" width="12" height="4" rx="1" fill="white" opacity="0.6"/>
+              <path d="M7 2L3 8h8L7 2z" stroke="white" strokeWidth="1.2" strokeLinejoin="round"/>
+            </svg>
+          </span>
+          <span>채우기</span>
+          <span className="ml-auto text-white/40 text-[11px]">›</span>
         </button>
         {showColor && (
           <div
             onMouseDown={e => e.stopPropagation()}
-            className="absolute left-full top-0 bg-white border border-[#d9dfe5] rounded-[8px] shadow-lg p-2"
+            className="absolute left-full top-0 bg-[#232d3b] border border-white/15 rounded-[8px] shadow-xl p-2.5"
           >
             <div className="flex flex-wrap gap-[5px] w-[108px]">
               {BG_PRESETS.map(color => (
@@ -409,7 +414,7 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
                   key={color}
                   onMouseDown={e => e.preventDefault()}
                   onClick={() => { onBgColor(color); onClose(); }}
-                  className="w-[24px] h-[24px] rounded-[3px] border border-[#d9dfe5] hover:scale-110 transition-transform shrink-0"
+                  className="w-[24px] h-[24px] rounded-[3px] border border-white/15 hover:scale-110 transition-transform shrink-0"
                   style={{ background: color }}
                 />
               ))}
@@ -417,7 +422,7 @@ function TableCtxMenu({ type, anchorRect, onClose, onMoveUp, onMoveDown, onDelet
             <button
               onMouseDown={e => e.preventDefault()}
               onClick={() => { onBgColor(null); onClose(); }}
-              className="mt-[6px] w-full text-[11px] text-[#5b646f] hover:text-[#fb2c36] text-left px-1"
+              className="mt-[6px] w-full text-[11px] text-white/50 hover:text-red-400 text-left px-1"
             >배경색 제거</button>
           </div>
         )}
@@ -469,35 +474,56 @@ function CellToolbar({ sel, tableRef, tableWrapRef, cellFocused, canMerge, canSp
 
   const BG_PRESETS = ['#ffffff','#fef9c3','#fce7f3','#dbeafe','#d1fae5','#ede9fe','#fee2e2','#e5e7eb'];
 
-  const Btn = ({ icon, title, onClick, active, danger }) => (
+  const Btn = ({ children, label, title, onClick }) => (
     <button
       onMouseDown={e => e.preventDefault()}
       onClick={onClick}
       title={title}
-      className={`w-[28px] h-[28px] flex items-center justify-center rounded-[4px] text-[12px] transition-colors
-        ${danger ? 'text-[#fb2c36] hover:bg-red-50' : active ? 'bg-[#0056a4] text-white' : 'text-[#5b646f] hover:bg-[#f0f1f3]'}`}
+      className="h-7 px-2 flex items-center gap-1.5 rounded text-white hover:bg-white/15 transition-colors shrink-0"
     >
-      {icon}
+      <span className="flex items-center justify-center w-[14px] h-[14px] shrink-0">{children}</span>
+      {label && <span className="text-[12px] leading-none translate-y-[1px]">{label}</span>}
     </button>
   );
+  const Sep = () => <div className="w-px h-4 bg-white/20 mx-0.5 shrink-0" />;
 
   return (
     <div
       ref={toolbarRef}
       style={{ position: 'absolute', left: pos.left, top: pos.top, transform: 'translateX(-50%)', zIndex: 50 }}
-      className="bg-white border border-[#d9dfe5] rounded-[8px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] px-1 py-1 flex items-center gap-[2px]"
+      onMouseDown={e => e.preventDefault()}
+      className="bg-[#232d3b] rounded-[8px] shadow-[0_6px_24px_rgba(0,0,0,0.45)] flex items-center gap-0.5 px-2 py-[5px]"
     >
-      {canMerge && <Btn icon="⊞" title="셀 병합" onClick={onMerge} />}
-      {canSplit && <Btn icon="⊟" title="셀 나누기" onClick={onSplit} />}
-      {(canMerge || canSplit) && <div className="w-px h-[18px] bg-[#e2e6ea] mx-[2px]" />}
+      {canMerge && (
+        <Btn title="셀 병합" label="병합" onClick={onMerge}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="1" width="12" height="12" rx="1.5" stroke="white" strokeWidth="1.2"/>
+            <path d="M4.5 7h5M7 4.5v5" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+        </Btn>
+      )}
+      {canSplit && (
+        <Btn title="셀 나누기" label="나누기" onClick={onSplit}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="1" width="12" height="12" rx="1.5" stroke="white" strokeWidth="1.2"/>
+            <path d="M7 1v12M1 7h12" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+        </Btn>
+      )}
+      {(canMerge || canSplit) && <Sep />}
 
       {/* 배경색 */}
       <div className="relative">
-        <Btn icon="🎨" title="배경색" onClick={() => setShowColor(s => !s)} active={showColor} />
+        <Btn title="채우기" label="채우기" onClick={() => setShowColor(s => !s)}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="8" width="12" height="4" rx="1" fill="white" opacity="0.6"/>
+            <path d="M7 2L3 8h8L7 2z" stroke="white" strokeWidth="1.2" strokeLinejoin="round"/>
+          </svg>
+        </Btn>
         {showColor && (
           <div
             onMouseDown={e => e.stopPropagation()}
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-[#d9dfe5] rounded-[8px] shadow-lg p-2"
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#232d3b] border border-white/15 rounded-[8px] shadow-xl p-2.5"
           >
             <div className="flex flex-wrap gap-[5px] w-[108px]">
               {BG_PRESETS.map(color => (
@@ -505,7 +531,7 @@ function CellToolbar({ sel, tableRef, tableWrapRef, cellFocused, canMerge, canSp
                   key={color}
                   onMouseDown={e => e.preventDefault()}
                   onClick={() => { onBgColor(color); setShowColor(false); }}
-                  className="w-[24px] h-[24px] rounded-[3px] border border-[#d9dfe5] hover:scale-110 transition-transform shrink-0"
+                  className="w-[24px] h-[24px] rounded-[3px] border border-white/15 hover:scale-110 transition-transform shrink-0"
                   style={{ background: color }}
                 />
               ))}
@@ -513,13 +539,17 @@ function CellToolbar({ sel, tableRef, tableWrapRef, cellFocused, canMerge, canSp
             <button
               onMouseDown={e => e.preventDefault()}
               onClick={() => { onBgColor(null); setShowColor(false); }}
-              className="mt-[6px] w-full text-[11px] text-[#5b646f] hover:text-[#fb2c36] text-left px-1"
+              className="mt-[6px] w-full text-[11px] text-white/50 hover:text-red-400 text-left px-1"
             >배경색 제거</button>
           </div>
         )}
       </div>
 
-      <Btn icon="✕" title="셀 지우기" onClick={onClear} />
+      <Btn title="셀 지우기" label="지우기" onClick={onClear}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M3 4h8M5.5 4V3h3v1M4 4v7.5h6V4" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </Btn>
     </div>
   );
 }
@@ -1029,7 +1059,7 @@ export function TableBlock({
       </table>
 
       {/* 셀 선택 플로팅 툴바 */}
-      {sel && !isDragging && <CellToolbar
+      {sel && !isDragging && !ctxMenu && <CellToolbar
         sel={sel}
         tableRef={tableRef}
         tableWrapRef={tableWrapRef}
