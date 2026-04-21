@@ -785,6 +785,9 @@ export default function WordCanvas({
             return;
           }
           if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+            // contentEditable 내부에서 편집 중이면 브라우저 기본 undo 허용
+            const active = document.activeElement;
+            if (active?.isContentEditable) return;
             e.preventDefault();
             onUndo?.();
             return;
@@ -920,6 +923,7 @@ export default function WordCanvas({
                     onSlashClose={handleSlashClose}
                     isSlashOpen={slashMenu?.blockId === block.id}
                     slashMenuRef={slashMenuRef}
+                    onUpdateBlock={onUpdateBlock}
                   />
                 ) : block.type === 'html' ? (
                   <HtmlBlock

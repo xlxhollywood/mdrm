@@ -7,6 +7,7 @@ import GridCanvas from './canvas/GridCanvas';
 import WordCanvas from './canvas/WordCanvas';
 import { WIDGET_CATEGORIES, TODAY, MONTH_AGO } from '@/lib/constants';
 import { createWeeklyTemplate } from '@/lib/weeklyTemplate';
+import { createInspReportTemplate } from '@/lib/inspReportTemplate';
 
 const allWidgets = Object.values(WIDGET_CATEGORIES).flatMap(c => c.widgets);
 
@@ -101,7 +102,7 @@ export default function WidgetDashboard() {
     margins: { top: 15, bottom: 15, left: 15, right: 15 },
     lineHeight: 1.6,
     letterSpacing: 0,
-    blockSpacing: 3,
+    blockSpacing: 5,
   });
 
   const handleUndo = useCallback(() => {
@@ -497,6 +498,20 @@ export default function WidgetDashboard() {
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] font-medium text-dark group-hover:text-primary">주간 점검 보고서</div>
                 <div className="text-[10px] text-muted mt-px">번다운·타임라인·히트맵 포함</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-muted group-hover:text-primary">
+                <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div
+              onClick={() => handleLoadTemplate(createInspReportTemplate)}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-white cursor-pointer
+                hover:border-primary hover:bg-primary-light transition-colors group mt-1.5"
+            >
+              <span className="text-[18px] shrink-0">🖥️</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-medium text-dark group-hover:text-primary">인프라 점검 보고서</div>
+                <div className="text-[10px] text-muted mt-px">점검결과·이슈·디스크현황 포함</div>
               </div>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-muted group-hover:text-primary">
                 <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

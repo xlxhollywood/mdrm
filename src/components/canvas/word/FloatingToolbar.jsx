@@ -63,11 +63,33 @@ export default function FloatingToolbar() {
   };
 
   const applyFmt = (fmt) => {
-    const r = savedRangeRef.current;
-    if (!r) return;
-    const node = r.startContainer;
+    restoreSelection();
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const node = range.startContainer;
     const el = (node?.nodeType === 3 ? node.parentElement : node)?.closest('[contenteditable]');
-    if (el) { el.style.fontSize = fmt.fontSize; el.style.fontWeight = fmt.fontWeight; }
+
+    // 선택 영역이 전체(또는 비어있으면) → 블록 전체 스타일 변경
+    if (!el || range.collapsed || (range.toString().trim() === (el.textContent || '').trim())) {
+      if (el) { el.style.fontSize = fmt.fontSize; el.style.fontWeight = fmt.fontWeight; }
+    } else {
+      // 선택된 텍스트에만 인라인 스타일 적용
+      const span = document.createElement('span');
+      span.style.fontSize = fmt.fontSize;
+      span.style.fontWeight = fmt.fontWeight;
+      try {
+        range.surroundContents(span);
+      } catch (_) {
+        // 복잡한 선택 시 fallback: execCommand
+        document.execCommand('fontSize', false, '7');
+        el?.querySelectorAll('font[size="7"]').forEach(font => {
+          font.removeAttribute('size');
+          font.style.fontSize = fmt.fontSize;
+          font.style.fontWeight = fmt.fontWeight;
+        });
+      }
+    }
     setBlockFmt(fmt.value);
     setFmtOpen(false);
   };

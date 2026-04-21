@@ -309,7 +309,7 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
               {/* 열 너비 조절 핸들 */}
               {!isLast && (
                 <div
-                  className="w-[1px] shrink-0 cursor-col-resize flex items-stretch justify-center group self-stretch"
+                  className="w-[1px] mx-3 shrink-0 cursor-col-resize flex items-stretch justify-center group self-stretch"
                   onMouseDown={e => {
                     e.preventDefault();
                     document.body.style.userSelect = 'none';

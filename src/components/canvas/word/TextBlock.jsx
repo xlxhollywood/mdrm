@@ -2,7 +2,45 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onConvertToSubtype, lineHeight, letterSpacing, onSlashTrigger, onSlashClose, isSlashOpen, slashMenuRef }) {
+const CALLOUT_EMOJIS = ['💡', '⚠️', '❌', '✅', '📌', '🔔', '📋', '🛠️', '🚨', '💬', '📎', '🔍'];
+
+function CalloutWrapper({ block, onUpdateBlock, children }) {
+  const [showPicker, setShowPicker] = useState(false);
+  const emoji = block.calloutIcon || '💡';
+
+  return (
+    <div className="px-1">
+    <div className="flex items-start min-h-[32px] gap-2 px-3 py-2 rounded-[8px] bg-[#f0f4ff] border border-[#c5d3f0]">
+      <div className="relative shrink-0">
+        <button
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => setShowPicker(s => !s)}
+          className="text-[15px] leading-[1.8] select-none hover:bg-white/60 rounded px-0.5 transition-colors cursor-pointer"
+        >{emoji}</button>
+        {showPicker && (
+          <div
+            className="absolute top-full left-0 mt-1 bg-white border border-[#d9dfe5] rounded-[8px] shadow-lg p-2 z-50 flex flex-wrap gap-1 w-[160px]"
+            onMouseDown={e => e.stopPropagation()}
+          >
+            {CALLOUT_EMOJIS.map(e => (
+              <button
+                key={e}
+                onMouseDown={ev => ev.preventDefault()}
+                onClick={() => { onUpdateBlock?.(block.id, { calloutIcon: e }); setShowPicker(false); }}
+                className={`w-[28px] h-[28px] flex items-center justify-center rounded hover:bg-[#f0f4ff] text-[16px] transition-colors
+                  ${emoji === e ? 'bg-[#dce8ff]' : ''}`}
+              >{e}</button>
+            ))}
+          </div>
+        )}
+      </div>
+      {children}
+    </div>
+    </div>
+  );
+}
+
+export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow, onBackspaceAtStart, onFocusBlock, onBlurBlock, isBlockActive, allSelected, bulletNumber, onConvertToSubtype, lineHeight, letterSpacing, onSlashTrigger, onSlashClose, isSlashOpen, slashMenuRef, onUpdateBlock }) {
   const ref = useRef(null);
   const isComposing = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -19,11 +57,11 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
   }[block.subtype] || '텍스트를 입력하세요...';
 
   const headingStyle = {
-    h1: { fontSize: '30px', fontWeight: 'bold' },
-    h2: { fontSize: '24px', fontWeight: 'bold' },
-    h3: { fontSize: '20px', fontWeight: 'bold' },
-    h4: { fontSize: '16px', fontWeight: 'bold' },
-    h5: { fontSize: '14px', fontWeight: 'bold' },
+    h1: { fontSize: '30px', fontWeight: 'normal' },
+    h2: { fontSize: '24px', fontWeight: 'normal' },
+    h3: { fontSize: '20px', fontWeight: 'normal' },
+    h4: { fontSize: '16px', fontWeight: 'normal' },
+    h5: { fontSize: '14px', fontWeight: 'normal' },
   }[block.subtype] || {};
 
   useEffect(() => {
@@ -243,8 +281,8 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
         suppressContentEditableWarning
         data-text-id={block.id}
         data-placeholder={showPlaceholder ? '목록을 입력하세요...' : undefined}
-        className={`outline-none cursor-text pl-5 min-h-[28px] ${block.subtype === 'bullet' ? 'list-disc' : 'list-decimal'}`}
-        style={{ fontSize: '13px', color: '#1a222b', lineHeight: lineHeight ?? 1.6, letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined, marginLeft: '-16px' }}
+        className={`outline-none cursor-text pl-6 ml-1 min-h-[28px] ${block.subtype === 'bullet' ? 'list-disc' : 'list-decimal'}`}
+        style={{ fontSize: '13px', color: '#1a222b', lineHeight: lineHeight ?? 1.6, letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined }}
         onFocus={() => { setIsFocused(true); onFocusBlock?.(); }}
         onBlur={() => { setIsFocused(false); onBlurBlock?.(); }}
         onDragStart={e => e.preventDefault()}
@@ -264,12 +302,7 @@ export default function TextBlock({ block, onChange, onDelete, onEnter, onArrow,
     );
   }
   if (block.subtype === 'callout') {
-    return (
-      <div className="flex items-start min-h-[32px] gap-2 px-3 py-2 rounded-[8px] bg-[#f0f4ff] border border-[#c5d3f0]">
-        <span className="text-[15px] leading-[1.8] shrink-0 select-none">💡</span>
-        {editableDiv}
-      </div>
-    );
+    return <CalloutWrapper block={block} onUpdateBlock={onUpdateBlock}>{editableDiv}</CalloutWrapper>;
   }
   return (
     <div className="flex items-center min-h-[32px]">
