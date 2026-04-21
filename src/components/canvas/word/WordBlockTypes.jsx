@@ -684,6 +684,74 @@ export function TableBlock({
     return () => { wrap.removeEventListener('focusin', onIn); wrap.removeEventListener('focusout', onOut); };
   }, []);
 
+  /* 셀 복사/붙여넣기 — 엑셀 호환 (탭/줄바꿈 구분) */
+  useEffect(() => {
+    const wrap = tableWrapRef.current;
+    if (!wrap) return;
+
+    const stripHtml = (html) => {
+      const d = document.createElement('div');
+      d.innerHTML = html || '';
+      return d.textContent || '';
+    };
+
+    const onCopy = (e) => {
+      if (!sel || !wrap.contains(document.activeElement)) return;
+      // 단일 셀이면 기본 복사 허용
+      if (sel.r1 === sel.r2 && sel.c1 === sel.c2) return;
+      e.preventDefault();
+      const lines = [];
+      for (let r = sel.r1; r <= sel.r2; r++) {
+        const row = [];
+        for (let c = sel.c1; c <= sel.c2; c++) {
+          row.push(stripHtml(cells[`${r},${c}`] || ''));
+        }
+        lines.push(row.join('\t'));
+      }
+      const text = lines.join('\n');
+      e.clipboardData.setData('text/plain', text);
+      // HTML 형식도 함께 저장 (엑셀 호환)
+      const htmlRows = [];
+      for (let r = sel.r1; r <= sel.r2; r++) {
+        const htmlCells = [];
+        for (let c = sel.c1; c <= sel.c2; c++) {
+          htmlCells.push(`<td>${cells[`${r},${c}`] || ''}</td>`);
+        }
+        htmlRows.push(`<tr>${htmlCells.join('')}</tr>`);
+      }
+      e.clipboardData.setData('text/html', `<table>${htmlRows.join('')}</table>`);
+    };
+
+    const onPaste = (e) => {
+      if (!sel || !wrap.contains(document.activeElement)) return;
+      const text = e.clipboardData.getData('text/plain');
+      if (!text) return;
+      // 탭이나 줄바꿈이 있으면 테이블 데이터로 판단
+      if (!text.includes('\t') && !text.includes('\n')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const pasteRows = text.split('\n').filter(l => l.length > 0).map(l => l.split('\t'));
+      const newCells = { ...cells };
+      for (let r = 0; r < pasteRows.length; r++) {
+        for (let c = 0; c < pasteRows[r].length; c++) {
+          const tr = sel.r1 + r;
+          const tc = sel.c1 + c;
+          if (tr < rows && tc < cols) {
+            const key = `${tr},${tc}`;
+            newCells[key] = pasteRows[r][c];
+            const el = cellRefs.current[key];
+            if (el) { el.innerHTML = pasteRows[r][c]; }
+          }
+        }
+      }
+      onUpdateBlock(block.id, { cells: newCells });
+    };
+
+    document.addEventListener('copy', onCopy, true);
+    document.addEventListener('paste', onPaste, true);
+    return () => { document.removeEventListener('copy', onCopy, true); document.removeEventListener('paste', onPaste, true); };
+  }, [sel, cells, rows, cols, block.id, onUpdateBlock]);
+
   /* 열/행 경계 좌표 측정 — 오버레이 핸들 위치 계산용 */
   useLayoutEffect(() => {
     if (!tableRef.current || !tableWrapRef.current) return;
