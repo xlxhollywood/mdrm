@@ -315,8 +315,9 @@ export default function WidgetDashboard() {
 
   const handleUpdateBlock = useCallback((id, fields) => {
     setDocBlocks(prev => {
-      // 타입 변경(layout·table·divider 변환)은 history 저장
-      if (fields.type !== undefined) {
+      // 구조적 변경 시 history 저장 (타입 변환, 셀 병합/나누기, 행/열 수 변경 등)
+      const structuralKeys = ['type', 'merges', 'rows', 'cols'];
+      if (structuralKeys.some(k => fields[k] !== undefined)) {
         historyRef.current = [...historyRef.current.slice(-30), prev];
       }
       return prev.map(b => b.id === id ? { ...b, ...fields } : b);
