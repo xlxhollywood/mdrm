@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import WidgetPreview from '../../widgets/WidgetPreview';
-import WidgetPlaceholder from '../WidgetPlaceholder';
 import TextBlock from './TextBlock';
 import TodoListBlock from './TodoListBlock';
 export { default as TableBlock } from './TableBlock';
@@ -20,32 +18,6 @@ export function DragHandleIcon() {
   );
 }
 
-export function WidgetBlock({ block, config, widgetDef, isActive, onClick, onDelete }) {
-  if (!widgetDef) return null;
-  const cfg = config[block.instanceId] || {};
-  const viewType    = cfg.viewType   || widgetDef.viewTypes[0]?.id;
-  const showPreview = !widgetDef.hasSystemSelect || (cfg.systemIds?.length > 0);
-  const showBorder  = cfg.showBorder !== false;
-  const showLabel   = cfg.showLabel  !== false;
-
-  return (
-    <div className="flex items-start w-full">
-      <div
-        className={`relative cursor-pointer rounded-[10px] flex-1 min-w-0 ${isActive ? 'ring-2 ring-[#3571ce] ring-offset-2 shadow-[0_0_0_4px_rgba(53,113,206,0.12)]' : ''}`}
-        onClick={(e) => { e.stopPropagation(); onClick(block.instanceId, widgetDef); }}
-      >
-        {showPreview
-          ? <WidgetPreview widgetId={widgetDef.id} viewType={viewType} showBorder={showBorder} showLabel={showLabel} title={cfg.widgetTitle} showSummary={cfg.showSummary} headerRow={cfg.headerRow !== false} headerCol={!!cfg.headerCol} />
-          : <WidgetPlaceholder widgetDef={widgetDef} className="w-full min-h-[120px]" />}
-      </div>
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}
-        className="opacity-0 group-hover:opacity-100 absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center text-[#c0c7ce] hover:text-danger text-[14px] transition-opacity bg-white rounded-full border border-[#e2e5e9] shadow-sm z-10"
-      >×</button>
-    </div>
-  );
-}
-
 /* ── 위젯 래퍼: 너비 100% 채움 ── */
 function ScaledWidget({ children }) {
   return <div className="px-[10px] py-[10px]">{children}</div>;
@@ -57,7 +29,7 @@ function LayoutCellBlock({
   activeBlockId, allSelected,
   onEnterBlock, onBackspaceBlock, onArrowBlock, onDeleteBlock, onConvertToSubtype,
   onSlashTrigger, onSlashClose, slashMenuRef, isSlashOpen,
-  config, findWidgetDef, selectedWidget, onCardClick,
+  config,
   bulletNumber, onDragHandleMouseDown, isDragging, blockRef,
 }) {
   const [hovered, setHovered] = React.useState(false);
@@ -105,22 +77,6 @@ function LayoutCellBlock({
         />
       );
     }
-    if (block.type === 'widget') {
-      const widgetDef = findWidgetDef?.(block.widgetId);
-      if (!widgetDef) return null;
-      return (
-        <ScaledWidget>
-          <WidgetBlock
-            block={block}
-            config={config}
-            widgetDef={widgetDef}
-            isActive={selectedWidget?.instanceId === block.instanceId}
-            onClick={onCardClick}
-            onDelete={onDeleteBlock}
-          />
-        </ScaledWidget>
-      );
-    }
     return null;
   })();
 
@@ -155,7 +111,7 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
   activeBlockId, allSelected,
   onSlashTrigger, onSlashClose, slashMenuRef, slashBlockId, onCreateColumnBlock,
   onColumnEnter, onColumnBackspace, onColumnArrow, onConvertToSubtype,
-  config, findWidgetDef, selectedWidget, onCardClick, onDeleteBlock }) {
+  config, onDeleteBlock }) {
   const { cols = 2 } = block;
 
   const defaultWidths = useCallback(() => Array.from({ length: cols }, () => 100 / cols), [cols]);
@@ -288,9 +244,6 @@ export function LayoutBlock({ block, colBlocks, registerColRef, registerColBlock
                               ? blocks.slice(0, bIdx).filter(x => x.subtype === 'numbered').length + 1
                               : null}
                             config={config}
-                            findWidgetDef={findWidgetDef}
-                            selectedWidget={selectedWidget}
-                            onCardClick={onCardClick}
                             onDragHandleMouseDown={onColDragHandleMouseDown}
                             isDragging={draggingColBlockId === b.id}
                             blockRef={el => registerColBlockRef?.(b.id, el)}

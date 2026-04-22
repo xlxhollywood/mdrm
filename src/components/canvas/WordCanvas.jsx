@@ -9,13 +9,13 @@ import BlockPlusMenu     from './word/BlockPlusMenu';
 import SlashMenu         from './word/SlashMenu';
 import TableSizePicker      from './word/TableSizePicker';
 import LayoutColumnPicker   from './word/LayoutColumnPicker';
-import { DragHandleIcon, WidgetBlock, TableBlock, LayoutBlock } from './word/WordBlockTypes';
+import { DragHandleIcon, TableBlock, LayoutBlock } from './word/WordBlockTypes';
 import HtmlBlock from './word/HtmlBlock';
 import useDragBlocks     from './word/useDragBlocks';
 
 export default function WordCanvas({
-  docBlocks, config, selectedWidget, docConfig, findWidgetDef,
-  onCardClick, onDeleteBlock, onUpdateText, onDeselectWidget, onReorderBlocks, onInsertText, onDeleteBlocksInRange,
+  docBlocks, config, docConfig,
+  onDeleteBlock, onUpdateText, onDeselectWidget, onReorderBlocks, onInsertText, onDeleteBlocksInRange,
   onInsertBlock, onUpdateBlock, onCellFocus, onUndo, onDropColToMain, onMoveColBlock, onActiveBlockChange,
 }) {
   const paper = PAPER_SIZES[docConfig.paperSize] || PAPER_SIZES.A4;
@@ -62,18 +62,7 @@ export default function WordCanvas({
     const block = docBlocks[fromIdx];
     if (!block || block.type === 'layout') return;
     onUpdateBlock(block.id, { layoutRef: { layoutId: layoutBlockId, colIdx } });
-    if (block.type === 'widget') {
-      // 빈 텍스트 블록 제거 후 위젯 뒤에 새 텍스트 블록 삽입
-      const emptyInCol = docBlocks.filter(b =>
-        b.id !== block.id &&
-        b.layoutRef?.layoutId === layoutBlockId &&
-        b.layoutRef?.colIdx === colIdx &&
-        b.type === 'text' &&
-        !(b.html || '').replace(/<br\s*\/?>/gi, '').trim()
-      );
-      emptyInCol.forEach(b => onDeleteBlock(b.id));
-      const newTextId = `text-${Date.now()}`;
-      onInsertBlock(fromIdx, { id: newTextId, type: 'text', html: '', layoutRef: { layoutId: layoutBlockId, colIdx } });
+    if (false) {
       pendingFocusRef.current = { id: newTextId, position: 'start' };
     }
   }, [docBlocks, onUpdateBlock, onDeleteBlock, onInsertBlock]);
@@ -979,23 +968,9 @@ export default function WordCanvas({
                     onColumnArrow={handleColumnArrow}
                     onConvertToSubtype={handleConvertToSubtype}
                     config={config}
-                    findWidgetDef={findWidgetDef}
-                    selectedWidget={selectedWidget}
-                    onCardClick={onCardClick}
                     onDeleteBlock={onDeleteBlock}
                   />
-                ) : (
-                  <div className="px-[10px] py-[10px]">
-                    <WidgetBlock
-                      block={block}
-                      config={config}
-                      widgetDef={findWidgetDef(block.widgetId)}
-                      isActive={selectedWidget?.instanceId === block.instanceId}
-                      onClick={onCardClick}
-                      onDelete={onDeleteBlock}
-                    />
-                  </div>
-                )}
+                ) : null}
               </div>
 
               {draggingIdx !== null && dropIdx === i + 1 && draggingIdx !== i && draggingIdx !== i + 1 && (
