@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { PLUS_MENU_ITEMS, HEADING_FORMATS } from './wordConstants';
+import { PLUS_MENU_ITEMS, HEADING_FORMATS } from '../wordConstants';
 
 const ALL_ITEMS = [
   ...HEADING_FORMATS.filter(f => f.subtype).map(f => ({

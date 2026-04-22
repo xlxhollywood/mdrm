@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import TextBlock from './TextBlock';
-import TodoListBlock from './TodoListBlock';
-export { default as TableBlock } from './TableBlock';
+import TextBlock from '../text/TextBlock';
+import TodoListBlock from '../text/TodoListBlock';
+export { default as TableBlock } from '../table/TableBlock';
 
 export function DragHandleIcon() {
   return (

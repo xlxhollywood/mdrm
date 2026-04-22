@@ -40,26 +40,30 @@ src/
     inspDetailTemplate.ts                점검결과 상세 보고서 템플릿
   components/
     WidgetDashboard.tsx                  메인 컨테이너 (상태 관리·좌측 템플릿·캔버스·우측 패널)
-    AppHeader.tsx                        ��단 헤더
-    RightPanel.tsx                       우측 패널 (문서 설정 / 표 설정)
+    AppHeader.tsx                        상단 헤더
+    RightPanel.tsx                       우측 패널 진입점 (문서 설정 / 표 설정)
     canvas/
       WordCanvas.tsx                     블록 기반 문서 캔버스 오케스트레이터
-      word/
-        wordConstants.ts                 PAPER_SIZES, MM_TO_PX, BLOCK_FORMATS,
-                                         PLUS_MENU_ITEMS, HEADING_FORMATS
+    editor/                              블록 에디터 컴포넌트
+      wordConstants.ts                   PAPER_SIZES, MM_TO_PX, BLOCK_FORMATS 등
+      useDragBlocks.ts                   블록 드래그 재정렬 커스텀 훅
+      text/                              텍스트 블록
         TextBlock.tsx                    일반/heading/bullet/numbered/callout/quote 블록
-        TodoListBlock.tsx                할일 목록 블록 (다중 아이템, items[] 구조)
-        FloatingToolbar.tsx              텍스트 선택 시 뜨는 서식 플로팅 툴바
-        BlockPlusMenu.tsx                블록 왼쪽 + 버튼 클릭 시 나오는 팝업 메뉴
-        SlashMenu.tsx                    / 명령어 팝업 메뉴
-        TableSizePicker.tsx              표 크기 선택 UI
-        LayoutColumnPicker.tsx           열 레이아웃 선택 UI
-        WordBlockTypes.tsx               DragHandleIcon, LayoutBlock
+        TodoListBlock.tsx                할일 목록 블록 (다중 아이템)
+      table/                             표 블록
         TableBlock.tsx                   표 블록 (셀 편집, 병합, 리사이즈, 복사/붙여넣기)
+        TableSizePicker.tsx              표 크기 선택 UI
+      layout/                            열 레이아웃
+        WordBlockTypes.tsx               DragHandleIcon, LayoutBlock, TableBlock re-export
+        LayoutColumnPicker.tsx           열 레이아웃 선택 UI
+      menu/                              메뉴·툴바
+        BlockPlusMenu.tsx                블록 + 버튼 팝업 메뉴
+        SlashMenu.tsx                    / 명령어 팝업 메뉴
+        FloatingToolbar.tsx              텍스트 선택 시 서식 플로팅 툴바
+      html/                              HTML 블록
         HtmlBlock.tsx                    HTML 코드 블록
-        useDragBlocks.ts                 블록 드래그 재정렬 커스텀 훅
-    right-panel/
-      shared.tsx                         공용 UI (PanelShell, Section, RadioOption, Toggle)
+    panel/                               우측 패널 서브 컴포넌트
+      shared.tsx                         공용 UI (Section, Toggle 등)
       TablePanel.tsx                     표 옵션 패널
       WordDocPanel.tsx                   문서 설정 패널 (용지·방향·여백·발행)
       DataLoadModal.tsx                  데이터 불러오기 모달

@@ -1,7 +1,7 @@
 'use client';
 
-import { WordDocPanel } from './right-panel/WordDocPanel';
-import { TablePanel } from './right-panel/TablePanel';
+import { WordDocPanel } from './panel/WordDocPanel';
+import { TablePanel } from './panel/TablePanel';
 
 /* ── 패널 셸 ── */
 function PanelShell({ title, desc, children }) {

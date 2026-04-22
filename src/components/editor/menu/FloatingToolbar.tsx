@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { BLOCK_FORMATS } from './wordConstants';
+import { BLOCK_FORMATS } from '../wordConstants';
 
 const COLOR_PRESETS = ['#1a222b','#ef4444','#f59e0b','#22c55e','#3b82f6','#8b5cf6','#ec4899','#ffffff'];
 const HL_PRESETS    = ['#fef08a','#fce7f3','#dbeafe','#d1fae5','#ede9fe','#fee2e2','#fef9c3','#e5e7eb'];

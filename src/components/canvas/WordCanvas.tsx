@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { PAPER_SIZES, MM_TO_PX } from './word/wordConstants';
-import FloatingToolbar   from './word/FloatingToolbar';
-import TextBlock         from './word/TextBlock';
-import TodoListBlock     from './word/TodoListBlock';
-import BlockPlusMenu     from './word/BlockPlusMenu';
-import SlashMenu         from './word/SlashMenu';
-import TableSizePicker      from './word/TableSizePicker';
-import LayoutColumnPicker   from './word/LayoutColumnPicker';
-import { DragHandleIcon, TableBlock, LayoutBlock } from './word/WordBlockTypes';
-import HtmlBlock from './word/HtmlBlock';
-import useDragBlocks     from './word/useDragBlocks';
+import { PAPER_SIZES, MM_TO_PX } from '../editor/wordConstants';
+import FloatingToolbar   from '../editor/menu/FloatingToolbar';
+import TextBlock         from '../editor/text/TextBlock';
+import TodoListBlock     from '../editor/text/TodoListBlock';
+import BlockPlusMenu     from '../editor/menu/BlockPlusMenu';
+import SlashMenu         from '../editor/menu/SlashMenu';
+import TableSizePicker      from '../editor/table/TableSizePicker';
+import LayoutColumnPicker   from '../editor/layout/LayoutColumnPicker';
+import { DragHandleIcon, TableBlock, LayoutBlock } from '../editor/layout/WordBlockTypes';
+import HtmlBlock from '../editor/html/HtmlBlock';
+import useDragBlocks     from '../editor/useDragBlocks';
 
 export default function WordCanvas({
   docBlocks, config, docConfig,

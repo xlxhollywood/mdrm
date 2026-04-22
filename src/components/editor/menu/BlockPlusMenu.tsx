@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { PLUS_MENU_ITEMS, HEADING_FORMATS } from './wordConstants';
+import { PLUS_MENU_ITEMS, HEADING_FORMATS } from '../wordConstants';
 
 export default function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose, onTablePick, onLayoutPick }) {
   const [showSub, setShowSub] = useState<string | null>(null);
