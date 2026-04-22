@@ -16,6 +16,8 @@ import PreviewInspPriority    from './PreviewInspPriority';
 import PreviewInspHeatmap     from './PreviewInspHeatmap';
 import { PreviewSimpleType, PreviewDonutType, PreviewBarType }       from './SystemTypeWidgets';
 import { PreviewSimpleStatus, PreviewDonutStatus, PreviewBarStatus } from './SystemStatusWidgets';
+import PreviewRptSummaryCard    from './PreviewRptSummaryCard';
+import PreviewRptInspectionStatus from './PreviewRptInspectionStatus';
 
 const ALL_WIDGETS = Object.values(WIDGET_CATEGORIES).flatMap(c => c.widgets);
 
@@ -26,20 +28,68 @@ function getWidgetInfo(widgetId, viewType) {
   return { title: widget.name, viewTypeLabel: vt?.label ?? '' };
 }
 
-function WidgetPanel({ widgetId, viewType, title: titleProp, children }) {
-  const { title: defaultTitle, viewTypeLabel } = getWidgetInfo(widgetId, viewType);
-  const title = titleProp || defaultTitle;
+const ShieldIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+  </svg>
+);
+
+function ActionButtons({ onDuplicate, onDelete }) {
+  if (!onDuplicate && !onDelete) return null;
   return (
-    <div className="w-full rounded-[10px] overflow-hidden border border-[#e4e8ee] shadow-[0_1px_5px_rgba(26,34,43,0.08)]">
-      <div className="bg-[#f8f9fb] h-[40px] px-[14px] flex items-center shrink-0">
-        <span className="text-[12px] font-semibold text-[#3d4e60]">{title}</span>
-      </div>
+    <div className="flex gap-[4px] ml-auto shrink-0">
+      {onDuplicate && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+          className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-[#94a3b8] hover:text-[#475569] hover:bg-[#f1f5f9] transition-colors"
+          title="복사"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      )}
+      {onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="w-[26px] h-[26px] rounded-[5px] flex items-center justify-center text-[#94a3b8] hover:text-[#dc2626] hover:bg-[#fef2f2] transition-colors"
+          title="삭제"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function WidgetPanel({ widgetId, viewType, title: titleProp, inspName, onDuplicate, onDelete, children }) {
+  const { title: defaultTitle } = getWidgetInfo(widgetId, viewType);
+  const title = titleProp || defaultTitle;
+
+  return (
+    <div className="w-full rounded-[8px] overflow-hidden bg-white border border-[#e2e8f0] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      {inspName ? (
+        <div className="px-[14px] py-[10px] border-b border-[#eef0f3] flex items-center">
+          <div className="flex items-center gap-[6px] min-w-0">
+            <ShieldIcon size={15} />
+            <span className="text-[13px] font-bold text-[#1e293b] leading-tight">{inspName}</span>
+          </div>
+          <ActionButtons onDuplicate={onDuplicate} onDelete={onDelete} />
+        </div>
+      ) : (
+        <div className="h-[38px] px-[14px] flex items-center border-b border-[#eef0f3]">
+          <span className="text-[12px] font-semibold text-[#334155]">{title}</span>
+          <ActionButtons onDuplicate={onDuplicate} onDelete={onDelete} />
+        </div>
+      )}
       {children}
     </div>
   );
 }
 
-export default function WidgetPreview({ widgetId, viewType, title, showSummary, headerRow = true, headerCol = false }) {
+export default function WidgetPreview({ widgetId, viewType, title, inspName, showSummary, showFailDetail, showNonpassDetail, displayMode, onDuplicate, onDelete, headerRow = true, headerCol = false }) {
   const p = { showBorder: false, showLabel: false };
 
   let content;
@@ -90,12 +140,17 @@ export default function WidgetPreview({ widgetId, viewType, title, showSummary, 
   } else if (widgetId === 'insp-heatmap') {
     content = <PreviewInspHeatmap />;
 
+  /* ── 리포트 위젯 ── */
+  } else if (widgetId === 'rpt-summary-card') {
+    content = <PreviewRptSummaryCard showFailDetail={showFailDetail} showNonpassDetail={showNonpassDetail} />;
+  } else if (widgetId === 'rpt-inspection-status') {
+    content = <PreviewRptInspectionStatus viewType={viewType} displayMode={displayMode} />;
   } else {
     content = <PreviewHistory />;
   }
 
   return (
-    <WidgetPanel widgetId={widgetId} viewType={viewType} title={title}>
+    <WidgetPanel widgetId={widgetId} viewType={viewType} title={title} inspName={inspName} onDuplicate={onDuplicate} onDelete={onDelete}>
       {content}
     </WidgetPanel>
   );

@@ -9,6 +9,8 @@ import { WIDGET_CATEGORIES, TODAY, MONTH_AGO } from '@/lib/constants';
 import { createWeeklyTemplate } from '@/lib/weeklyTemplate';
 import { createInspReportTemplate } from '@/lib/inspReportTemplate';
 import { createInspDetailTemplate } from '@/lib/inspDetailTemplate';
+import { createInspGridTemplate } from '@/lib/inspGridTemplate';
+import GridPublishView from './canvas/GridPublishView';
 
 const allWidgets = Object.values(WIDGET_CATEGORIES).flatMap(c => c.widgets);
 
@@ -58,6 +60,7 @@ const MODES = [
 export default function WidgetDashboard() {
   const [activeTab,      setActiveTab]      = useState('system');
   const [canvasWidgets,  setCanvasWidgets]  = useState([]);
+  const [gridTitle,      setGridTitle]      = useState('');
   const [selectedWidget, setSelectedWidget] = useState(null);
   const [selectedTable,  setSelectedTable]  = useState(null); // { blockId, rows, cols, row, col }
   const selectedTableRef = useRef(null);
@@ -119,6 +122,18 @@ export default function WidgetDashboard() {
     setConfig(configs);
     setSelectedWidget(null);
     setCanvasMode('word');
+  }, []);
+
+  const [gridSubtitle, setGridSubtitle] = useState('');
+
+  const handleLoadGridTemplate = useCallback((templateFn) => {
+    const { widgets, configs, title, subtitle } = templateFn();
+    setCanvasWidgets(widgets);
+    setConfig(configs);
+    setGridTitle(title || '');
+    setGridSubtitle(subtitle || '');
+    setSelectedWidget(null);
+    setCanvasMode('grid');
   }, []);
 
   const handleAddWidget = useCallback((widgetId) => {
@@ -345,7 +360,9 @@ export default function WidgetDashboard() {
     if (!sel) return;
     const { blockId, row, col } = sel;
 
-    setDocBlocks(blocks => blocks.map(b => {
+    setDocBlocks(blocks => {
+      historyRef.current = [...historyRef.current.slice(-30), blocks];
+      return blocks.map(b => {
       if (b.id !== blockId || b.type !== 'table') return b;
       const { rows, cols, cells } = b;
       const shifted = {};
@@ -383,7 +400,8 @@ export default function WidgetDashboard() {
         return { ...b, cols: cols - 1, cells: shifted };
       }
       return b;
-    }));
+    });
+    });
   }, []);
 
   const handleTableDelete = useCallback((blockId) => {
@@ -532,6 +550,20 @@ export default function WidgetDashboard() {
                 <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
+            <div
+              onClick={() => handleLoadGridTemplate(createInspGridTemplate)}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-white cursor-pointer
+                hover:border-primary hover:bg-primary-light transition-colors group mt-1.5"
+            >
+              <span className="text-[18px] shrink-0">🖥️</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-medium text-dark group-hover:text-primary">점검 대시보드 (Grid)</div>
+                <div className="text-[10px] text-muted mt-px">요약·차트·목록 위젯 8종 배치</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-muted group-hover:text-primary">
+                <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </div>
         </div>
 
@@ -539,19 +571,33 @@ export default function WidgetDashboard() {
         <div className={`flex-1 overflow-auto flex flex-col items-center ${canvasMode === 'word' ? 'bg-[#c8cdd3]' : 'bg-bg'}`}>
 
           {/* 모드 전환 툴바 */}
-          <div className="w-full flex justify-end gap-1 px-3 py-2 bg-black/[0.08] shrink-0">
-            {MODES.map(({ mode, label, icon }) => (
-              <button
-                key={mode}
-                onClick={() => { setCanvasMode(mode); setSelectedWidget(null); }}
-                className={`flex items-center gap-[5px] px-[10px] py-1 rounded-[5px] border text-[12px] transition-colors
-                  ${canvasMode === mode
-                    ? 'bg-white/[0.22] border-white/30 text-white'
-                    : 'border-transparent text-white/65 hover:bg-white/15 hover:text-white'}`}
-              >
-                {icon}{label}
-              </button>
-            ))}
+          <div className="w-full flex justify-between px-3 py-2 bg-black/[0.08] shrink-0">
+            <div />
+            <div className="flex gap-1">
+              {MODES.map(({ mode, label, icon }) => (
+                <button
+                  key={mode}
+                  onClick={() => { setCanvasMode(mode); setSelectedWidget(null); }}
+                  className={`flex items-center gap-[5px] px-[10px] py-1 rounded-[5px] border text-[12px] transition-colors
+                    ${canvasMode === mode
+                      ? 'bg-white/[0.22] border-white/30 text-white'
+                      : 'border-transparent text-white/65 hover:bg-white/15 hover:text-white'}`}
+                >
+                  {icon}{label}
+                </button>
+              ))}
+              {canvasMode === 'grid' && (
+                <button
+                  onClick={() => setPublished(true)}
+                  className="flex items-center gap-[5px] px-[10px] py-1 rounded-[5px] border border-[#22c55e]/40 bg-[#22c55e]/20 text-[#22c55e] text-[12px] font-medium hover:bg-[#22c55e]/30 transition-colors ml-2"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                  </svg>
+                  발행
+                </button>
+              )}
+            </div>
           </div>
 
           {canvasMode === 'grid' && (
@@ -559,8 +605,13 @@ export default function WidgetDashboard() {
               canvasWidgets={canvasWidgets}
               setCanvasWidgets={setCanvasWidgets}
               config={config}
+              onConfigChange={handleConfigChange}
               selectedWidget={selectedWidget}
               findWidgetDef={findWidgetDef}
+              gridTitle={gridTitle}
+              gridSubtitle={gridSubtitle}
+              onTitleChange={setGridTitle}
+              onSubtitleChange={setGridSubtitle}
               onCardClick={handleCardClick}
               onRemove={handleRemove}
             />
@@ -601,7 +652,7 @@ export default function WidgetDashboard() {
           docConfig={docConfig}
           onDocConfigChange={setDocConfig}
           published={published}
-          onPublish={() => { setPublished(true); setTimeout(() => setPublished(false), 3000); }}
+          onPublish={() => setPublished(true)}
           tempSaved={tempSaved}
           onTempSave={() => { setTempSaved(true); setTimeout(() => setTempSaved(false), 3000); }}
           selectedTable={selectedTable}
@@ -612,6 +663,18 @@ export default function WidgetDashboard() {
           onTableDelete={handleTableDelete}
         />
       </div>
+
+      {/* 발행 뷰 (Grid) */}
+      {published && canvasMode === 'grid' && (
+        <GridPublishView
+          canvasWidgets={canvasWidgets}
+          config={config}
+          findWidgetDef={findWidgetDef}
+          gridTitle={gridTitle}
+          gridSubtitle={gridSubtitle}
+          onClose={() => setPublished(false)}
+        />
+      )}
     </div>
   );
 }
