@@ -1,7 +1,14 @@
 # 리포트 문서 편집기 (v2)
 
-블록 기반 문서 ��디터로 점검 보고서를 작성·편집하는 웹 애플리케이션.
+블록 기반 문서 에디터로 점검 보고서를 작성·편집하는 웹 애플리케이션.
 v2에서는 기존 위젯 시스템을 전면 제거하고, 문서 편집 중심으로 재설계 중.
+
+## 언어 및 프레임워크
+
+- **TypeScript** (.tsx / .ts) — 모든 새 코드는 반드시 TypeScript로 작성
+- **Next.js 16** + **React 19** + **Tailwind CSS v4**
+- 빌드 시 타입체크는 `ignoreBuildErrors: true`로 점진적 도입 중
+- 새 파일 작성 시 props에 타입/인터페이스를 명시할 것
 
 ## Figma MCP 연결 확인 (필수)
 
@@ -25,37 +32,37 @@ v2에서는 기존 위젯 시스템을 전면 제거하고, 문서 편집 중심
 src/
   app/
     globals.css                          Tailwind v4 @theme 토큰 정의
-    layout.jsx                           Next.js 레이아웃
-    page.jsx                             Next.js 페이지 진입점
+    layout.tsx                           Next.js 레이아웃
+    page.tsx                             Next.js 페이지 진입점
   lib/
-    assets.js                            이미지 import 모음 (로고·아이콘)
-    inspReportTemplate.js                인프라 점검 보고서 템플릿
-    inspDetailTemplate.js                점검결과 상세 보고서 템플릿
+    assets.ts                            이미지 import 모음 (로고·아이콘)
+    inspReportTemplate.ts                인프라 점검 보고서 템플릿
+    inspDetailTemplate.ts                점검결과 상세 보고서 템플릿
   components/
-    WidgetDashboard.jsx                  메인 컨테이너 (상태 관리·좌측 템플릿·캔버스·우측 패널)
-    AppHeader.jsx                        ��단 헤더
-    RightPanel.jsx                       우측 패널 (문서 설정 / 표 설정)
+    WidgetDashboard.tsx                  메인 컨테이너 (상태 관리·좌측 템플릿·캔버스·우측 패널)
+    AppHeader.tsx                        ��단 헤더
+    RightPanel.tsx                       우측 패널 (문서 설정 / 표 설정)
     canvas/
-      WordCanvas.jsx                     블록 기반 문서 캔버스 오케스트레이터
+      WordCanvas.tsx                     블록 기반 문서 캔버스 오케스트레이터
       word/
-        wordConstants.js                 PAPER_SIZES, MM_TO_PX, BLOCK_FORMATS,
+        wordConstants.ts                 PAPER_SIZES, MM_TO_PX, BLOCK_FORMATS,
                                          PLUS_MENU_ITEMS, HEADING_FORMATS
-        TextBlock.jsx                    일반/heading/bullet/numbered/callout/quote 블록
-        TodoListBlock.jsx                할일 목록 블록 (다중 아이템, items[] 구조)
-        FloatingToolbar.jsx              텍스트 선택 시 뜨는 서식 플로팅 툴바
-        BlockPlusMenu.jsx                블록 왼쪽 + 버튼 클릭 시 나오는 팝업 메뉴
-        SlashMenu.jsx                    / 명령어 팝업 메뉴
-        TableSizePicker.jsx              표 크기 선택 UI
-        LayoutColumnPicker.jsx           열 레이아웃 선택 UI
-        WordBlockTypes.jsx               DragHandleIcon, LayoutBlock
-        TableBlock.jsx                   표 블록 (셀 편집, 병합, 리사이즈, 복사/붙여넣기)
-        HtmlBlock.jsx                    HTML 코드 블록
-        useDragBlocks.js                 블록 드래그 재정렬 커스텀 훅
+        TextBlock.tsx                    일반/heading/bullet/numbered/callout/quote 블록
+        TodoListBlock.tsx                할일 목록 블록 (다중 아이템, items[] 구조)
+        FloatingToolbar.tsx              텍스트 선택 시 뜨는 서식 플로팅 툴바
+        BlockPlusMenu.tsx                블록 왼쪽 + 버튼 클릭 시 나오는 팝업 메뉴
+        SlashMenu.tsx                    / 명령어 팝업 메뉴
+        TableSizePicker.tsx              표 크기 선택 UI
+        LayoutColumnPicker.tsx           열 레이아웃 선택 UI
+        WordBlockTypes.tsx               DragHandleIcon, LayoutBlock
+        TableBlock.tsx                   표 블록 (셀 편집, 병합, 리사이즈, 복사/붙여넣기)
+        HtmlBlock.tsx                    HTML 코드 블록
+        useDragBlocks.ts                 블록 드래그 재정렬 커스텀 훅
     right-panel/
-      shared.jsx                         공용 UI (PanelShell, Section, RadioOption, Toggle)
-      TablePanel.jsx                     표 옵션 패널
-      WordDocPanel.jsx                   문서 설정 패널 (용지·방향·여백·발행)
-      DataLoadModal.jsx                  데이터 불러오기 모달
+      shared.tsx                         공용 UI (PanelShell, Section, RadioOption, Toggle)
+      TablePanel.tsx                     표 옵션 패널
+      WordDocPanel.tsx                   문서 설정 패널 (용지·방향·여백·발행)
+      DataLoadModal.tsx                  데이터 불러오기 모달
 ```
 
 ## 디자인 토큰 (Figma + Nutanix DS 참고)

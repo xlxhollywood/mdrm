@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { PLUS_MENU_ITEMS, HEADING_FORMATS } from './wordConstants';
 
 export default function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose, onTablePick, onLayoutPick }) {
-  const [showSub, setShowSub] = useState(false);
+  const [showSub, setShowSub] = useState<string | null>(null);
   const menuRef  = useRef(null);
   const timerRef = useRef(null);
 
@@ -17,7 +17,7 @@ export default function BlockPlusMenu({ blockIdx, anchorRect, onInsert, onClose,
   }, [onClose]);
 
   const openSub  = (id) => { clearTimeout(timerRef.current); setShowSub(id); };
-  const closeSub = ()   => { timerRef.current = setTimeout(() => setShowSub(false), 120); };
+  const closeSub = ()   => { timerRef.current = setTimeout(() => setShowSub(null), 120); };
 
   return (
     <div

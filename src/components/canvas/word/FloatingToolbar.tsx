@@ -28,7 +28,7 @@ export default function FloatingToolbar() {
         return;
       }
       const node = sel.anchorNode;
-      const el = node?.nodeType === 3 ? node.parentElement : node;
+      const el = (node?.nodeType === 3 ? node.parentElement : node) as HTMLElement | null;
       if (!el?.closest('[contenteditable]')) { setPos(null); setFmtOpen(false); return; }
       const range = sel.getRangeAt(0);
       const rect  = range.getBoundingClientRect();
