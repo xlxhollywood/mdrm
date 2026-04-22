@@ -1,11 +1,24 @@
 'use client';
 
 import { TODAY, MONTH_AGO, QUICK_PERIODS } from '@/lib/constants';
-import { Sep, SectionLabel } from './right-panel/shared';
+import { Sep, Section, RadioOption, Toggle } from './right-panel/shared';
 import { SystemSelectSection } from './right-panel/SystemSelect';
 import { InspSelectSection } from './right-panel/InspSelect';
 import { WordDocPanel } from './right-panel/WordDocPanel';
 import { TablePanel } from './right-panel/TablePanel';
+
+/* ── 패널 셸 ── */
+function PanelShell({ title, desc, children }) {
+  return (
+    <div className="w-[280px] bg-white border-l border-[#e2e8f0] flex flex-col shrink-0 overflow-hidden">
+      <div className="px-5 py-[14px] border-b border-[#e8ecf0]">
+        <div className="text-[13px] font-semibold text-[#1e293b] leading-tight">{title}</div>
+        {desc && <div className="text-[11px] text-[#94a3b8] mt-[3px] leading-tight">{desc}</div>}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function RightPanel({
   mode, selected, config, onConfigChange, onRemove,
@@ -17,11 +30,7 @@ export default function RightPanel({
   /* Word 모드 + 표 포커스 → 표 설정 */
   if (mode === 'word' && !selected && selectedTable) {
     return (
-      <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <div className="text-[13px] font-semibold text-dark">표 설정</div>
-          <div className="text-[11px] text-muted mt-0.5">{selectedTable.rows}행 × {selectedTable.cols}열</div>
-        </div>
+      <PanelShell title="표 설정" desc={`${selectedTable.rows}행 × ${selectedTable.cols}열`}>
         <TablePanel
           table={selectedTable}
           onAction={onTableAction}
@@ -30,18 +39,14 @@ export default function RightPanel({
           onToggleHeader={(key, val) => onTableToggleHeader?.(selectedTable.blockId, key, val)}
           onSwapHeaders={() => onTableSwapHeaders?.(selectedTable.blockId)}
         />
-      </div>
+      </PanelShell>
     );
   }
 
   /* Word 모드 + 위젯 미선택 → 문서 설정 */
   if (mode === 'word' && !selected) {
     return (
-      <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <div className="text-[13px] font-semibold text-dark">문서 설정</div>
-          <div className="text-[11px] text-muted mt-0.5">용지·여백을 설정하세요</div>
-        </div>
+      <PanelShell title="문서 설정" desc="용지·여백을 설정하세요">
         <WordDocPanel
           docConfig={docConfig}
           onChange={onDocConfigChange}
@@ -50,133 +55,149 @@ export default function RightPanel({
           onTempSave={onTempSave}
           tempSaved={tempSaved}
         />
-      </div>
+      </PanelShell>
     );
   }
 
-  /* Grid 모드 + 위젯 미선택 → 빈 상태 */
+  /* Grid 모드 + 위젯 미선택 → 빈 상태 + 가이드 */
   if (!selected) {
+    const steps = [
+      { num: 1, icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+        </svg>
+      ), text: '좌측에서 위젯을 추가하세요' },
+      { num: 2, icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3"/>
+        </svg>
+      ), text: '캔버스에서 위젯을 클릭하세요' },
+      { num: 3, icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      ), text: '여기서 옵션을 설정하세요' },
+    ];
     return (
-      <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <div className="text-[13px] font-semibold text-dark">위젯 옵션</div>
-          <div className="text-[11px] text-muted mt-0.5">캔버스에서 위젯을 선택하세요</div>
+      <PanelShell title="위젯 옵션" desc="캔버스에서 위젯을 선택하세요">
+        <div className="flex-1 flex flex-col items-center justify-center px-5">
+          <div className="flex flex-col gap-[14px] w-full">
+            {steps.map(s => (
+              <div key={s.num} className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-[#f0f5ff] flex items-center justify-center shrink-0 mt-[1px]">
+                  {s.icon}
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold text-[#0056a4] leading-none">STEP {s.num}</div>
+                  <div className="text-[12px] text-[#475569] mt-[3px] leading-tight">{s.text}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-border">
-          <span className="text-3xl">⚙</span>
-          <span className="text-[12px]">선택된 위젯이 없습니다</span>
-        </div>
-      </div>
+      </PanelShell>
     );
   }
 
-  /* 위젯 선택 → 위젯 옵션 (Grid/Word 공통) */
+  /* ── 위젯 선택 → 위젯 옵션 ── */
   const { widgetDef, instanceId } = selected;
   const cfg = config[instanceId] || {};
 
-  const setViewType   = (vt)  => onConfigChange(instanceId, { ...cfg, viewType: vt });
-  const setPeriodOn   = (v)   => onConfigChange(instanceId, { ...cfg, periodOn: v });
-  const setFrom       = (v)   => onConfigChange(instanceId, { ...cfg, from: v });
-  const setTo         = (v)   => onConfigChange(instanceId, { ...cfg, to: v });
-  const setQuick      = (q)   => onConfigChange(instanceId, { ...cfg, quick: q });
-  const setSystemIds  = (ids) => onConfigChange(instanceId, { ...cfg, systemIds: ids });
-  const setInspSelect = (patch) => onConfigChange(instanceId, { ...cfg, ...patch });
+  const set = (patch) => onConfigChange(instanceId, { ...cfg, ...patch });
 
   return (
-    <div className="w-[280px] bg-white border-l border-border flex flex-col shrink-0 overflow-hidden">
-      <div className="px-4 py-3 border-b border-border">
-        <div className="text-[13px] font-semibold text-dark">{widgetDef.name}</div>
-        <div className="text-[11px] text-muted mt-0.5">{widgetDef.desc}</div>
-      </div>
-
-      <div className="flex-1 flex flex-col overflow-y-auto p-4 gap-4">
+    <PanelShell title={widgetDef.name} desc={widgetDef.desc}>
+      <div className="flex-1 flex flex-col overflow-y-auto px-5 py-4 gap-5">
 
         {/* 시스템 선택 */}
         {widgetDef.hasSystemSelect && (
-          <SystemSelectSection cfg={cfg} onCfgChange={setSystemIds} />
+          <SystemSelectSection cfg={cfg} onCfgChange={(ids) => set({ systemIds: ids })} />
         )}
 
-        {/* 표시 형태 */}
+        {/* 표시 형태 (viewType) */}
         {widgetDef.viewTypes.length > 0 && (
           <>
             {widgetDef.hasSystemSelect && <Sep />}
-            <div className="flex flex-col gap-2">
-              <SectionLabel>표시 형태</SectionLabel>
-              <div className="flex flex-col gap-1">
+            <Section label="표시 형태">
+              <div className="flex flex-col gap-[6px]">
                 {widgetDef.viewTypes.map(vt => (
-                  <div
+                  <RadioOption
                     key={vt.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer border transition-colors
-                      ${cfg.viewType === vt.id
-                        ? 'border-primary bg-primary-light text-primary'
-                        : 'border-border hover:bg-[#f8fafc] text-dark'}`}
-                    onClick={() => setViewType(vt.id)}
-                  >
-                    <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0
-                      ${cfg.viewType === vt.id ? 'border-primary' : 'border-[#c0c7ce]'}`}>
-                      {cfg.viewType === vt.id && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                    </div>
-                    <span className="text-[11px]">{vt.icon}</span>
-                    <span className="text-[12px] font-medium">{vt.label}</span>
-                  </div>
+                    selected={cfg.viewType === vt.id}
+                    onClick={() => set({ viewType: vt.id })}
+                    label={`${vt.icon}  ${vt.label}`}
+                  />
                 ))}
               </div>
-            </div>
+            </Section>
+          </>
+        )}
+
+        {/* 표시 방식 (카운트 / 상세 / 히트맵) */}
+        {widgetDef.hasItemDetailToggle && (
+          <>
+            <Sep />
+            <Section label="표시 방식">
+              <div className="flex flex-col gap-[6px]">
+                {[
+                  { id: 'count',   label: '카운트', desc: '준수·미준수·실패 건수' },
+                  { id: 'detail',  label: '상세',   desc: cfg.viewType === 'by-item' ? '각 시스템별 결과 표시' : '각 점검항목별 결과 표시' },
+                  { id: 'heatmap', label: '히트맵', desc: '색상으로 한눈에 현황 파악' },
+                ].map(opt => (
+                  <RadioOption
+                    key={opt.id}
+                    selected={(cfg.displayMode || 'count') === opt.id}
+                    onClick={() => set({ displayMode: opt.id })}
+                    label={opt.label}
+                    desc={opt.desc}
+                  />
+                ))}
+              </div>
+            </Section>
           </>
         )}
 
         {/* 패널 제목 */}
-        <>
-          <Sep />
-          <div className="flex flex-col gap-2">
-            <SectionLabel>패널 제목</SectionLabel>
-            <input
-              type="text"
-              value={cfg.widgetTitle ?? widgetDef.name}
-              onChange={e => onConfigChange(instanceId, { ...cfg, widgetTitle: e.target.value })}
-              placeholder={widgetDef.name}
-              className="w-full text-[12px] border border-border rounded px-2.5 py-1.5 text-dark outline-none focus:border-primary bg-white"
-            />
-          </div>
-        </>
+        {!widgetDef.fixedTitle && (
+          <>
+            <Sep />
+            <Section label="패널 제목">
+              <input
+                type="text"
+                value={cfg.widgetTitle ?? widgetDef.name}
+                onChange={e => set({ widgetTitle: e.target.value })}
+                placeholder={widgetDef.name}
+                className="w-full text-[12px] border border-[#e2e8f0] rounded-[6px] px-3 py-[7px] text-[#1e293b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 bg-white transition-colors"
+              />
+            </Section>
+          </>
+        )}
 
         {/* 표시 설정 */}
         <>
           <Sep />
-          <div className="flex flex-col gap-2">
-            <SectionLabel>표시 설정</SectionLabel>
-            {[['showBorder', '외곽선'], ['showLabel', '라벨']].map(([key, label]) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-[12px] text-dark">{label}</span>
-                <button
-                  onClick={() => onConfigChange(instanceId, { ...cfg, [key]: cfg[key] === false ? true : false })}
-                  className={`w-9 h-5 rounded-full transition-colors relative ${cfg[key] !== false ? 'bg-primary' : 'bg-[#c0c7ce]'}`}
-                >
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-150
-                    ${cfg[key] !== false ? 'left-[18px]' : 'left-0.5'}`} />
-                </button>
-              </div>
-            ))}
-          </div>
+          <Section label="표시 설정">
+            <Toggle label="외곽선" value={cfg.showBorder !== false} onChange={v => set({ showBorder: v })} />
+            <Toggle label="라벨" value={cfg.showLabel !== false} onChange={v => set({ showLabel: v })} />
+          </Section>
         </>
 
         {/* 요약 차트 토글 */}
         {widgetDef.hasSummaryToggle && (
           <>
             <Sep />
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[12px] font-medium text-dark">요약 차트</div>
-                <div className="text-[11px] text-muted mt-0.5">결과 도넛 차트 표시</div>
-              </div>
-              <button
-                onClick={() => onConfigChange(instanceId, { ...cfg, showSummary: !cfg.showSummary })}
-                className={`w-9 h-5 rounded-full transition-colors relative ${cfg.showSummary ? 'bg-primary' : 'bg-[#c0c7ce]'}`}
-              >
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-150
-                  ${cfg.showSummary ? 'left-[18px]' : 'left-0.5'}`} />
-              </button>
-            </div>
+            <Toggle label="요약 차트" desc="결과 도넛 차트 표시" value={!!cfg.showSummary} onChange={v => set({ showSummary: v })} />
+          </>
+        )}
+
+        {/* 실패 / 미준수 상세 토글 */}
+        {widgetDef.hasFailDetailToggle && (
+          <>
+            <Sep />
+            <Section label="상세 항목">
+              <Toggle label="실패 항목" desc="실패 건 상세 표시" value={!!cfg.showFailDetail} onChange={v => set({ showFailDetail: v })} />
+              <Toggle label="미준수 항목" desc="주요 미준수 건 상세 표시" value={!!cfg.showNonpassDetail} onChange={v => set({ showNonpassDetail: v })} />
+            </Section>
           </>
         )}
 
@@ -184,7 +205,7 @@ export default function RightPanel({
         {widgetDef.hasInspSelect && (
           <>
             <Sep />
-            <InspSelectSection cfg={cfg} onCfgChange={setInspSelect} singleMode={!!widgetDef.inspHistSingle} />
+            <InspSelectSection cfg={cfg} onCfgChange={(patch) => set(patch)} singleMode={!!widgetDef.inspHistSingle} />
           </>
         )}
 
@@ -192,50 +213,51 @@ export default function RightPanel({
         {widgetDef.hasPeriod && !widgetDef.hasInspSelect && (
           <>
             {(widgetDef.viewTypes.length > 0 || widgetDef.hasSystemSelect) && <Sep />}
-            <div className="flex flex-col gap-2">
-              <SectionLabel>기간 설정</SectionLabel>
-              <div className="flex flex-wrap gap-1">
+            <Section label="기간 설정">
+              <div className="flex flex-wrap gap-[5px]">
                 {QUICK_PERIODS.map(q => (
                   <button
                     key={q}
-                    onClick={() => setQuick(cfg.quick === q ? null : q)}
-                    className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors
+                    onClick={() => set({ quick: cfg.quick === q ? null : q })}
+                    className={`px-[10px] py-[5px] rounded-[5px] text-[11px] font-medium border transition-colors
                       ${cfg.quick === q
                         ? 'bg-primary text-white border-primary'
-                        : 'bg-white text-muted border-border hover:border-primary hover:text-primary'}`}
+                        : 'bg-white text-[#64748b] border-[#e2e8f0] hover:border-primary hover:text-primary'}`}
                   >
                     {q}
                   </button>
                 ))}
               </div>
               {!cfg.quick && (
-                <div className="flex flex-col gap-2 mt-1">
-                  {[['시작', cfg.from || MONTH_AGO, setFrom], ['종료', cfg.to || TODAY, setTo]].map(([label, val, setter]) => (
+                <div className="flex flex-col gap-[6px] mt-1">
+                  {[['시작', cfg.from || MONTH_AGO, v => set({ from: v })], ['종료', cfg.to || TODAY, v => set({ to: v })]].map(([label, val, setter]) => (
                     <div key={label} className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted w-6 shrink-0">{label}</span>
+                      <span className="text-[11px] text-[#94a3b8] w-6 shrink-0">{label}</span>
                       <input
                         type="date"
                         value={val}
                         onChange={e => setter(e.target.value)}
-                        className="flex-1 text-[11px] border border-border rounded px-2 py-1 text-dark outline-none focus:border-primary"
+                        className="flex-1 text-[11px] border border-[#e2e8f0] rounded-[5px] px-[10px] py-[5px] text-[#1e293b] outline-none focus:border-primary"
                       />
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </Section>
           </>
         )}
 
+        {/* spacer + 삭제 버튼 */}
         <div className="flex-1" />
-
-        <button
-          onClick={() => onRemove && onRemove(instanceId)}
-          className="w-full py-2 bg-white text-danger text-[12px] font-medium rounded border border-danger hover:bg-red-50 transition-colors"
-        >
-          위젯 삭제
-        </button>
+        <div className="pt-2 pb-1">
+          <button
+            onClick={() => onRemove && onRemove(instanceId)}
+            className="w-full py-[8px] bg-white text-[#dc2626] text-[12px] font-medium rounded-[6px] border border-[#fecaca] hover:bg-[#fef2f2] transition-colors"
+          >
+            위젯 삭제
+          </button>
+        </div>
       </div>
-    </div>
+    </PanelShell>
   );
 }

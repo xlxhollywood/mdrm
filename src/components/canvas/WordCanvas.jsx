@@ -785,9 +785,10 @@ export default function WordCanvas({
             return;
           }
           if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-            // contentEditable 내부에서 편집 중이면 브라우저 기본 undo 허용
+            // 테이블 셀 안에서는 구조 undo 우선 (행/열 추가삭제 복원)
             const active = document.activeElement;
-            if (active?.isContentEditable) return;
+            const inTable = active?.closest?.('td');
+            if (active?.isContentEditable && !inTable) return;
             e.preventDefault();
             onUndo?.();
             return;
