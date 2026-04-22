@@ -168,6 +168,33 @@ export const WIDGET_CATEGORIES = {
       },
     ],
   },
+  report: {
+    label: '리포트',
+    widgets: [
+      {
+        id: 'rpt-summary-card',
+        name: '결과 요약 카드',
+        desc: '전체/준수/미준수/실패 요약 + 상세 토글',
+        icon: '📊',
+        viewTypes: [],
+        hasPeriod: false,
+        hasFailDetailToggle: true,
+      },
+      {
+        id: 'rpt-inspection-status',
+        name: '점검현황',
+        desc: '항목별 / 시스템별 점검 결과 현황',
+        icon: '📋',
+        viewTypes: [
+          { id: 'by-item',   label: '항목별',   icon: '☰' },
+          { id: 'by-system', label: '시스템별', icon: '🖥' },
+        ],
+        hasPeriod: false,
+        hasItemDetailToggle: true,
+        fixedTitle: true,
+      },
+    ],
+  },
 };
 
 export const WEEKLY_INSPECTION_TEMPLATE_ID = 'weekly-inspection-report';
