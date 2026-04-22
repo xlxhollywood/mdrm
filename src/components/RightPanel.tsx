@@ -2,6 +2,7 @@
 
 import { WordDocPanel } from './panel/WordDocPanel';
 import { TablePanel } from './panel/TablePanel';
+import { WidgetPanel } from './panel/WidgetPanel';
 
 /* ── 패널 셸 ── */
 function PanelShell({ title, desc, children }) {
@@ -22,7 +23,17 @@ export default function RightPanel({
   tempSaved, onTempSave,
   selectedTable, onTableAction, onTableDelete,
   onTableLoadData, onTableToggleHeader, onTableSwapHeaders,
+  selectedWidget, onUpdateBlock,
 }) {
+  /* 위젯 블록 선택 → 위젯 설정 */
+  if (selectedWidget) {
+    return (
+      <PanelShell title="위젯 설정" desc="점검을 선택하세요">
+        <WidgetPanel widget={selectedWidget} onUpdateBlock={onUpdateBlock} />
+      </PanelShell>
+    );
+  }
+
   /* 표 포커스 → 표 설정 */
   if (selectedTable) {
     return (

@@ -6,10 +6,12 @@ import RightPanel from './RightPanel';
 import WordCanvas from './canvas/WordCanvas';
 import { createInspReportTemplate } from '@/lib/inspReportTemplate';
 import { createInspDetailTemplate } from '@/lib/inspDetailTemplate';
+import { WIDGET_LIST, createWidgetBlock } from '@/lib/widgetDefinitions';
 
 /* ── Main ── */
 export default function WidgetDashboard() {
   const [selectedTable,  setSelectedTable]  = useState(null);
+  const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const selectedTableRef = useRef(null);
   useEffect(() => { selectedTableRef.current = selectedTable; }, [selectedTable]);
 
@@ -59,6 +61,22 @@ export default function WidgetDashboard() {
     historyRef.current = [];
     setDocBlocks(blocks);
     setConfig(configs);
+  }, []);
+
+  const handleAddWidget = useCallback((widgetId: string) => {
+    const newBlock = createWidgetBlock(widgetId);
+    if (!newBlock) return;
+    setDocBlocks(prev => {
+      historyRef.current = [...historyRef.current.slice(-30), prev];
+      const activeId = activeBlockIdRef.current;
+      const activeIdx = activeId ? prev.findIndex(b => b.id === activeId) : -1;
+      if (activeIdx !== -1) {
+        const arr = [...prev];
+        arr.splice(activeIdx + 1, 0, newBlock);
+        return arr;
+      }
+      return [...prev, newBlock];
+    });
   }, []);
 
   const handleUpdateText = useCallback((id, html) =>
@@ -152,7 +170,7 @@ export default function WidgetDashboard() {
 
   const handleUpdateBlock = useCallback((id, fields) => {
     setDocBlocks(prev => {
-      const structuralKeys = ['type', 'merges', 'rows', 'cols'];
+      const structuralKeys = ['type', 'merges', 'rows', 'cols', 'table'];
       if (structuralKeys.some(k => fields[k] !== undefined)) {
         historyRef.current = [...historyRef.current.slice(-30), prev];
       }
@@ -168,6 +186,11 @@ export default function WidgetDashboard() {
           blockId, rows: block.rows, cols: block.cols, row, col,
           headerRow: block.headerRow ?? true, headerCol: block.headerCol ?? false,
         });
+      } else if (block?.type === 'widget' && block.table) {
+        setSelectedTable({
+          blockId, rows: block.table.rows, cols: block.table.cols, row, col,
+          headerRow: block.table.headerRow ?? true, headerCol: block.table.headerCol ?? false,
+        });
       }
       return prev;
     });
@@ -180,40 +203,46 @@ export default function WidgetDashboard() {
     setDocBlocks(blocks => {
       historyRef.current = [...historyRef.current.slice(-30), blocks];
       return blocks.map(b => {
-        if (b.id !== blockId || b.type !== 'table') return b;
-        const { rows, cols, cells } = b;
+        if (b.id !== blockId) return b;
+        // widget 블록이면 table 필드 안에서 조작
+        const isWidget = b.type === 'widget';
+        if (!isWidget && b.type !== 'table') return b;
+        const tbl = isWidget ? (b.table || {}) : b;
+        const { rows, cols, cells } = tbl;
         const shifted = {};
+        const apply = (patch) => isWidget ? { ...b, table: { ...tbl, ...patch } } : { ...b, ...patch };
+
         if (action === 'addRowBelow') {
           Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[r > row ? `${r+1},${c}` : k] = v; });
           setSelectedTable(s => s ? { ...s, rows: rows + 1 } : s);
-          return { ...b, rows: rows + 1, cells: shifted };
+          return apply({ rows: rows + 1, cells: shifted });
         }
         if (action === 'addRowAbove') {
           Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[r >= row ? `${r+1},${c}` : k] = v; });
           setSelectedTable(s => s ? { ...s, row: s.row + 1, rows: rows + 1 } : s);
-          return { ...b, rows: rows + 1, cells: shifted };
+          return apply({ rows: rows + 1, cells: shifted });
         }
         if (action === 'deleteRow') {
           if (rows <= 1) return b;
           Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); if (r !== row) shifted[r > row ? `${r-1},${c}` : k] = v; });
           setSelectedTable(s => s ? { ...s, row: Math.max(0, s.row - 1), rows: rows - 1 } : s);
-          return { ...b, rows: rows - 1, cells: shifted };
+          return apply({ rows: rows - 1, cells: shifted });
         }
         if (action === 'addColRight') {
           Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[c > col ? `${r},${c+1}` : k] = v; });
           setSelectedTable(s => s ? { ...s, cols: cols + 1 } : s);
-          return { ...b, cols: cols + 1, cells: shifted };
+          return apply({ cols: cols + 1, cells: shifted });
         }
         if (action === 'addColLeft') {
           Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); shifted[c >= col ? `${r},${c+1}` : k] = v; });
           setSelectedTable(s => s ? { ...s, col: s.col + 1, cols: cols + 1 } : s);
-          return { ...b, cols: cols + 1, cells: shifted };
+          return apply({ cols: cols + 1, cells: shifted });
         }
         if (action === 'deleteCol') {
           if (cols <= 1) return b;
           Object.entries(cells).forEach(([k, v]) => { const [r, c] = k.split(',').map(Number); if (c !== col) shifted[c > col ? `${r},${c-1}` : k] = v; });
           setSelectedTable(s => s ? { ...s, col: Math.max(0, s.col - 1), cols: cols - 1 } : s);
-          return { ...b, cols: cols - 1, cells: shifted };
+          return apply({ cols: cols - 1, cells: shifted });
         }
         return b;
       });
@@ -284,33 +313,58 @@ export default function WidgetDashboard() {
       <AppHeader />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* ── 좌측 패널 (템플릿) ── */}
+        {/* ── 좌측 패널 ── */}
         <div className="w-[300px] bg-white border-r border-border flex flex-col shrink-0 overflow-hidden">
-          <div className="px-4 pt-[14px] pb-3 border-b border-border">
-            <div className="text-[13px] font-semibold text-dark">템플릿</div>
-            <div className="text-[11px] text-muted mt-0.5">보고서 템플릿을 선택하세요</div>
+          {/* 위젯 목록 */}
+          <div className="px-4 pt-[14px] pb-2 border-b border-border">
+            <div className="text-[13px] font-semibold text-dark">위젯</div>
+            <div className="text-[11px] text-muted mt-0.5">클릭하면 문서에 삽입됩니다</div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-            {[
-              { fn: createInspReportTemplate, icon: '🖥️', name: '인프라 점검 보고서', desc: '점검결과·이슈·디스크현황 포함' },
-              { fn: createInspDetailTemplate, icon: '📊', name: '점검결과 상세 보고서', desc: '실제 데이터 기반 상세 분석' },
-            ].map((t, i) => (
-              <div
-                key={i}
-                onClick={() => handleLoadTemplate(t.fn)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-white cursor-pointer
-                  hover:border-primary hover:bg-primary-light transition-colors group"
-              >
-                <span className="text-[18px] shrink-0">{t.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-medium text-dark group-hover:text-primary">{t.name}</div>
-                  <div className="text-[10px] text-muted mt-px">{t.desc}</div>
+          <div className="overflow-y-auto flex-1">
+            <div className="p-3 flex flex-col gap-1">
+              {WIDGET_LIST.map(w => (
+                <div
+                  key={w.id}
+                  onClick={() => handleAddWidget(w.id)}
+                  className="flex items-center gap-2.5 px-3 py-[10px] rounded-lg cursor-pointer
+                    hover:bg-primary-light transition-colors group"
+                >
+                  <span className="text-[16px] shrink-0">{w.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] font-medium text-dark group-hover:text-primary">{w.name}</div>
+                    <div className="text-[10px] text-muted mt-px">{w.desc}</div>
+                  </div>
+                  <span className="text-[11px] text-border shrink-0 group-hover:text-primary">+</span>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-muted group-hover:text-primary">
-                  <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+              ))}
+            </div>
+
+            {/* 템플릿 */}
+            <div className="border-t border-border px-4 py-3">
+              <div className="text-[11px] font-semibold text-muted mb-2">템플릿</div>
+              <div className="flex flex-col gap-1.5">
+                {[
+                  { fn: createInspReportTemplate, icon: '🖥️', name: '인프라 점검 보고서', desc: '점검결과·이슈·디스크현황 포함' },
+                  { fn: createInspDetailTemplate, icon: '📊', name: '점검결과 상세 보고서', desc: '실제 데이터 기반 상세 분석' },
+                ].map((t, i) => (
+                  <div
+                    key={i}
+                    onClick={() => handleLoadTemplate(t.fn)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-white cursor-pointer
+                      hover:border-primary hover:bg-primary-light transition-colors group"
+                  >
+                    <span className="text-[18px] shrink-0">{t.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-medium text-dark group-hover:text-primary">{t.name}</div>
+                      <div className="text-[10px] text-muted mt-px">{t.desc}</div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-muted group-hover:text-primary">
+                      <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
 
@@ -326,11 +380,12 @@ export default function WidgetDashboard() {
             onInsertBlock={handleInsertBlock}
             onUpdateBlock={handleUpdateBlock}
             onDeleteBlocksInRange={handleDeleteBlocksInRange}
-            onDeselectWidget={() => setSelectedTable(null)}
+            onDeselectWidget={() => { setSelectedTable(null); setSelectedWidgetId(null); }}
             onReorderBlocks={handleReorderBlocks}
             onDropColToMain={handleDropColToMain}
             onMoveColBlock={handleMoveColBlock}
-            onCellFocus={handleCellFocus}
+            onCellFocus={(blockId, r, c) => { handleCellFocus(blockId, r, c); setSelectedWidgetId(null); }}
+            onWidgetFocus={(block) => { setSelectedWidgetId(block?.id || null); setSelectedTable(null); }}
             onUndo={handleUndo}
             onActiveBlockChange={(id) => { activeBlockIdRef.current = id; }}
           />
@@ -354,6 +409,8 @@ export default function WidgetDashboard() {
           onTableSwapHeaders={handleTableSwapHeaders}
           onTableAction={handleTableAction}
           onTableDelete={handleTableDelete}
+          selectedWidget={selectedWidgetId ? docBlocks.find(b => b.id === selectedWidgetId) || null : null}
+          onUpdateBlock={handleUpdateBlock}
         />
       </div>
     </div>

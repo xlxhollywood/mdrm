@@ -11,12 +11,13 @@ import TableSizePicker      from '../editor/table/TableSizePicker';
 import LayoutColumnPicker   from '../editor/layout/LayoutColumnPicker';
 import { DragHandleIcon, TableBlock, LayoutBlock } from '../editor/layout/WordBlockTypes';
 import HtmlBlock from '../editor/html/HtmlBlock';
+import WidgetBlock from '../editor/widget/WidgetBlock';
 import useDragBlocks     from '../editor/useDragBlocks';
 
 export default function WordCanvas({
   docBlocks, config, docConfig,
   onDeleteBlock, onUpdateText, onDeselectWidget, onReorderBlocks, onInsertText, onDeleteBlocksInRange,
-  onInsertBlock, onUpdateBlock, onCellFocus, onUndo, onDropColToMain, onMoveColBlock, onActiveBlockChange,
+  onInsertBlock, onUpdateBlock, onCellFocus, onWidgetFocus, onUndo, onDropColToMain, onMoveColBlock, onActiveBlockChange,
 }) {
   const paper = PAPER_SIZES[docConfig.paperSize] || PAPER_SIZES.A4;
   const isLand = docConfig.orientation === 'landscape';
@@ -717,15 +718,19 @@ export default function WordCanvas({
         tabIndex={-1}
         className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10 outline-none"
         style={{ width: docW, minHeight: docH, padding: pad }}
-        onClick={(e) => { onDeselectWidget(e); setActiveBlockId(null); setAllSelected(false); setSelectedBlockIds(new Set()); }}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest?.('[data-widget-block]')) return;
+          onDeselectWidget(e); setActiveBlockId(null); setAllSelected(false); setSelectedBlockIds(new Set());
+        }}
         onMouseDown={(e) => {
           if (e.button !== 0) return;
           if (
-            e.target.isContentEditable ||
-            e.target.closest('[contenteditable="true"]') ||
-            e.target.closest('button') ||
-            e.target.closest('[data-text-id]') ||
-            e.target.closest('[data-layout-col]')
+            (e.target as HTMLElement).isContentEditable ||
+            (e.target as HTMLElement).closest?.('[contenteditable="true"]') ||
+            (e.target as HTMLElement).closest?.('button') ||
+            (e.target as HTMLElement).closest?.('[data-text-id]') ||
+            (e.target as HTMLElement).closest?.('[data-layout-col]') ||
+            (e.target as HTMLElement).closest?.('[data-widget-block]')
           ) return;
           dragSelStartRef.current = { startX: e.clientX, startY: e.clientY };
           setSelectedBlockIds(new Set());
@@ -867,7 +872,12 @@ export default function WordCanvas({
                         className="w-[18px] h-[18px] flex items-center justify-center rounded text-[#8c959e] text-[15px] font-normal leading-none hover:bg-[#e2e6ea] hover:text-[#3d4a56] select-none transition-colors"
                       >+</button>
                       <div
-                        onMouseDown={(e) => { e.stopPropagation(); window.getSelection()?.removeAllRanges(); handleDragHandleMouseDown(e, i, block.id, setActiveBlockId); }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation(); window.getSelection()?.removeAllRanges();
+                          handleDragHandleMouseDown(e, i, block.id, setActiveBlockId);
+                          if (block.type === 'widget') onWidgetFocus?.(block);
+                          else onWidgetFocus?.(null);
+                        }}
                         onClick={(e) => e.stopPropagation()}
                         className="text-[#8c959e] cursor-grab active:cursor-grabbing"
                       >
@@ -967,6 +977,22 @@ export default function WordCanvas({
                     config={config}
                     onDeleteBlock={onDeleteBlock}
                   />
+                ) : block.type === 'widget' ? (
+                  <div data-widget-block>
+                    <WidgetBlock
+                      block={block}
+                      onUpdateBlock={onUpdateBlock}
+                      onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); setActiveBlockId(null); setSelectedBlockIds(new Set()); }}
+                      onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); setSelectedBlockIds(new Set()); }}
+                      onAddRow={handleAddTableRow}
+                      onAddCol={handleAddTableCol}
+                      onDeleteRow={handleDeleteTableRow}
+                      onDeleteCol={handleDeleteTableCol}
+                      onMoveRow={handleMoveTableRow}
+                      onMoveCol={handleMoveTableCol}
+                      forceSync={tableSync}
+                    />
+                  </div>
                 ) : null}
               </div>
 

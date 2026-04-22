@@ -1,11 +1,21 @@
 let _seq = 0;
 const uid = (prefix) => `id-${prefix}-${++_seq}`;
 
-const SUMMARY_HTML = `<div style="font-family: 'Apple SD Gothic Neo', sans-serif; display: flex; gap: 12px; margin: 4px 0;">
+export function createInspDetailTemplate() {
+  _seq = 0;
+
+  const blocks = [
+    // 제목
+    { id: uid('t'), type: 'text', subtype: 'h1', html: '서버 및 WEB 점검 결과 보고서' },
+    { id: uid('t'), type: 'text', html: '점검일시: 2026.04.21 13:31 &nbsp;|&nbsp; 점검명: 서버 및 WEB 점검 &nbsp;|&nbsp; 대상: 32대 서버 · 11개 항목 · 총 223건' },
+    { id: uid('d'), type: 'divider' },
+
+    // 1. 점검 결과 요약
+    { id: uid('w'), type: 'widget', title: '1. 점검 결과 요약', code: `<div style="font-family: 'Apple SD Gothic Neo', sans-serif; display: flex; gap: 12px; margin: 4px 0;">
   <div style="flex:1; background: linear-gradient(135deg, #0056a4 0%, #3571ce 100%); border-radius: 10px; padding: 18px; color: white;">
     <div style="font-size: 11px; opacity: 0.8; margin-bottom: 6px;">전체 점검</div>
     <div style="font-size: 32px; font-weight: 700;">223건</div>
-    <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">32대 서버</div>
+    <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">32대 · 11항목</div>
   </div>
   <div style="flex:1; background: white; border-radius: 10px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
     <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">준수</div>
@@ -23,21 +33,7 @@ const SUMMARY_HTML = `<div style="font-family: 'Apple SD Gothic Neo', sans-serif
     <div style="font-size: 32px; font-weight: 700; color: #ef4444;">4건</div>
     <div style="font-size: 11px; color: #ef4444; margin-top: 8px;">● 로그 점검 스크립트 오류</div>
   </div>
-</div>`;
-
-
-export function createInspDetailTemplate() {
-  _seq = 0;
-
-  const blocks = [
-    // 제목
-    { id: uid('t'), type: 'text', subtype: 'h1', html: '나이스 시스템 정기 점검 결과 보고서' },
-    { id: uid('t'), type: 'text', html: '점검일시: 2026.04.21 13:31 &nbsp;|&nbsp; 점검명: 나이스 시스템 정기 점검 &nbsp;|&nbsp; 대상: 32대 서버' },
-    { id: uid('d'), type: 'divider' },
-
-    // 1. 점검 결과 요약
-    { id: uid('t'), type: 'text', subtype: 'h2', html: '1. 점검 결과 요약' },
-    { id: uid('h'), type: 'html', code: SUMMARY_HTML },
+</div>` },
 
     // 2. 항목별 준수율
     { id: uid('t'), type: 'text', subtype: 'h2', html: '2. 항목별 준수율' },
@@ -155,7 +151,7 @@ export function createInspDetailTemplate() {
 
     // 6. 종합 의견
     { id: uid('t'), type: 'text', subtype: 'h2', html: '6. 종합 의견' },
-    { id: uid('t'), type: 'text', html: '금회 점검 결과 전체 223건 중 169건(75%)이 준수로 확인되었습니다. 파일시스템 사용량이 32대 전체 서버에서 임계치를 초과하여 준수율이 크게 하락하였으며, 이는 최근 데이터 증가량 대비 스토리지 증설이 지연된 것이 주요 원인입니다. 실패 4건은 에이전트 패치로 즉시 해결하였고, 메모리·CPU·Disk I/O 미준수 건은 DBA팀과 협조하여 순차적으로 조치 중입니다. 파일시스템 용량 확보를 위한 디스크 증설 및 데이터 아카이빙 정책 수립이 시급합니다.' },
+    { id: uid('t'), type: 'text', html: '금회 「서버 및 WEB 점검」 결과 전체 223건(32대 서버 × 11개 항목) 중 169건(75%)이 준수로 확인되었습니다. 파일시스템 사용량이 32대 전체 서버에서 임계치를 초과하여 준수율이 크게 하락하였으며, 이는 최근 데이터 증가량 대비 스토리지 증설이 지연된 것이 주요 원인입니다. 실패 4건은 에이전트 패치로 즉시 해결하였고, 메모리·CPU·Disk I/O 미준수 건은 DBA팀과 협조하여 순차적으로 조치 중입니다. 파일시스템 용량 확보를 위한 디스크 증설 및 데이터 아카이빙 정책 수립이 시급합니다.' },
     { id: uid('d'), type: 'divider' },
     { id: uid('t'), type: 'text', subtype: 'quote', html: '본 보고서는 나이스 시스템 인프라운영팀에서 작성하였으며, 문의사항은 인프라운영팀(내선 1234)으로 연락 바랍니다.' },
     { id: uid('t'), type: 'text', html: '' },
