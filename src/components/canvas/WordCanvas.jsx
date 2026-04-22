@@ -62,10 +62,7 @@ export default function WordCanvas({
     const block = docBlocks[fromIdx];
     if (!block || block.type === 'layout') return;
     onUpdateBlock(block.id, { layoutRef: { layoutId: layoutBlockId, colIdx } });
-    if (false) {
-      pendingFocusRef.current = { id: newTextId, position: 'start' };
-    }
-  }, [docBlocks, onUpdateBlock, onDeleteBlock, onInsertBlock]);
+  }, [docBlocks, onUpdateBlock]);
 
   // ── 열 내부 블록 조작 핸들러 ──
   const handleColumnEnter = useCallback((blockId) => {

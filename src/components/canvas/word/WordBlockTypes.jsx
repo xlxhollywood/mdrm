@@ -18,11 +18,6 @@ export function DragHandleIcon() {
   );
 }
 
-/* ── 위젯 래퍼: 너비 100% 채움 ── */
-function ScaledWidget({ children }) {
-  return <div className="px-[10px] py-[10px]">{children}</div>;
-}
-
 /* ── 열 레이아웃 셀 블록 — TextBlock/TodoListBlock 재사용 ── */
 function LayoutCellBlock({
   block, onUpdateBlock, onUpdateText, onFocusBlock,
