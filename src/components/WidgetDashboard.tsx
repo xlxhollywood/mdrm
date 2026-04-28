@@ -4,8 +4,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import AppHeader  from './AppHeader';
 import RightPanel from './RightPanel';
 import WordCanvas from './canvas/WordCanvas';
-import { createInspReportTemplate } from '@/lib/inspReportTemplate';
 import { createInspDetailTemplate } from '@/lib/inspDetailTemplate';
+import { createInspDetailWordTemplate } from '@/lib/inspDetailWordTemplate';
 import { WIDGET_LIST, createWidgetBlock } from '@/lib/widgetDefinitions';
 
 /* ── Main ── */
@@ -44,7 +44,7 @@ export default function WidgetDashboard() {
   const [docConfig,      setDocConfig]      = useState({
     paperSize: 'A4',
     orientation: 'portrait',
-    margins: { top: 15, bottom: 15, left: 15, right: 15 },
+    margins: { top: 10, bottom: 10, left: 10, right: 10 },
     lineHeight: 1.6,
     letterSpacing: 0,
     blockSpacing: 5,
@@ -344,8 +344,8 @@ export default function WidgetDashboard() {
               <div className="text-[11px] font-semibold text-muted mb-2">템플릿</div>
               <div className="flex flex-col gap-1.5">
                 {[
-                  { fn: createInspReportTemplate, icon: '🖥️', name: '인프라 점검 보고서', desc: '점검결과·이슈·디스크현황 포함' },
-                  { fn: createInspDetailTemplate, icon: '📊', name: '점검결과 상세 보고서', desc: '실제 데이터 기반 상세 분석' },
+                  { fn: createInspDetailTemplate, icon: '📊', name: '점검결과 상세 보고서', desc: '위젯 기반 상세 분석' },
+                  { fn: createInspDetailWordTemplate, icon: '📝', name: '점검결과 상세 보고서 (Word ver)', desc: '순수 텍스트+테이블 구성' },
                 ].map((t, i) => (
                   <div
                     key={i}

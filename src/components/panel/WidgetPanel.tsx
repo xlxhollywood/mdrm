@@ -1,6 +1,63 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+
+/* ── 색상 프리셋 ── */
+const TEXT_COLORS = [
+  '#1e293b', '#475569', '#0056a4', '#16a34a', '#d97706', '#dc2626',
+  '#7c3aed', '#0891b2', '#be185d',
+];
+const HIGHLIGHT_COLORS = [
+  '#dbeafe', '#dcfce7', '#fef9c3', '#fee2e2',
+  '#f3e8ff', '#cffafe', '#fce7f3', '#f1f5f9',
+];
+
+/* ── 색상 선택 드롭다운 ── */
+function ColorPicker({ icon, value, colors, onChange, title, allowNone = false }: any) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        title={title}
+        className="w-[32px] h-[28px] rounded-[4px] bg-[#f1f5f9] hover:bg-[#e2e8f0] flex items-center justify-center transition-colors"
+      >
+        <div className="flex flex-col items-center gap-[2px]" style={{ color: value || '#64748b' }}>
+          {icon}
+          <div style={{ width: 12, height: 3, borderRadius: 1, background: value || '#e2e8f0' }} />
+        </div>
+      </button>
+      {open && (
+        <div className="absolute top-[32px] left-0 z-50 bg-white border border-[#e2e8f0] rounded-[6px] shadow-lg p-2 flex flex-wrap gap-1 w-[120px]">
+          {allowNone && (
+            <button
+              onClick={() => { onChange(null); setOpen(false); }}
+              className={`w-[22px] h-[22px] rounded-[4px] border border-[#e2e8f0] flex items-center justify-center text-[10px] text-[#94a3b8] hover:bg-[#f8fafc] ${!value ? 'ring-1 ring-[#0056a4]' : ''}`}
+              title="없음"
+            >✕</button>
+          )}
+          {colors.map((c: string) => (
+            <button
+              key={c}
+              onClick={() => { onChange(c); setOpen(false); }}
+              className={`w-[22px] h-[22px] rounded-[4px] border transition-all hover:scale-110 ${value === c ? 'ring-1 ring-[#0056a4] ring-offset-1' : 'border-[#e2e8f0]'}`}
+              style={{ background: c }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ── 트리 데이터 ── */
 
@@ -256,10 +313,87 @@ export function WidgetPanel({ widget, onUpdateBlock }: WidgetPanelProps) {
             })}
           </div>
         </div>
+
+        {/* 스타일 */}
+        <div>
+          <div className="text-[10px] text-[#94a3b8] mb-1">스타일</div>
+          <div className="flex gap-[3px]">
+            {/* 볼드 */}
+            <button
+              onClick={() => onUpdateBlock(widget.id, { titleBold: (widget as any).titleBold === false })}
+              title="굵게"
+              className={`w-[32px] h-[28px] rounded-[4px] flex items-center justify-center transition-colors
+                ${(widget as any).titleBold !== false
+                  ? 'bg-[#0056a4] text-white'
+                  : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}
+            >
+              <span style={{ fontSize: 13, fontWeight: 700 }}>B</span>
+            </button>
+            {/* 기울기 */}
+            <button
+              onClick={() => onUpdateBlock(widget.id, { titleItalic: !(widget as any).titleItalic })}
+              title="기울임"
+              className={`w-[32px] h-[28px] rounded-[4px] flex items-center justify-center transition-colors
+                ${(widget as any).titleItalic
+                  ? 'bg-[#0056a4] text-white'
+                  : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'}`}
+            >
+              <span style={{ fontSize: 13, fontWeight: 500, fontStyle: 'italic' }}>I</span>
+            </button>
+            {/* 구분선 */}
+            <div className="w-px bg-[#e2e8f0] mx-[2px]" />
+            {/* 텍스트 컬러 */}
+            <ColorPicker
+              icon={<span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1 }}>A</span>}
+              value={(widget as any).titleColor || '#1e293b'}
+              colors={TEXT_COLORS}
+              onChange={c => onUpdateBlock(widget.id, { titleColor: c })}
+              title="텍스트 색상"
+            />
+            {/* 하이라이터 */}
+            <ColorPicker
+              icon={
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>
+                </svg>
+              }
+              value={(widget as any).titleHighlight || null}
+              colors={HIGHLIGHT_COLORS}
+              onChange={c => onUpdateBlock(widget.id, { titleHighlight: c })}
+              title="배경 하이라이트"
+              allowNone
+            />
+          </div>
+        </div>
       </div>
 
+      {/* 헤더 위젯 토글 */}
+      {(widget as any).headerItems && (
+        <div className="px-4 pt-3 pb-2 border-b border-[#e8ecf0] flex flex-col gap-2">
+          <div className="text-[11px] font-semibold text-[#64748b]">표시 항목</div>
+          {(widget as any).headerItems.map((item: any, i: number) => {
+            const label = item.icon === 'clock' ? '점검 일시' : item.icon === 'shield' ? '점검명' : `항목 ${i + 1}`;
+            return (
+              <div key={i} className="flex items-center justify-between">
+                <span className="text-[12px] text-[#334155]">{label}</span>
+                <button
+                  onClick={() => {
+                    const newItems = [...(widget as any).headerItems];
+                    newItems[i] = { ...newItems[i], visible: newItems[i].visible === false ? true : false };
+                    onUpdateBlock(widget.id, { headerItems: newItems });
+                  }}
+                  className={`w-[36px] h-[20px] rounded-full transition-colors relative ${item.visible !== false ? 'bg-[#0056a4]' : 'bg-[#cbd5e1]'}`}
+                >
+                  <div className={`absolute top-[2px] w-[16px] h-[16px] rounded-full bg-white shadow transition-transform ${item.visible !== false ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* 대상 선택 */}
-      <div className="px-4 pt-3 pb-1">
+      {!(widget as any).headerItems && (<><div className="px-4 pt-3 pb-1">
         <div className="text-[11px] font-semibold text-[#64748b] mb-2">대상 선택</div>
         <div className="flex gap-1">
           {([
@@ -330,6 +464,7 @@ export function WidgetPanel({ widget, onUpdateBlock }: WidgetPanelProps) {
           취소
         </button>
       </div>
+      </>)}
     </div>
   );
 }

@@ -31,6 +31,47 @@ export default function WordCanvas({
   const paperRef        = useRef(null);
   const blockRefs       = useRef([]);
 
+  // 페이지 분리: 콘텐츠 영역 높이 계산
+  const contentH = docH - Math.round(m.top * MM_TO_PX) - Math.round(m.bottom * MM_TO_PX);
+  const [pageBreaks, setPageBreaks] = useState<{ blockIdx: number; remaining: number }[]>([]);
+
+  // 블록 높이 측정 후 페이지 경계 계산 (블록 높이 기반 가상 누적)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!paperRef.current) return;
+      const wrappers = paperRef.current.querySelectorAll('[data-block-wrapper]');
+      if (!wrappers.length) return;
+
+      const mTopPx = Math.round(m.top * MM_TO_PX);
+      const mBotPx = Math.round(m.bottom * MM_TO_PX);
+      const gapH = mBotPx + 24 + mTopPx;
+      const spacing = docConfig.blockSpacing ?? 3;
+      const breaks: { blockIdx: number; remaining: number }[] = [];
+      let virtualTop = 0;
+      let currentPageEnd = contentH;
+
+      wrappers.forEach((el: HTMLElement) => {
+        const idx = parseInt(el.getAttribute('data-block-idx') || '-1');
+        if (idx === -1) return;
+
+        const height = el.getBoundingClientRect().height;
+        const blockBottom = virtualTop + height;
+
+        if (blockBottom > currentPageEnd && height < contentH) {
+          const remaining = Math.max(0, currentPageEnd - virtualTop);
+          breaks.push({ blockIdx: idx, remaining });
+          virtualTop = currentPageEnd + gapH;
+          currentPageEnd = virtualTop + contentH;
+        }
+
+        virtualTop += height + spacing;
+      });
+
+      setPageBreaks(breaks);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [docBlocks, contentH, m.top, m.bottom, docConfig.blockSpacing]);
+
   const [hoveredBlockId,   setHoveredBlockId]   = useState(null);
   const [activeBlockId,    setActiveBlockId]    = useState(null);
   const [allSelected,      setAllSelected]      = useState(false);
@@ -716,7 +757,7 @@ export default function WordCanvas({
       <div
         ref={paperRef}
         tabIndex={-1}
-        className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10 outline-none"
+        className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10 outline-none relative"
         style={{ width: docW, minHeight: docH, padding: pad }}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest?.('[data-widget-block]')) return;
@@ -853,13 +894,36 @@ export default function WordCanvas({
 
           return (
             <React.Fragment key={block.id}>
+              {/* 페이지 구분 스페이서 */}
+              {(() => {
+                const pb = pageBreaks.find(b => b.blockIdx === i);
+                if (!pb) return null;
+                const mLPx = Math.round(m.left * MM_TO_PX);
+                const mRPx = Math.round(m.right * MM_TO_PX);
+                const mTPx = Math.round(m.top * MM_TO_PX);
+                const mBPx = Math.round(m.bottom * MM_TO_PX);
+                return (
+                  <div style={{ pointerEvents: 'none' }}>
+                    <div style={{ height: pb.remaining }} />
+                    <div style={{ marginLeft: -mLPx, marginRight: -mRPx }}>
+                      <div style={{ height: mBPx, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }} />
+                      <div style={{ height: 24, background: '#c8cdd3' }} />
+                      <div style={{ height: mTPx, background: 'white', boxShadow: '0 -2px 8px rgba(0,0,0,0.08)' }} />
+                    </div>
+                  </div>
+                );
+              })()}
               <div
+                data-block-wrapper
+                data-block-idx={i}
                 ref={el => blockRefs.current[i] = el}
                 style={{ marginBottom: docConfig.blockSpacing ?? 3 }}
                 className={`relative rounded-[6px] transition-all duration-100
                   ${draggingIdx === i
                     ? 'opacity-40 bg-[#e8f0fc] shadow-[0_2px_12px_rgba(53,113,206,0.18)] cursor-grabbing scale-[0.99]'
-                    : allSelected || activeBlockId === block.id || selectedBlockIds.has(block.id) ? 'bg-[#dce8ff]' : ''}`}
+                    : allSelected || activeBlockId === block.id || selectedBlockIds.has(block.id)
+                      ? block.type === 'widget' ? 'bg-[#e8f2ff] ring-1 ring-[#378EE4] rounded-[10px]' : 'bg-[#dce8ff]'
+                      : ''}`}
               >
                 {/* 드래그 핸들 + + 버튼 */}
                 {(() => {
@@ -978,9 +1042,10 @@ export default function WordCanvas({
                     onDeleteBlock={onDeleteBlock}
                   />
                 ) : block.type === 'widget' ? (
-                  <div data-widget-block>
+                  <div data-widget-block onClick={(e) => { if (!(e.target as HTMLElement).closest?.('[contenteditable]') && !(e.target as HTMLElement).closest?.('td')) { e.stopPropagation(); onWidgetFocus?.(block); setAllSelected(false); setActiveBlockId(block.id); } }}>
                     <WidgetBlock
                       block={block}
+                      isActive={activeBlockId === block.id}
                       onUpdateBlock={onUpdateBlock}
                       onCellFocus={(blockId, r, c) => { onCellFocus?.(blockId, r, c); setAllSelected(false); setActiveBlockId(null); setSelectedBlockIds(new Set()); }}
                       onFocusBlock={() => { setAllSelected(false); setActiveBlockId(null); setSelectedBlockIds(new Set()); }}
@@ -991,6 +1056,11 @@ export default function WordCanvas({
                       onMoveRow={handleMoveTableRow}
                       onMoveCol={handleMoveTableCol}
                       forceSync={tableSync}
+                      onDuplicate={() => {
+                        const newBlock = { ...JSON.parse(JSON.stringify(block)), id: `widget-${Date.now()}` };
+                        onInsertBlock(i, newBlock);
+                      }}
+                      onDelete={() => onDeleteBlock(block.id)}
                     />
                   </div>
                 ) : null}
@@ -1027,6 +1097,8 @@ export default function WordCanvas({
             }
           }}
         />
+
+        {/* 페이지 구분선은 블록 사이 스페이서로 처리됨 */}
       </div>
     </>
   );

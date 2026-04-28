@@ -230,6 +230,7 @@ export default function TableBlock({
   onDeleteRow, onDeleteCol,
   onMoveRow, onMoveCol,
   forceSync = 0,
+  readOnly = false,
 }) {
   const { rows = 3, cols = 3, cells = {}, cellBg = {}, headerRow = true, headerCol = false, merges = [] } = block;
   const cellRefs     = useRef({});
@@ -257,7 +258,8 @@ export default function TableBlock({
   const [dragOrigin,  setDragOrigin]  = useState(null);
   const [ctxMenu,     setCtxMenu]     = useState(null);
   const dragStartPosRef = useRef(null);
-  const [cellFocused, setCellFocused] = useState(false);
+  const [cellFocused_, setCellFocused] = useState(false);
+  const cellFocused = readOnly ? false : cellFocused_;
 
   /* 열 수 변경 시 colWidths 동기화 */
   useEffect(() => {
@@ -559,7 +561,7 @@ export default function TableBlock({
   return (
     <div ref={tableWrapRef} className="py-1 px-1" style={{ position: 'relative', overflow: 'visible', cursor: draggingCol ? 'col-resize' : draggingRow ? 'row-resize' : undefined }} onClick={e => e.stopPropagation()}>
       {/* 열 너비 조절 오버레이 */}
-      {colBoundaryXs.map((x, i) => (
+      {!readOnly && colBoundaryXs.map((x, i) => (
         <div
           key={i}
           onMouseDown={e => startColResize(e, i)}
@@ -580,7 +582,7 @@ export default function TableBlock({
         </div>
       ))}
       {/* 행 높이 조절 오버레이 — 병합 구간은 제외하고 열별로 분리 */}
-      {rowBoundaryYs.map((y, i) => {
+      {!readOnly && rowBoundaryYs.map((y, i) => {
         // 각 열이 이 행 경계(i와 i+1 사이)를 가로지르는 병합에 속하는지 체크
         const blocked = Array.from({ length: cols }, (_, c) =>
           merges.some(m => c >= m.c1 && c <= m.c2 && m.r1 <= i && m.r2 >= i + 1)
@@ -712,8 +714,8 @@ export default function TableBlock({
 
       <table
         ref={tableRef}
-        className="border-collapse w-full"
-        style={{ tableLayout: 'fixed', userSelect: (isDragging && sel && (sel.r1 !== sel.r2 || sel.c1 !== sel.c2)) ? 'none' : undefined }}
+        className="border-collapse w-full rounded-[6px] overflow-hidden"
+        style={{ tableLayout: 'fixed', userSelect: (isDragging && sel && (sel.r1 !== sel.r2 || sel.c1 !== sel.c2)) ? 'none' : undefined, boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.03)' }}
       >
         <colgroup>
           {Array.from({ length: cols }, (_, c) => <col key={c} style={{ width: `${colWidths[c] ?? (100 / cols)}%` }} />)}
@@ -730,16 +732,16 @@ export default function TableBlock({
                 const key      = `${r},${c}`;
                 const isHeader = (headerRow && r === 0) || (headerCol && c === 0);
                 const selected = isSelected(r, c);
-                const bg       = cellBg[key] || (isHeader ? '#f5f5f5' : '#ffffff');
-                const selBg    = selected ? (isHeader ? '#cfddf5' : '#dce8ff') : bg;
+                const bg       = cellBg[key] || (isHeader ? '#f8fafc' : '#ffffff');
+                const selBg    = selected ? (isHeader ? '#dbeafe' : '#eff6ff') : bg;
 
                 return (
                   <td
                     key={c}
                     rowSpan={rSpan > 1 ? rSpan : undefined}
                     colSpan={cSpan > 1 ? cSpan : undefined}
-                    className="relative border border-[#d9dfe5]"
-                    style={{ background: selBg }}
+                    className="relative border border-[#e2e8f0]"
+                    style={{ background: selBg, borderBottom: isHeader && headerRow && r === 0 ? '1.5px solid #cbd5e1' : undefined }}
                     onMouseDown={e => { handleCellMouseDown(e, r, c); }}
                     onMouseEnter={() => handleCellMouseEnter(r, c)}
                     onMouseLeave={e => {
@@ -758,12 +760,11 @@ export default function TableBlock({
                           if (!el.dataset.init) { el.dataset.init = '1'; el.innerHTML = cells[key] || ''; }
                         }
                       }}
-                      contentEditable
+                      contentEditable={!readOnly}
                       suppressContentEditableWarning
                       data-cell-id={`${block.id}-${r}-${c}`}
-                      className={`outline-none text-[13px] min-h-[32px] px-2 py-[6px] ${isHeader ? 'font-semibold' : ''}`}
-                      style={{ color: '#1a222b' }}
-                      onFocus={() => { onCellFocus?.(block.id, r, c); onFocusBlock?.(); }}
+                      className={`outline-none text-[12px] leading-[1.5] min-h-[34px] px-[10px] py-[8px] ${isHeader ? 'font-semibold text-[#475569]' : 'text-[#1e293b]'} ${readOnly ? 'cursor-pointer select-none' : ''}`}
+                      onFocus={() => { if (!readOnly) { onCellFocus?.(block.id, r, c); onFocusBlock?.(); } }}
                       onPaste={e => {
                         // 테이블 셀 복사/붙여넣기(다중 셀)는 상위 핸들러에서 처리
                         if (sel && (sel.r1 !== sel.r2 || sel.c1 !== sel.c2)) return;
