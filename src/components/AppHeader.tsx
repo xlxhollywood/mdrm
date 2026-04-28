@@ -5,7 +5,7 @@ import { imgLogo, imgIconUser, imgIconNoti, imgIconSet } from '@/lib/assets';
 
 const NAV_MENUS = ['대시보드', '시스템', '워크플로우', '점검작업', '리포트'];
 
-export default function AppHeader() {
+export default function AppHeader({ onNavigate }: { onNavigate?: (menu: string) => void } = {}) {
   const [time, setTime] = useState('');
 
   useEffect(() => {
@@ -38,6 +38,7 @@ export default function AppHeader() {
                 key={menu}
                 className={`h-8 min-w-[78px] px-5 flex items-center justify-center mt-1 rounded-sm
                   ${isActive ? 'bg-nav-active cursor-pointer' : 'cursor-default'}`}
+                onClick={() => isActive && onNavigate?.(menu)}
               >
                 <span className={`text-[14px] whitespace-nowrap
                   ${isActive ? 'font-bold text-white' : 'font-normal text-[#b8cbf3] opacity-60'}`}>

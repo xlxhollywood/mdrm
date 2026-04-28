@@ -9,7 +9,7 @@ import { createInspDetailWordTemplate } from '@/lib/inspDetailWordTemplate';
 import { WIDGET_LIST, createWidgetBlock } from '@/lib/widgetDefinitions';
 
 /* ── Main ── */
-export default function WidgetDashboard() {
+export default function WidgetDashboard({ onBack }: { onBack?: () => void }) {
   const [selectedTable,  setSelectedTable]  = useState(null);
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const selectedTableRef = useRef(null);
@@ -315,6 +315,20 @@ export default function WidgetDashboard() {
       <div className="flex flex-1 overflow-hidden">
         {/* ── 좌측 패널 ── */}
         <div className="w-[300px] bg-white border-r border-border flex flex-col shrink-0 overflow-hidden">
+          {/* 뒤로가기 */}
+          {onBack && (
+            <div className="px-3 pt-3 pb-2 border-b border-border">
+              <button
+                onClick={onBack}
+                className="flex items-center gap-1.5 text-[12px] text-[#5b646f] hover:text-[#0056a4] transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                리포트 목록
+              </button>
+            </div>
+          )}
           {/* 위젯 목록 */}
           <div className="px-4 pt-[14px] pb-2 border-b border-border">
             <div className="text-[13px] font-semibold text-dark">위젯</div>
