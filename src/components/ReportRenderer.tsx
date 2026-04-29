@@ -19,10 +19,11 @@ function Icon({ type, size = 16 }: { type: string; size?: number }) {
 
 /* ── 테이블 ── */
 const COL_WIDTHS_4: Record<number, string> = { 0: '22%', 1: '10%', 2: '30%', 3: '38%' };
+const COL_WIDTHS_5: Record<number, string> = { 0: '22%', 1: '14%', 2: '14%', 3: '14%', 4: '36%' };
 
 function Table({ table }: { table: any }) {
   const { rows = 3, cols = 3, cells = {}, headerRow = false } = table;
-  const widths = cols === 4 ? COL_WIDTHS_4 : null;
+  const widths = cols === 4 ? COL_WIDTHS_4 : cols === 5 ? COL_WIDTHS_5 : null;
   return (
     <table className="border-collapse w-full text-[12px]" style={{ tableLayout: widths ? 'fixed' : undefined }}>
       {widths && (
