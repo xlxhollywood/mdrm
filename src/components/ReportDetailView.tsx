@@ -16,35 +16,74 @@ const REPORT_META: Record<string, any> = {
 
 /* ── 트리 아이콘 ── */
 function TreeIcon({ type, status }: { type: string; status?: string }) {
+  if (type === 'division') return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  );
+  if (type === 'workflow') return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      <path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9c0-3 3-3 6-3h3"/><path d="M6 15c0 0 3 0 6 0h3"/>
+    </svg>
+  );
   if (type === 'folder') return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
     </svg>
   );
+  const color = status === 'published' ? '#0056a4' : '#94a3b8';
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={status === 'published' ? '#0056a4' : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
     </svg>
   );
 }
 
+/* ── 사이드바 트리 노드 ── */
 function SidebarNode({ node, depth = 0, selectedId, onSelect }: any) {
-  const [open, setOpen] = useState(node.id === 'folder-server');
+  const [open, setOpen] = useState(node.icon === 'division' || node.id === 'folder-server');
   const hasChildren = node.children?.length > 0;
   const isSelected = node.id === selectedId;
+  const isDivision = node.icon === 'division' || node.icon === 'workflow';
+
+  if (isDivision) {
+    return (
+      <div className={depth === 0 ? 'mt-3 first:mt-0' : ''}>
+        <div className="flex items-center justify-between py-[6px] px-[10px]">
+          <div className="flex items-center gap-[6px] cursor-pointer" onClick={() => setOpen(!open)}>
+            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" className={`transition-transform shrink-0 ${open ? 'rotate-90' : ''}`}>
+              <path d="M3.5 2L6.5 5L3.5 8" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <TreeIcon type={node.icon} />
+            <span className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide" style={{ marginTop: 2 }}>{node.label}</span>
+          </div>
+        </div>
+        {open && node.children.map((child: any) => (
+          <SidebarNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div className={`flex items-center gap-[6px] py-[6px] cursor-pointer rounded-[4px] transition-colors ${isSelected ? 'bg-[#eff6ff] text-[#0056a4]' : 'hover:bg-[#f8fafc]'}`}
+      <div
+        className={`flex items-center gap-[6px] py-[6px] cursor-pointer rounded-[4px] transition-colors
+          ${isSelected ? 'bg-[#eff6ff] text-[#0056a4]' : 'hover:bg-[#f8fafc]'}`}
         style={{ paddingLeft: depth * 16 + 10, paddingRight: 8 }}
-        onClick={() => { if (hasChildren) setOpen(!open); onSelect(node.id); }}>
+        onClick={() => { if (hasChildren) setOpen(!open); onSelect(node.id); }}
+      >
         {hasChildren ? (
           <svg width="8" height="8" viewBox="0 0 10 10" fill="none" className={`transition-transform shrink-0 ${open ? 'rotate-90' : ''}`}>
             <path d="M3.5 2L6.5 5L3.5 8" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         ) : <div className="w-2" />}
         <TreeIcon type={node.icon} status={node.status} />
-        <span className={`text-[12px] flex-1 min-w-0 truncate ${isSelected ? 'font-semibold text-[#0056a4]' : 'text-[#334155]'}`}>{node.label}</span>
+        <span className={`text-[12px] flex-1 min-w-0 truncate ${isSelected ? 'font-semibold text-[#0056a4]' : 'text-[#334155]'}`} style={{ marginTop: 2 }}>
+          {node.label}
+        </span>
         {hasChildren && <span className="text-[10px] text-[#94a3b8] shrink-0">{node.children.length}</span>}
+        {node.status === 'draft' && !hasChildren && <span className="text-[9px] text-[#94a3b8] bg-[#f1f5f9] rounded-[3px] px-1 shrink-0">임시</span>}
       </div>
       {hasChildren && open && node.children.map((child: any) => (
         <SidebarNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />

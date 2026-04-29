@@ -24,6 +24,7 @@ const COL_WIDTHS_5: Record<number, string> = { 0: '22%', 1: '14%', 2: '14%', 3: 
 function Table({ table }: { table: any }) {
   const { rows = 3, cols = 3, cells = {}, headerRow = false } = table;
   const widths = cols === 4 ? COL_WIDTHS_4 : cols === 5 ? COL_WIDTHS_5 : null;
+  const noColBorder = cols === 5;
   return (
     <table className="border-collapse w-full text-[12px]" style={{ tableLayout: widths ? 'fixed' : undefined }}>
       {widths && (
@@ -38,10 +39,14 @@ function Table({ table }: { table: any }) {
           <tr key={r}>
             {Array.from({ length: cols }, (_, c) => {
               const html = cells[`${r},${c}`] || '';
+              const border = noColBorder
+                ? `border-t border-b border-[#d9dfe5]${c === 0 ? ' border-l' : ''}${c === cols - 1 ? ' border-r' : ''}`
+                : 'border border-[#d9dfe5]';
+              const isLink = noColBorder && c === 0 && !(headerRow && r === 0);
               return headerRow && r === 0 ? (
-                <th key={c} className="border border-[#d9dfe5] px-2.5 py-2 text-left text-[11px] font-semibold text-[#334155] bg-[#f8fafc]" dangerouslySetInnerHTML={{ __html: html }} />
+                <th key={c} className={`${noColBorder ? 'border-[#0056a4]' : border} ${noColBorder ? 'bg-[#0056a4] text-white' : 'bg-[#f8fafc] text-[#334155]'} px-2.5 py-2 text-left text-[11px] font-semibold`} dangerouslySetInnerHTML={{ __html: html }} />
               ) : (
-                <td key={c} className="border border-[#d9dfe5] px-2.5 py-2 text-[12px] text-[#334155]" dangerouslySetInnerHTML={{ __html: html }} />
+                <td key={c} className={`${border} px-2.5 py-2 text-[12px] ${isLink ? 'text-[#3b82f6] cursor-pointer hover:underline' : 'text-[#334155]'}`} dangerouslySetInnerHTML={{ __html: html }} />
               );
             })}
           </tr>
