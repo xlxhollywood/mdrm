@@ -8,9 +8,10 @@ export default function ReportPage() {
 
   return (
     <ReportOverview
-      onOpenReport={(id) => {
+      onOpenReport={(id, params) => {
         if (id === 'new' || id.startsWith('tpl-')) {
-          router.push(`/report/create${id !== 'new' ? `?type=${id}` : ''}`);
+          const query = [id !== 'new' ? `type=${id}` : '', params].filter(Boolean).join('&');
+          router.push(`/report/create${query ? `?${query}` : ''}`);
         } else {
           router.push(`/report/${id}`);
         }

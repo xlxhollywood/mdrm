@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AppHeader from './AppHeader';
+import { SIDEBAR_TREE } from '@/lib/sidebarTree';
 
 /* ── 스페이스 ── */
 const SPACES = [
@@ -22,37 +23,25 @@ const SPACE_MEMBERS: Record<string, { id: string; name: string; role: string; co
   ],
 };
 
-/* ── 사이드바 트리 ── */
-const SPACE_TREES: Record<string, any[]> = {
-  'space-shared': [
-    { id: 'folder-server', label: '서버 점검', icon: 'folder' as const, children: [
-      { id: '1', label: '서버 및 WEB 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
-      { id: '3', label: 'WAS 서버 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
-      { id: '4', label: 'Linux 보안 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
-    ]},
-    { id: 'folder-db', label: 'DB 점검', icon: 'folder' as const, children: [
-      { id: '2', label: 'DB 정기 점검 결과 리포트', icon: 'report' as const, status: 'draft' as const },
-      { id: '6', label: 'DB 백업 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
-    ]},
-    { id: 'folder-network', label: '네트워크 점검', icon: 'folder' as const, children: [
-      { id: '5', label: '네트워크 장비 점검 결과 리포트', icon: 'report' as const, status: 'draft' as const },
-      { id: '10', label: '방화벽 정책 점검 리포트', icon: 'report' as const, status: 'draft' as const },
-    ]},
-    { id: 'folder-dr', label: 'DR', icon: 'folder' as const, children: [
-      { id: '8', label: 'DR 훈련 결과 리포트', icon: 'report' as const, status: 'published' as const },
-    ]},
-    { id: 'folder-ipl', label: 'IPL', icon: 'folder' as const, children: [
-      { id: '9', label: 'IPL 실행 내역 리포트', icon: 'report' as const, status: 'published' as const },
-    ]},
-    { id: 'folder-word', label: 'Editor ver', icon: 'folder' as const, children: [
-      { id: 'word', label: '점검결과 상세 리포트 (Editor ver)', icon: 'report' as const, status: 'published' as const },
-    ]},
-  ],
+/* ── 사이드바 트리 (초기 상태) ── */
+const INITIAL_TREES: Record<string, any[]> = {
+  'space-shared': JSON.parse(JSON.stringify(SIDEBAR_TREE)),
   'space-personal': [
     { id: 'folder-my-draft', label: '작성 중', icon: 'folder' as const, children: [
       { id: '7', label: '방화벽 정책 점검 리포트 (초안)', icon: 'report' as const, status: 'draft' as const },
     ]},
   ],
+};
+
+/* ── 점검 ID → 리포트 이름 매핑 ── */
+const INSP_TO_REPORT: Record<string, string> = {
+  'insp-1': '서버 및 WEB 점검 결과 리포트',
+  'insp-2': 'WAS 서버 점검 결과 리포트',
+  'insp-3': 'Linux 보안 점검 결과 리포트',
+  'insp-4': 'DB 정기 점검 결과 리포트',
+  'insp-5': 'DB 백업 점검 결과 리포트',
+  'insp-6': '네트워크 장비 점검 결과 리포트',
+  'insp-7': '방화벽 정책 점검 결과 리포트',
 };
 
 /* ── 리포트 유형 ── */
@@ -66,17 +55,13 @@ const REPORT_TYPES = [
 ];
 
 /* ── 최근 리포트 ── */
-const RECENT_REPORTS = [
-  { id: '1', title: '서버 및 WEB 점검 결과 리포트', inspName: '서버 및 WEB 점검', date: '2026-04-21', status: 'published' as const },
+const INITIAL_RECENT = [
   { id: '8', title: 'DR 훈련 결과 리포트', inspName: 'DR 재해복구 훈련', date: '2026-04-20', status: 'published' as const },
   { id: '2', title: 'DB 정기 점검 결과 리포트', inspName: 'DB 정기 점검', date: '2026-04-18', status: 'draft' as const },
-  { id: '3', title: 'WAS 서버 점검 결과 리포트', inspName: 'WAS 서버 점검', date: '2026-04-15', status: 'published' as const },
   { id: '9', title: 'IPL 실행 내역 리포트', inspName: 'IPL 정기 실행', date: '2026-04-14', status: 'published' as const },
   { id: '4', title: 'Linux 보안 점검 결과 리포트', inspName: 'Linux 보안 점검', date: '2026-04-12', status: 'published' as const },
   { id: '5', title: '네트워크 장비 점검 결과 리포트', inspName: '네트워크 장비 점검', date: '2026-04-10', status: 'draft' as const },
   { id: '6', title: 'DB 백업 점검 결과 리포트', inspName: 'DB 백업 점검', date: '2026-04-08', status: 'published' as const },
-  { id: '10', title: '방화벽 정책 점검 리포트', inspName: '방화벽 정책 점검', date: '2026-04-05', status: 'draft' as const },
-  { id: 'word', title: '점검결과 상세 리포트 (Editor ver)', inspName: '서버 및 WEB 점검', date: '2026-04-03', status: 'published' as const },
 ];
 
 /* ── 리포트 유형 썸네일 ── */
@@ -179,7 +164,7 @@ function TreeIcon({ type, status }: { type: string; status?: string }) {
 
 /* ── 사이드바 트리 노드 ── */
 function SidebarNode({ node, depth = 0, selectedId, onSelect }: any) {
-  const [open, setOpen] = useState(depth < 2);
+  const [open, setOpen] = useState(node.id === 'folder-server');
   const hasChildren = node.children?.length > 0;
   const isSelected = node.id === selectedId;
 
@@ -225,9 +210,400 @@ function StatusDot({ status }: { status: 'published' | 'draft' }) {
   );
 }
 
+/* ── 점검 선택 트리 데이터 ── */
+const INSP_TREE = [
+  {
+    id: 'dc1', label: '나이스 데이터센터', icon: 'dc' as const, children: [
+      { id: 'task-server', label: '서버 점검', icon: 'folder' as const, children: [
+        { id: 'insp-1', label: '서버 및 WEB 점검', icon: 'shield' as const, count: 11 },
+        { id: 'insp-2', label: 'WAS 서버 점검', icon: 'shield' as const, count: 5 },
+        { id: 'insp-3', label: 'Linux 보안 점검', icon: 'shield' as const, count: 12 },
+      ]},
+      { id: 'task-db', label: 'DB 점검', icon: 'folder' as const, children: [
+        { id: 'insp-4', label: 'DB 정기 점검', icon: 'shield' as const, count: 8 },
+        { id: 'insp-5', label: 'DB 백업 점검', icon: 'shield' as const, count: 3 },
+      ]},
+      { id: 'task-network', label: '네트워크 점검', icon: 'folder' as const, children: [
+        { id: 'insp-6', label: '네트워크 장비 점검', icon: 'shield' as const, count: 6 },
+        { id: 'insp-7', label: '방화벽 정책 점검', icon: 'shield' as const, count: 4 },
+      ]},
+    ],
+  },
+];
+
+function InspIcon({ type }: { type: string }) {
+  if (type === 'dc') return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      <path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/>
+    </svg>
+  );
+  if (type === 'folder') return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+  );
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  );
+}
+
+/* ── 점검명 조회 헬퍼 ── */
+function getInspName(id: string): string {
+  for (const dc of INSP_TREE) {
+    for (const task of dc.children || []) {
+      for (const insp of task.children || []) {
+        if (insp.id === id) return insp.label;
+      }
+    }
+  }
+  return '';
+}
+
+/* ── 점검별 이력 (더미) ── */
+const INSP_HISTORY: Record<string, string[]> = {
+  'insp-1': ['2026-04-21 13:31', '2026-04-14 13:30', '2026-04-07 13:31', '2026-03-31 13:30', '2026-03-24 13:31'],
+  'insp-2': ['2026-04-21 14:00', '2026-04-14 14:00', '2026-04-07 14:01', '2026-03-31 14:00'],
+  'insp-3': ['2026-04-20 09:00', '2026-04-13 09:00', '2026-04-06 09:01'],
+  'insp-4': ['2026-04-18 10:00', '2026-04-11 10:00', '2026-04-04 10:00'],
+  'insp-5': ['2026-04-18 11:30', '2026-04-11 11:30'],
+  'insp-6': ['2026-04-17 15:00', '2026-04-10 15:00', '2026-04-03 15:00'],
+  'insp-7': ['2026-04-16 16:00', '2026-04-09 16:00'],
+};
+
+/* ── 점검 트리 노드 (모달 1단계 좌측) ── */
+function InspPickNode({ node, depth = 0, onSelect, selectedId }: any) {
+  const [open, setOpen] = useState(true);
+  const hasChildren = node.children?.length > 0;
+  const isLeaf = !hasChildren;
+  const isSelected = isLeaf && node.id === selectedId;
+
+  return (
+    <div>
+      <div className={`flex items-center gap-[5px] py-[6px] cursor-pointer rounded-[4px] transition-colors ${isSelected ? 'bg-[#eff6ff]' : 'hover:bg-[#f8fafc]'}`}
+        style={{ paddingLeft: depth * 18 + 12, paddingRight: 8 }}
+        onClick={() => { if (hasChildren) setOpen(!open); else onSelect(node.id); }}>
+        {hasChildren && (
+          <svg width="8" height="8" viewBox="0 0 10 10" fill="none" className={`transition-transform shrink-0 ${open ? 'rotate-90' : ''}`}>
+            <path d="M3.5 2L6.5 5L3.5 8" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+        <InspIcon type={node.icon} />
+        <span className={`text-[12px] flex-1 min-w-0 truncate ${isSelected ? 'font-semibold text-[#0056a4]' : hasChildren ? 'font-medium text-[#334155]' : 'text-[#334155]'}`}>{node.label}</span>
+        {node.count != null && <span className="text-[10px] font-semibold text-[#0056a4] bg-[#dbeafe] rounded-[4px] px-[5px] py-[1px] shrink-0">{node.count}</span>}
+      </div>
+      {hasChildren && open && node.children.map((child: any) => (
+        <InspPickNode key={child.id} node={child} depth={depth + 1} onSelect={onSelect} selectedId={selectedId} />
+      ))}
+    </div>
+  );
+}
+
+type InspEntry = { id: string; inspId: string; inspName: string; date: string; scope: { normal: boolean; abnormal: boolean; fail: boolean } };
+
+/* ── 위자드 모달 ── */
+function InspSelectModal({ typeName, onClose, onConfirm }: { typeName: string; onClose: () => void; onConfirm: (entries: InspEntry[], reportName: string) => void }) {
+  const [step, setStep] = useState(1);
+  const [entries, setEntries] = useState<InspEntry[]>([]);
+  const [reportName, setReportName] = useState('');
+  const [created, setCreated] = useState(false);
+
+  const [selectedInspId, setSelectedInspId] = useState<string | null>(null);
+  const selectedInspName = selectedInspId ? getInspName(selectedInspId) : '';
+  const selectedHistory = selectedInspId ? (INSP_HISTORY[selectedInspId] || []) : [];
+
+  const handleAddEntry = (date: string) => {
+    if (!selectedInspId) return;
+    setEntries(prev => [...prev, { id: `${selectedInspId}-${date}`, inspId: selectedInspId, inspName: selectedInspName, date, scope: { normal: false, abnormal: true, fail: true } }]);
+  };
+
+  const addedKeys = new Set(entries.map(e => e.id));
+
+  const handleRemoveEntry = (entryId: string) => {
+    setEntries(prev => prev.filter(e => e.id !== entryId));
+  };
+
+  // 기본 이름
+  const uniqueNames = [...new Set(entries.map(e => e.inspName))];
+  const defaultName = uniqueNames.length === 0 ? ''
+    : uniqueNames.length === 1 ? `${uniqueNames[0]} 결과 리포트`
+    : `${uniqueNames[0]} 외 ${uniqueNames.length - 1}건 결과 리포트`;
+  const displayName = reportName || defaultName;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative bg-white rounded-[10px] shadow-[0_8px_30px_rgba(0,0,0,0.15)] w-[640px] flex flex-col" style={{ height: 600 }} onClick={e => e.stopPropagation()}>
+
+        {/* 헤더 */}
+        <div className="px-5 py-4 border-b border-[#e2e8f0] shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[14px] font-semibold text-[#1a222b]">{typeName}</div>
+              {!created && <div className="text-[11px] text-[#94a3b8] mt-0.5">
+                {step === 1 && '점검과 시점을 선택하여 추가하세요'}
+                {step === 2 && '리포트에 포함할 항목을 선택하세요'}
+                {step === 3 && '리포트 이름을 확인하세요'}
+              </div>}
+            </div>
+            <button onClick={onClose} className="w-[28px] h-[28px] rounded-[6px] flex items-center justify-center text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b] transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          {/* 스텝 인디케이터 */}
+          {!created && <div className="flex items-center gap-2 mt-3">
+            {['점검 선택', '스코프', '확인'].map((label, i) => (
+              <div key={i} className="flex items-center gap-2">
+                {i > 0 && <div className="w-6 h-px bg-[#e2e8f0]" />}
+                <div className={`flex items-center gap-1.5 ${step === i + 1 ? 'text-[#0056a4]' : step > i + 1 ? 'text-[#22c55e]' : 'text-[#cbd5e1]'}`}>
+                  <div className={`w-[20px] h-[20px] rounded-full flex items-center justify-center text-[10px] font-bold ${step === i + 1 ? 'bg-[#0056a4] text-white' : step > i + 1 ? 'bg-[#dcfce7] text-[#22c55e]' : 'bg-[#f1f5f9] text-[#cbd5e1]'}`}>
+                    {step > i + 1 ? '✓' : i + 1}
+                  </div>
+                  <span className="text-[11px] font-medium">{label}</span>
+                </div>
+              </div>
+            ))}
+          </div>}
+        </div>
+
+        {/* ── 1단계: 점검 + 시점 선택 ── */}
+        {!created && step === 1 && (
+          <>
+            <div className="flex-1 flex overflow-hidden">
+              {/* 좌측: 점검 트리 */}
+              <div className="w-[260px] border-r border-[#e2e8f0] overflow-y-auto px-3 py-3 shrink-0">
+                <div className="border border-[#e2e8f0] rounded-[8px] bg-[#fafbfc] p-1">
+                  {INSP_TREE.map(node => (
+                    <InspPickNode key={node.id} node={node} onSelect={setSelectedInspId} selectedId={selectedInspId} />
+                  ))}
+                </div>
+              </div>
+              {/* 우측: 이력 목록 */}
+              <div className="flex-1 overflow-y-auto px-4 py-3">
+                {selectedInspId ? (
+                  <>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                      </svg>
+                      <span className="text-[13px] font-semibold text-[#1a222b]">{selectedInspName}</span>
+                    </div>
+                    <div className="text-[10px] text-[#94a3b8] mb-3">시점을 선택하면 리포트에 추가됩니다</div>
+                    <div className="flex flex-col gap-1">
+                      {selectedHistory.map(date => {
+                        const key = `${selectedInspId}-${date}`;
+                        const added = addedKeys.has(key);
+                        return (
+                          <div key={date} onClick={() => added ? handleRemoveEntry(key) : handleAddEntry(date)}
+                            className="flex items-center gap-2.5 px-3 py-2 rounded-[6px] cursor-pointer hover:bg-[#f8fafc] transition-colors">
+                            <div className={`w-[15px] h-[15px] rounded-[3px] border-[1.5px] flex items-center justify-center shrink-0 transition-colors ${added ? 'bg-[#0056a4] border-[#0056a4]' : 'border-[#cbd5e1] bg-white'}`}>
+                              {added && <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            <span className="text-[12px] text-[#334155]">{date}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-[#cbd5e1]">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span className="text-[12px] mt-2">좌측에서 점검을 선택하세요</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 추가된 항목 리스트 */}
+            <div className="shrink-0 border-t border-[#e2e8f0]">
+              <div className="px-5 py-3 h-[120px] overflow-y-auto">
+                {entries.length > 0 ? (
+                  <div className="flex flex-col gap-1.5">
+                    {entries.map(e => (
+                      <div key={e.id} className="flex items-center justify-between py-1">
+                        <div className="flex items-center gap-2">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                          </svg>
+                          <span className="text-[11px] font-medium text-[#334155]">{e.inspName}</span>
+                          <span className="text-[10px] text-[#94a3b8]">{e.date}</span>
+                        </div>
+                        <button onClick={() => handleRemoveEntry(e.id)} className="text-[#cbd5e1] hover:text-[#ef4444] transition-colors">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-[#cbd5e1]">점검을 선택하고 시점을 추가하세요</div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── 2단계: 점검별 스코프 선택 ── */}
+        {!created && step === 2 && (
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="text-[10px] text-[#94a3b8] mb-3">점검 결과 요약과 항목별 준수율은 기본 포함됩니다</div>
+
+            {/* 프리셋 */}
+            <div className="flex gap-1.5 mb-4">
+              {[
+                { label: '전체', scope: { normal: true, abnormal: true, fail: true } },
+                { label: '비정상 + 실패', scope: { normal: false, abnormal: true, fail: true } },
+                { label: '비정상만', scope: { normal: false, abnormal: true, fail: false } },
+                { label: '실패만', scope: { normal: false, abnormal: false, fail: true } },
+              ].map(preset => {
+                const isActive = entries.length > 0 && entries.every(e =>
+                  e.scope.normal === preset.scope.normal &&
+                  e.scope.abnormal === preset.scope.abnormal &&
+                  e.scope.fail === preset.scope.fail
+                );
+                return (
+                  <button key={preset.label}
+                    onClick={() => setEntries(prev => prev.map(e => ({ ...e, scope: { ...preset.scope } })))}
+                    className={`px-2.5 py-[5px] rounded-[5px] border text-[11px] font-medium transition-colors ${isActive ? 'border-[#0056a4] bg-[#eff6ff] text-[#0056a4]' : 'border-[#e2e8f0] text-[#64748b] hover:border-[#0056a4] hover:text-[#0056a4]'}`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {entries.map((entry, ei) => (
+                <div key={entry.id} className="border border-[#e2e8f0] rounded-[8px] p-3">
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span className="text-[12px] font-semibold text-[#1a222b]">{entry.inspName}</span>
+                    <span className="text-[10px] text-[#94a3b8]">{entry.date}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {[
+                      { key: 'normal' as const, label: '정상', color: '#22c55e' },
+                      { key: 'abnormal' as const, label: '비정상', color: '#f59e0b' },
+                      { key: 'fail' as const, label: '실패', color: '#ef4444' },
+                    ].map(item => (
+                      <button key={item.key}
+                        onClick={() => {
+                          const newEntries = [...entries];
+                          newEntries[ei] = { ...entry, scope: { ...entry.scope, [item.key]: !entry.scope[item.key] } };
+                          setEntries(newEntries);
+                        }}
+                        className={`flex items-center gap-1.5 px-2.5 py-[5px] rounded-[5px] border text-[11px] font-medium transition-colors ${entry.scope[item.key] ? 'border-[#0056a4] bg-[#eff6ff] text-[#0056a4]' : 'border-[#e2e8f0] text-[#94a3b8] hover:border-[#cbd5e1]'}`}>
+                        <div className="w-[6px] h-[6px] rounded-full" style={{ background: item.color }} />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 3단계: 리포트 이름 + 확인 ── */}
+        {!created && step === 3 && (
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="text-[12px] font-semibold text-[#1a222b] mb-3">리포트 이름</div>
+            <input
+              type="text"
+              value={reportName}
+              onChange={e => setReportName(e.target.value)}
+              placeholder={defaultName}
+              className="w-full text-[12px] border border-[#e2e8f0] rounded-[5px] px-2.5 py-[7px] outline-none focus:border-[#0056a4] text-[#334155] bg-white placeholder:text-[#cbd5e1] mb-4"
+            />
+
+            <div className="text-[12px] font-semibold text-[#1a222b] mb-2">구성 요약</div>
+            <div className="border border-[#e2e8f0] rounded-[8px] bg-[#fafbfc] p-3">
+              <div className="text-[11px] text-[#64748b] mb-2">점검 ({entries.length})</div>
+              <div className="flex flex-col gap-2">
+                {entries.map(e => (
+                  <div key={e.id}>
+                    <div className="flex items-center gap-2 text-[11px] mb-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0056a4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                      </svg>
+                      <span className="text-[#334155]">{e.inspName}</span>
+                      <span className="text-[#94a3b8]">{e.date}</span>
+                    </div>
+                    <div className="flex gap-1 pl-[18px]">
+                      <span className="text-[9px] px-1.5 py-[1px] rounded-[3px] bg-[#dbeafe] text-[#0056a4]">요약</span>
+                      <span className="text-[9px] px-1.5 py-[1px] rounded-[3px] bg-[#dbeafe] text-[#0056a4]">준수율</span>
+                      {e.scope.normal && <span className="text-[9px] px-1.5 py-[1px] rounded-[3px] bg-[#dcfce7] text-[#16a34a]">정상</span>}
+                      {e.scope.abnormal && <span className="text-[9px] px-1.5 py-[1px] rounded-[3px] bg-[#fef9c3] text-[#d97706]">비정상</span>}
+                      {e.scope.fail && <span className="text-[9px] px-1.5 py-[1px] rounded-[3px] bg-[#fee2e2] text-[#ef4444]">실패</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 완료 화면 */}
+        {created && (
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="w-[48px] h-[48px] rounded-full bg-[#dcfce7] flex items-center justify-center mb-3">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <div className="text-[14px] font-semibold text-[#1a222b] mb-1">리포트가 생성되었습니다</div>
+            <div className="text-[11px] text-[#94a3b8]">{displayName}</div>
+          </div>
+        )}
+
+        {/* 하단 버튼 */}
+        {!created && (
+          <div className="px-5 py-3 border-t border-[#e2e8f0] flex justify-end gap-2 shrink-0">
+            {step > 1 && (
+              <button onClick={() => setStep(step - 1)} className="px-4 py-[7px] rounded-[5px] text-[12px] font-medium text-[#64748b] border border-[#e2e8f0] hover:bg-[#f8fafc] transition-colors">
+                이전
+              </button>
+            )}
+            {step < 3 ? (
+              <button
+                disabled={step === 1 && entries.length === 0}
+                onClick={() => setStep(step + 1)}
+                className={`px-4 py-[7px] rounded-[5px] text-[12px] font-medium transition-colors ${(step === 1 && entries.length === 0) ? 'bg-[#e2e8f0] text-[#94a3b8] cursor-not-allowed' : 'bg-[#0056a4] text-white hover:bg-[#004a8f]'}`}
+              >
+                다음
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setCreated(true);
+                  setTimeout(() => onConfirm(entries, displayName), 1500);
+                }}
+                className="px-4 py-[7px] rounded-[5px] text-[12px] font-medium bg-[#0056a4] text-white hover:bg-[#004a8f] transition-colors"
+              >
+                리포트 생성
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── 메인 ── */
 interface ReportOverviewProps {
-  onOpenReport: (reportId: string) => void;
+  onOpenReport: (reportId: string, params?: string) => void;
 }
 
 /* ── 멤버 설정 모달 ── */
@@ -340,7 +716,10 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
   const [selectedId, setSelectedId] = useState('folder-server');
   const [showMembers, setShowMembers] = useState(true);
   const [showMemberModal, setShowMemberModal] = useState(false);
-  const currentTree = SPACE_TREES[activeSpace] || [];
+  const [inspModal, setInspModal] = useState<{ typeName: string; typeId: string } | null>(null);
+  const [spaceTrees, setSpaceTrees] = useState(INITIAL_TREES);
+  const [recentReports, setRecentReports] = useState(INITIAL_RECENT);
+  const currentTree = spaceTrees[activeSpace] || [];
   const currentSpace = SPACES.find(s => s.id === activeSpace)!;
   const members = SPACE_MEMBERS[activeSpace] || [];
 
@@ -384,14 +763,11 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
                 if (!id.startsWith('folder-')) onOpenReport(id);
               }} />
             ))}
-          </div>
-
-          <div className="px-3 py-2 border-t border-border">
-            <button className="w-full flex items-center justify-center gap-1.5 py-[6px] rounded-[5px] text-[11px] text-[#64748b] border border-dashed border-[#cbd5e1] hover:border-[#0056a4] hover:text-[#0056a4] transition-colors">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <button className="flex items-center gap-1 text-[11px] text-[#94a3b8] hover:text-[#0056a4] transition-colors mt-1 px-[10px] py-[6px]">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              새 폴더
+              폴더 추가
             </button>
           </div>
         </div>
@@ -445,7 +821,7 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
                 {REPORT_TYPES.map(item => (
                   <div
                     key={item.id}
-                    onClick={() => onOpenReport(item.id)}
+                    onClick={() => setInspModal({ typeName: item.name, typeId: item.id })}
                     className="bg-white rounded-[8px] border border-[#e2e8f0] cursor-pointer hover:border-[#0056a4] hover:shadow-[0_4px_16px_rgba(0,86,164,0.08)] transition-all group overflow-hidden"
                   >
                     <div className="h-[140px] bg-[#f8fafc] flex items-center justify-center border-b border-[#e2e8f0]">
@@ -474,12 +850,12 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
                   <span>날짜</span>
                   <span>상태</span>
                 </div>
-                {RECENT_REPORTS.map((r, i) => (
+                {recentReports.map((r, i) => (
                   <div
                     key={r.id}
                     onClick={() => onOpenReport(r.id)}
                     className={`grid grid-cols-[1fr_160px_100px_80px] px-4 py-3 cursor-pointer hover:bg-[#fafbff] transition-colors items-center
-                      ${i < RECENT_REPORTS.length - 1 ? 'border-b border-[#f1f5f9]' : ''}`}
+                      ${i < recentReports.length - 1 ? 'border-b border-[#f1f5f9]' : ''}`}
                   >
                     <span className="text-[12px] font-medium text-[#1a222b] truncate pr-4">{r.title}</span>
                     <span className="flex items-center gap-1 text-[11px] text-[#5b646f]">
@@ -502,6 +878,29 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
       {/* 멤버 설정 모달 */}
       {showMemberModal && (
         <MemberSettingsModal members={members} onClose={() => setShowMemberModal(false)} />
+      )}
+
+      {/* 점검 선택 모달 */}
+      {inspModal && (
+        <InspSelectModal
+          typeName={inspModal.typeName}
+          onClose={() => setInspModal(null)}
+          onConfirm={(entries: InspEntry[], reportName: string) => {
+            const reportId = entries.length > 1 ? '10' : '1';
+            // 트리에 추가 (폴더 미소속, 최상위)
+            setSpaceTrees(prev => {
+              const tree = JSON.parse(JSON.stringify(prev));
+              tree['space-shared'].push({ id: reportId, label: reportName, icon: 'report', status: 'published' });
+              return tree;
+            });
+            // 최근 리포트에도 추가
+            setRecentReports(prev => [
+              { id: reportId, title: reportName, inspName: entries.map(e => `${e.inspName} (${e.date})`).join(', '), date: new Date().toISOString().slice(0, 10), status: 'published' as const },
+              ...prev,
+            ]);
+            onOpenReport(reportId);
+          }}
+        />
       )}
     </div>
   );

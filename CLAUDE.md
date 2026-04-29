@@ -37,14 +37,15 @@ src/
     report/
       page.tsx                           /report 오버뷰 (초기 화면)
       create/
-        page.tsx                         /report/create 생성 (에디터)
+        page.tsx                         /report/create 생성 (미리보기)
       [id]/
-        page.tsx                         /report/:id 조회 (뷰어)
+        page.tsx                         /report/:id 조회
   lib/
     assets.ts                            이미지 import 모음 (로고·아이콘)
-    inspReportTemplate.ts                인프라 점검 보고서 템플릿
-    inspDetailTemplate.ts                점검결과 상세 리포트 템플릿
-    inspDetailWordTemplate.ts            점검결과 상세 리포트 (Word ver) 템플릿
+    inspDetailTemplate.ts                점검 결과 리포트 템플릿 (단일 점검)
+    inspMultiTemplate.ts                 점검 결과 리포트 템플릿 (복수 점검)
+    inspDetailWordTemplate.ts            에디터 버전 템플릿 (와이어프레임 보존용)
+    sidebarTree.ts                       사이드바 트리 데이터 (단일 소스)
   components/
     WidgetDashboard.tsx                  메인 컨테이너 (상태 관리·좌측 템플릿·캔버스·우측 패널)
     AppHeader.tsx                        상단 헤더
@@ -116,6 +117,12 @@ src/
 - **리포트 = 하나의 점검에 대한 보고서**
 - 위젯 블록 우측 패널에서 점검을 선택하면 해당 점검의 데이터가 위젯에 반영됨
 - v2 위젯 = 텍스트(제목) + 콘텐츠(표 or HTML)를 하나로 묶은 블록
+
+## 사이드바 트리 규칙
+
+- **모든 화면(오버뷰/뷰어/생성)에서 트리 구조는 항상 동일해야 한다**
+- 트리 데이터는 `src/lib/sidebarTree.ts` 단일 소스에서 관리
+- 각 페이지에서 중복 정의 금지, 반드시 import해서 사용
 
 ## 리포트 버전 구분
 
