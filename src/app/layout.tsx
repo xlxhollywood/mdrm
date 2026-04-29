@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'MDRM - 리포트 대시보드',
+  title: 'MDRM',
 };
 
 export default function RootLayout({ children }) {
