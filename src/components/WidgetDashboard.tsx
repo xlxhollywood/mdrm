@@ -9,7 +9,7 @@ import { createInspDetailWordTemplate } from '@/lib/inspDetailWordTemplate';
 import { WIDGET_LIST, createWidgetBlock } from '@/lib/widgetDefinitions';
 
 /* ── Main ── */
-export default function WidgetDashboard({ onBack }: { onBack?: () => void }) {
+export default function WidgetDashboard({ onBack, templateType, onPublish }: { onBack?: () => void; templateType?: string; onPublish?: () => void }) {
   const [selectedTable,  setSelectedTable]  = useState(null);
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const selectedTableRef = useRef(null);
@@ -62,6 +62,18 @@ export default function WidgetDashboard({ onBack }: { onBack?: () => void }) {
     setDocBlocks(blocks);
     setConfig(configs);
   }, []);
+
+  // templateType에 따라 마운트 시 자동 로드
+  useEffect(() => {
+    if (!templateType) return;
+    const templateMap: Record<string, () => any> = {
+      'tpl-detail': createInspDetailTemplate,
+      'tpl-word': createInspDetailWordTemplate,
+      // 기존 리포트 편집 (rpt-로 시작) → 디테일 템플릿으로 로드 (추후 실제 데이터 연결)
+    };
+    const fn = templateMap[templateType] || (templateType.startsWith('rpt-') ? createInspDetailTemplate : null);
+    if (fn) handleLoadTemplate(fn);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddWidget = useCallback((widgetId: string) => {
     const newBlock = createWidgetBlock(widgetId);
@@ -413,7 +425,7 @@ export default function WidgetDashboard({ onBack }: { onBack?: () => void }) {
           docConfig={docConfig}
           onDocConfigChange={setDocConfig}
           published={published}
-          onPublish={() => setPublished(true)}
+          onPublish={() => { setPublished(true); onPublish?.(); }}
           tempSaved={tempSaved}
           onTempSave={() => { setTempSaved(true); setTimeout(() => setTempSaved(false), 3000); }}
           selectedTable={selectedTable}

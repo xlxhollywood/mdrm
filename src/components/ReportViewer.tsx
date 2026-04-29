@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import AppHeader from './AppHeader';
 import { PAPER_SIZES, MM_TO_PX } from './editor/wordConstants';
 import { createInspDetailTemplate } from '@/lib/inspDetailTemplate';
+import { createInspDetailWordTemplate } from '@/lib/inspDetailWordTemplate';
 
 /* ── 아이콘 (WidgetBlock과 동일) ── */
 function Icon({ type, size = 16 }: { type: string; size?: number }) {
@@ -164,6 +165,11 @@ function ReadOnlyBlock({ block }: { block: any }) {
     );
   }
 
+  // HTML 블록
+  if (block.type === 'html') {
+    return <div className="my-2" dangerouslySetInnerHTML={{ __html: block.code || '' }} />;
+  }
+
   // 구분선
   if (block.type === 'divider') {
     return <div className="my-2" style={{ height: 1, background: '#d9dfe5' }} />;
@@ -178,8 +184,9 @@ function ReadOnlyBlock({ block }: { block: any }) {
 }
 
 /* ── 리포트 메타 정보 ── */
-const REPORT_META = {
-  'rpt-1': { title: '서버 및 WEB 점검 결과 보고서', inspName: '서버 및 WEB 점검', date: '2026-04-21', author: '김세훈', status: 'published' as const },
+const REPORT_META: Record<string, any> = {
+  'rpt-1': { title: '서버 및 WEB 점검 결과 리포트', inspName: '서버 및 WEB 점검', date: '2026-04-21', author: '김세훈', status: 'published' as const },
+  'word': { title: '점검결과 상세 리포트 (Editor ver)', inspName: '서버 및 WEB 점검', date: '2026-04-03', author: '김세훈', status: 'published' as const },
 };
 
 /* ── 메인 뷰어 ── */
@@ -261,8 +268,10 @@ function SidebarNode({ node, depth = 0, selectedId, onSelect }: any) {
 
 export default function ReportViewer({ reportId, onBack, onEdit }: ReportViewerProps) {
   const [selectedId, setSelectedId] = useState(reportId);
-  const { blocks } = useMemo(() => createInspDetailTemplate(), []);
-  const meta = REPORT_META['rpt-1'];
+  const { blocks } = useMemo(() =>
+    reportId === 'word' ? createInspDetailWordTemplate() : createInspDetailTemplate()
+  , [reportId]);
+  const meta = REPORT_META[reportId] || REPORT_META['rpt-1'];
 
   const paper = PAPER_SIZES.A4;
   const docW = paper.w;

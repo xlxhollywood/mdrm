@@ -26,24 +26,31 @@ const SPACE_MEMBERS: Record<string, { id: string; name: string; role: string; co
 const SPACE_TREES: Record<string, any[]> = {
   'space-shared': [
     { id: 'folder-server', label: '서버 점검', icon: 'folder' as const, children: [
-      { id: 'rpt-1', label: '서버 및 WEB 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
-      { id: 'rpt-3', label: 'WAS 서버 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
-      { id: 'rpt-4', label: 'Linux 보안 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
+      { id: '1', label: '서버 및 WEB 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
+      { id: '3', label: 'WAS 서버 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
+      { id: '4', label: 'Linux 보안 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
     ]},
     { id: 'folder-db', label: 'DB 점검', icon: 'folder' as const, children: [
-      { id: 'rpt-2', label: 'DB 정기 점검 결과 리포트', icon: 'report' as const, status: 'draft' as const },
-      { id: 'rpt-6', label: 'DB 백업 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
+      { id: '2', label: 'DB 정기 점검 결과 리포트', icon: 'report' as const, status: 'draft' as const },
+      { id: '6', label: 'DB 백업 점검 결과 리포트', icon: 'report' as const, status: 'published' as const },
     ]},
     { id: 'folder-network', label: '네트워크 점검', icon: 'folder' as const, children: [
-      { id: 'rpt-5', label: '네트워크 장비 점검 결과 리포트', icon: 'report' as const, status: 'draft' as const },
+      { id: '5', label: '네트워크 장비 점검 결과 리포트', icon: 'report' as const, status: 'draft' as const },
+      { id: '10', label: '방화벽 정책 점검 리포트', icon: 'report' as const, status: 'draft' as const },
+    ]},
+    { id: 'folder-dr', label: 'DR', icon: 'folder' as const, children: [
+      { id: '8', label: 'DR 훈련 결과 리포트', icon: 'report' as const, status: 'published' as const },
+    ]},
+    { id: 'folder-ipl', label: 'IPL', icon: 'folder' as const, children: [
+      { id: '9', label: 'IPL 실행 내역 리포트', icon: 'report' as const, status: 'published' as const },
+    ]},
+    { id: 'folder-word', label: 'Editor ver', icon: 'folder' as const, children: [
+      { id: 'word', label: '점검결과 상세 리포트 (Editor ver)', icon: 'report' as const, status: 'published' as const },
     ]},
   ],
   'space-personal': [
     { id: 'folder-my-draft', label: '작성 중', icon: 'folder' as const, children: [
-      { id: 'rpt-7', label: '방화벽 정책 점검 리포트 (초안)', icon: 'report' as const, status: 'draft' as const },
-    ]},
-    { id: 'folder-my-published', label: '발행 완료', icon: 'folder' as const, children: [
-      { id: 'rpt-8', label: 'DR 훈련 결과 리포트', icon: 'report' as const, status: 'published' as const },
+      { id: '7', label: '방화벽 정책 점검 리포트 (초안)', icon: 'report' as const, status: 'draft' as const },
     ]},
   ],
 };
@@ -60,17 +67,16 @@ const REPORT_TYPES = [
 
 /* ── 최근 리포트 ── */
 const RECENT_REPORTS = [
-  { id: 'rpt-1', title: '서버 및 WEB 점검 결과 리포트', inspName: '서버 및 WEB 점검', date: '2026-04-21', status: 'published' as const },
-  { id: 'rpt-8', title: 'DR 훈련 결과 리포트', inspName: 'DR 재해복구 훈련', date: '2026-04-20', status: 'published' as const },
-  { id: 'rpt-2', title: 'DB 정기 점검 결과 리포트', inspName: 'DB 정기 점검', date: '2026-04-18', status: 'draft' as const },
-  { id: 'rpt-3', title: 'WAS 서버 점검 결과 리포트', inspName: 'WAS 서버 점검', date: '2026-04-15', status: 'published' as const },
-  { id: 'rpt-9', title: 'IPL 실행 내역 리포트', inspName: 'IPL 정기 실행', date: '2026-04-14', status: 'published' as const },
-  { id: 'rpt-4', title: 'Linux 보안 점검 결과 리포트', inspName: 'Linux 보안 점검', date: '2026-04-12', status: 'published' as const },
-  { id: 'rpt-5', title: '네트워크 장비 점검 결과 리포트', inspName: '네트워크 장비 점검', date: '2026-04-10', status: 'draft' as const },
-  { id: 'rpt-6', title: 'DB 백업 점검 결과 리포트', inspName: 'DB 백업 점검', date: '2026-04-08', status: 'published' as const },
-  { id: 'rpt-10', title: '방화벽 정책 점검 리포트', inspName: '방화벽 정책 점검', date: '2026-04-05', status: 'draft' as const },
-  { id: 'rpt-11', title: '점검 누계 리포트 (15주차)', inspName: '주간 종합 점검', date: '2026-04-04', status: 'published' as const },
-  { id: 'tpl-word', title: '점검결과 상세 리포트 (Word ver)', inspName: '서버 및 WEB 점검', date: '2026-04-03', status: 'draft' as const },
+  { id: '1', title: '서버 및 WEB 점검 결과 리포트', inspName: '서버 및 WEB 점검', date: '2026-04-21', status: 'published' as const },
+  { id: '8', title: 'DR 훈련 결과 리포트', inspName: 'DR 재해복구 훈련', date: '2026-04-20', status: 'published' as const },
+  { id: '2', title: 'DB 정기 점검 결과 리포트', inspName: 'DB 정기 점검', date: '2026-04-18', status: 'draft' as const },
+  { id: '3', title: 'WAS 서버 점검 결과 리포트', inspName: 'WAS 서버 점검', date: '2026-04-15', status: 'published' as const },
+  { id: '9', title: 'IPL 실행 내역 리포트', inspName: 'IPL 정기 실행', date: '2026-04-14', status: 'published' as const },
+  { id: '4', title: 'Linux 보안 점검 결과 리포트', inspName: 'Linux 보안 점검', date: '2026-04-12', status: 'published' as const },
+  { id: '5', title: '네트워크 장비 점검 결과 리포트', inspName: '네트워크 장비 점검', date: '2026-04-10', status: 'draft' as const },
+  { id: '6', title: 'DB 백업 점검 결과 리포트', inspName: 'DB 백업 점검', date: '2026-04-08', status: 'published' as const },
+  { id: '10', title: '방화벽 정책 점검 리포트', inspName: '방화벽 정책 점검', date: '2026-04-05', status: 'draft' as const },
+  { id: 'word', title: '점검결과 상세 리포트 (Editor ver)', inspName: '서버 및 WEB 점검', date: '2026-04-03', status: 'published' as const },
 ];
 
 /* ── 리포트 유형 썸네일 ── */
@@ -375,7 +381,7 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
             {currentTree.map(node => (
               <SidebarNode key={node.id} node={node} selectedId={selectedId} onSelect={(id: string) => {
                 setSelectedId(id);
-                if (id.startsWith('rpt-')) onOpenReport(id);
+                if (!id.startsWith('folder-')) onOpenReport(id);
               }} />
             ))}
           </div>

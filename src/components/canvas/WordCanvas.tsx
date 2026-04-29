@@ -18,6 +18,7 @@ export default function WordCanvas({
   docBlocks, config, docConfig,
   onDeleteBlock, onUpdateText, onDeselectWidget, onReorderBlocks, onInsertText, onDeleteBlocksInRange,
   onInsertBlock, onUpdateBlock, onCellFocus, onWidgetFocus, onUndo, onDropColToMain, onMoveColBlock, onActiveBlockChange,
+  readOnly = false,
 }) {
   const paper = PAPER_SIZES[docConfig.paperSize] || PAPER_SIZES.A4;
   const isLand = docConfig.orientation === 'landscape';
@@ -225,7 +226,7 @@ export default function WordCanvas({
 
   // 최초 마운트 시 첫 텍스트 블록 포커스
   useEffect(() => {
-    if (didInitFocus.current) return;
+    if (readOnly || didInitFocus.current) return;
     const first = docBlocks.find(b => b.type === 'text');
     if (!first) return;
     const el = document.querySelector(`[data-text-id="${first.id}"]`);
@@ -756,14 +757,14 @@ export default function WordCanvas({
 
       <div
         ref={paperRef}
-        tabIndex={-1}
-        className="shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10 outline-none relative"
+        tabIndex={readOnly ? undefined : -1}
+        className={`shrink-0 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.18),0_1px_4px_rgba(0,0,0,0.10)] my-6 mb-10 outline-none relative ${readOnly ? '[&_[contenteditable]]:cursor-default [&_[contenteditable]]:caret-transparent' : ''}`}
         style={{ width: docW, minHeight: docH, padding: pad }}
-        onClick={(e) => {
+        onClick={readOnly ? undefined : (e) => {
           if ((e.target as HTMLElement).closest?.('[data-widget-block]')) return;
           onDeselectWidget(e); setActiveBlockId(null); setAllSelected(false); setSelectedBlockIds(new Set());
         }}
-        onMouseDown={(e) => {
+        onMouseDown={readOnly ? undefined : (e) => {
           if (e.button !== 0) return;
           if (
             (e.target as HTMLElement).isContentEditable ||
@@ -778,7 +779,7 @@ export default function WordCanvas({
           setActiveBlockId(null);
           setAllSelected(false);
         }}
-        onKeyDown={(e) => {
+        onKeyDown={readOnly ? undefined : (e) => {
           const sel = window.getSelection();
           const container = e.currentTarget;
 
@@ -926,7 +927,7 @@ export default function WordCanvas({
                       : ''}`}
               >
                 {/* 드래그 핸들 + + 버튼 */}
-                {(() => {
+                {!readOnly && (() => {
                   const isHovered = hoveredBlockId === block.id;
                   return (
                     <div className={`absolute -left-[42px] top-[3px] flex items-center gap-[3px] transition-opacity ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
@@ -1075,8 +1076,8 @@ export default function WordCanvas({
 
         {/* 문서 끝 클릭 영역: 마지막 블록이 비텍스트여도 커서를 둘 수 있음 */}
         <div
-          className="min-h-[60px] cursor-text"
-          onClick={(e) => {
+          className={`min-h-[60px] ${readOnly ? '' : 'cursor-text'}`}
+          onClick={readOnly ? undefined : (e) => {
             e.stopPropagation();
             const lastMain = [...docBlocks].reverse().find(b => !b.layoutRef);
             if (lastMain?.type === 'text') {
