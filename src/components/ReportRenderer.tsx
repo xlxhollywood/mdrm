@@ -18,10 +18,20 @@ function Icon({ type, size = 16 }: { type: string; size?: number }) {
 }
 
 /* ── 테이블 ── */
+const COL_WIDTHS_4: Record<number, string> = { 0: '22%', 1: '10%', 2: '30%', 3: '38%' };
+
 function Table({ table }: { table: any }) {
   const { rows = 3, cols = 3, cells = {}, headerRow = false } = table;
+  const widths = cols === 4 ? COL_WIDTHS_4 : null;
   return (
-    <table className="border-collapse w-full text-[12px]">
+    <table className="border-collapse w-full text-[12px]" style={{ tableLayout: widths ? 'fixed' : undefined }}>
+      {widths && (
+        <colgroup>
+          {Array.from({ length: cols }, (_, c) => (
+            <col key={c} style={{ width: widths[c] }} />
+          ))}
+        </colgroup>
+      )}
       <tbody>
         {Array.from({ length: rows }, (_, r) => (
           <tr key={r}>
@@ -74,7 +84,7 @@ function WidgetBlock({ block }: { block: any }) {
 
       {/* 일반 위젯 타이틀 */}
       {!hasHeaderItems && block.title && (
-        <div className="flex items-center gap-1.5 mb-4 -mx-1 px-1 py-[4px] bg-[#f8fafc] rounded-[4px]">
+        <div className="flex items-center gap-1.5 mb-3 -mx-1 px-1 py-[4px] bg-[#f8fafc] rounded-[4px]">
           {block.titleIcon && <div style={{ marginTop: 2 }}><Icon type={block.titleIcon} /></div>}
           <span style={{ fontSize: titleSize, fontWeight: 700, color: titleColor, marginTop: 2 }}>{block.title}</span>
         </div>
@@ -84,9 +94,9 @@ function WidgetBlock({ block }: { block: any }) {
       {hasSections && block.sections.map((sec: any, si: number) => {
         const secCount = Math.max(0, (sec.table?.rows || 0) - (sec.table?.headerRow ? 1 : 0));
         return (
-          <div key={si} className={si > 0 ? 'mt-3' : ''}>
-            <div className="flex items-center justify-end gap-1 mb-0.5 mr-[4px]">
-              {sec.subtitleIcon && <Icon type={sec.subtitleIcon} size={12} />}
+          <div key={si} className={si > 0 ? 'mt-5' : 'mt-2'}>
+            <div className="flex items-center justify-start gap-1 mb-[10px] ml-[4px]">
+              {sec.subtitleIcon && <span style={{ position: 'relative', top: -2 }}><Icon type={sec.subtitleIcon} size={12} /></span>}
               <span className="text-[12px] font-medium text-[#0056a4]">{sec.subtitle}</span>
               <span className="text-[10px] text-[#94a3b8]">({secCount}건)</span>
             </div>
@@ -97,8 +107,8 @@ function WidgetBlock({ block }: { block: any }) {
 
       {/* 단일 서브타이틀 + 테이블 */}
       {!hasSections && hasSubtitle && (
-        <div className="flex items-center justify-end gap-1 mb-0.5 mr-[4px]">
-          {block.subtitleIcon && <Icon type={block.subtitleIcon} size={12} />}
+        <div className="flex items-center justify-start gap-1 mb-[10px] ml-[4px] mt-2">
+          {block.subtitleIcon && <span style={{ position: 'relative', top: -2 }}><Icon type={block.subtitleIcon} size={12} /></span>}
           <span className="text-[12px] font-medium text-[#0056a4]">{block.subtitle}</span>
           <span className="text-[10px] text-[#94a3b8]">({Math.max(0, (block.table?.rows || 0) - (block.table?.headerRow ? 1 : 0))}건)</span>
         </div>

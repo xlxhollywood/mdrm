@@ -7,7 +7,7 @@ function createWebInspBlocks() {
     // 헤더
     { id: uid('w'), type: 'widget', title: '서버 및 WEB 점검 결과 리포트', titleSubtype: 'h1', headerItems: [
       { icon: 'clock', text: '2026-04-21', fontSize: 12 },
-      { icon: 'shield', text: '서버 및 WEB 점검', fontSize: 12 },
+      { icon: 'user', text: '김세훈', fontSize: 12 },
     ]},
 
     // 점검 결과 요약
@@ -57,36 +57,36 @@ function createWebInspBlocks() {
     // 비정상 항목
     { id: uid('w'), type: 'widget', title: '비정상 항목', titleSubtype: 'h3', titleIcon: 'xmark', sections: [
       { subtitle: '파일시스템 사용량', subtitleIcon: 'clipboard', table: {
-        rows: 6, cols: 5, headerRow: true, headerCol: false,
+        rows: 6, cols: 4, headerRow: true, headerCol: false,
         cells: {
-          '0,0': '시스템', '0,1': '점검항목', '0,2': '결과', '0,3': '요약', '0,4': '상세 메시지',
-          '1,0': 'icenscdb01', '1,1': '파일시스템 사용량 점검', '1,2': '<span style="color:#ef4444;font-weight:600">비정상</span>', '1,3': '디스크 사용률 높음', '1,4': '현재: 92%',
-          '2,0': 'icenscld01', '2,1': '파일시스템 사용량 점검', '2,2': '<span style="color:#ef4444;font-weight:600">비정상</span>', '2,3': '디스크 사용률 높음', '2,4': '현재: 96%',
-          '3,0': 'icenscsm01', '3,1': '파일시스템 사용량 점검', '3,2': '<span style="color:#ef4444;font-weight:600">비정상</span>', '3,3': '디스크 사용률 높음', '3,4': '현재: 91%',
-          '4,0': 'icensmc01',  '4,1': '파일시스템 사용량 점검', '4,2': '<span style="color:#ef4444;font-weight:600">비정상</span>', '4,3': '디스크 사용률 높음', '4,4': '현재: 94%',
-          '5,0': 'icensmi01',  '5,1': '파일시스템 사용량 점검', '5,2': '<span style="color:#ef4444;font-weight:600">비정상</span>', '5,3': '디스크 사용률 높음', '5,4': '현재: 96%',
+          '0,0': '시스템', '0,1': '결과', '0,2': '요약', '0,3': '상세 메시지',
+          '1,0': 'icenscdb01', '1,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,2': '디스크 사용률 높음', '1,3': '현재: 92%',
+          '2,0': 'icenscld01', '2,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '2,2': '디스크 사용률 높음', '2,3': '현재: 96%',
+          '3,0': 'icenscsm01', '3,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '3,2': '디스크 사용률 높음', '3,3': '현재: 91%',
+          '4,0': 'icensmc01',  '4,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '4,2': '디스크 사용률 높음', '4,3': '현재: 94%',
+          '5,0': 'icensmi01',  '5,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '5,2': '디스크 사용률 높음', '5,3': '현재: 96%',
         },
       }},
       { subtitle: 'CPU 사용률 초과', subtitleIcon: 'clipboard', table: {
-        rows: 4, cols: 5, headerRow: true, headerCol: false,
+        rows: 4, cols: 4, headerRow: true, headerCol: false,
         cells: {
-          '0,0': '시스템', '0,1': '점검항목', '0,2': '결과', '0,3': '요약', '0,4': '상세 메시지',
-          '1,0': 'icensmis02', '1,1': 'CPU 사용률 점검', '1,2': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,3': 'CPU 사용률 높음', '1,4': '현재: 87.7%',
-          '2,0': 'icenspp02',  '2,1': 'CPU 사용률 점검', '2,2': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '2,3': 'CPU 사용률 높음', '2,4': '현재: 86.8%',
-          '3,0': 'icensbut02', '3,1': 'CPU 사용률 점검', '3,2': '<span style="color:#ef4444;font-weight:600">비정상</span>', '3,3': 'CPU 사용률 높음', '3,4': '현재: 94.7%',
+          '0,0': '시스템', '0,1': '결과', '0,2': '요약', '0,3': '상세 메시지',
+          '1,0': 'icensmis02', '1,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,2': 'CPU 사용률 높음', '1,3': '현재: 87.7%',
+          '2,0': 'icenspp02',  '2,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '2,2': 'CPU 사용률 높음', '2,3': '현재: 86.8%',
+          '3,0': 'icensbut02', '3,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '3,2': 'CPU 사용률 높음', '3,3': '현재: 94.7%',
         },
       }},
     ]},
 
     // 실패 항목
     { id: uid('w'), type: 'widget', title: '실패 항목', titleSubtype: 'h3', titleIcon: 'alert', subtitle: '로그 점검', subtitleIcon: 'clipboard', table: {
-      rows: 5, cols: 3, headerRow: true, headerCol: false,
+      rows: 5, cols: 4, headerRow: true, headerCol: false,
       cells: {
-        '0,0': '시스템', '0,1': '점검항목', '0,2': '실패 원인',
-        '1,0': 'icenshis02', '1,1': '로그 점검 스크립트 점검', '1,2': '스크립트 실행 시간 초과 (타임아웃)',
-        '2,0': 'icenspos01', '2,1': '로그 수집 경로 점검', '2,2': '로그 수집 경로 접근 불가',
-        '3,0': 'icensbut02', '3,1': '로그 점검 스크립트 점검', '3,2': '스크립트 실행 권한 오류',
-        '4,0': 'icensga01',  '4,1': '원격 에이전트 점검', '4,2': '원격 에이전트 응답 없음',
+        '0,0': '시스템', '0,1': '결과', '0,2': '요약', '0,3': '상세 메시지',
+        '1,0': 'icenshis02', '1,1': '<span style="color:#ef4444;font-weight:600">실패</span>', '1,2': '로그 점검 스크립트 오류', '1,3': '스크립트 실행 시간 초과 (타임아웃)',
+        '2,0': 'icenspos01', '2,1': '<span style="color:#ef4444;font-weight:600">실패</span>', '2,2': '로그 수집 경로 오류', '2,3': '로그 수집 경로 접근 불가',
+        '3,0': 'icensbut02', '3,1': '<span style="color:#ef4444;font-weight:600">실패</span>', '3,2': '로그 점검 스크립트 오류', '3,3': '스크립트 실행 권한 오류',
+        '4,0': 'icensga01',  '4,1': '<span style="color:#ef4444;font-weight:600">실패</span>', '4,2': '원격 에이전트 오류', '4,3': '원격 에이전트 응답 없음',
       },
     }},
   ];
@@ -98,7 +98,7 @@ function createWasInspBlocks() {
     // 헤더
     { id: uid('w'), type: 'widget', title: 'WAS 서버 점검 결과 리포트', titleSubtype: 'h1', headerItems: [
       { icon: 'clock', text: '2026-04-21', fontSize: 12 },
-      { icon: 'shield', text: 'WAS 서버 점검', fontSize: 12 },
+      { icon: 'user', text: '김세훈', fontSize: 12 },
     ]},
 
     // 점검 결과 요약
@@ -142,27 +142,27 @@ function createWasInspBlocks() {
     // 비정상 항목
     { id: uid('w'), type: 'widget', title: '비정상 항목', titleSubtype: 'h3', titleIcon: 'xmark', sections: [
       { subtitle: '힙 메모리 사용률 초과', subtitleIcon: 'clipboard', table: {
-        rows: 4, cols: 5, headerRow: true, headerCol: false,
+        rows: 4, cols: 4, headerRow: true, headerCol: false,
         cells: {
-          '0,0': '시스템', '0,1': '점검항목', '0,2': '결과', '0,3': '요약', '0,4': '상세 메시지',
-          '1,0': 'was-prod-01', '1,1': '힙 메모리 사용률 점검', '1,2': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,3': '힙 메모리 높음', '1,4': '현재: 89.2% (Old Gen 92%)',
-          '2,0': 'was-prod-03', '2,1': '힙 메모리 사용률 점검', '2,2': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '2,3': '힙 메모리 높음', '2,4': '현재: 85.7% (Old Gen 88%)',
-          '3,0': 'was-stg-01',  '3,1': '힙 메모리 사용률 점검', '3,2': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '3,3': '힙 메모리 높음', '3,4': '현재: 82.4% (Old Gen 85%)',
+          '0,0': '시스템', '0,1': '결과', '0,2': '요약', '0,3': '상세 메시지',
+          '1,0': 'was-prod-01', '1,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,2': '힙 메모리 높음', '1,3': '현재: 89.2% (Old Gen 92%)',
+          '2,0': 'was-prod-03', '2,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '2,2': '힙 메모리 높음', '2,3': '현재: 85.7% (Old Gen 88%)',
+          '3,0': 'was-stg-01',  '3,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '3,2': '힙 메모리 높음', '3,3': '현재: 82.4% (Old Gen 85%)',
         },
       }},
       { subtitle: '스레드 풀 사용률 초과', subtitleIcon: 'clipboard', table: {
-        rows: 3, cols: 5, headerRow: true, headerCol: false,
+        rows: 3, cols: 4, headerRow: true, headerCol: false,
         cells: {
-          '0,0': '시스템', '0,1': '점검항목', '0,2': '결과', '0,3': '요약', '0,4': '상세 메시지',
-          '1,0': 'was-prod-02', '1,1': '스레드 풀 사용률 점검', '1,2': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,3': '스레드 풀 임계치 초과', '1,4': '활성: 180/200 (90%)',
-          '2,0': 'was-prod-04', '2,1': '스레드 풀 사용률 점검', '2,2': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '2,3': '스레드 풀 임계치 초과', '2,4': '활성: 175/200 (87.5%)',
+          '0,0': '시스템', '0,1': '결과', '0,2': '요약', '0,3': '상세 메시지',
+          '1,0': 'was-prod-02', '1,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,2': '스레드 풀 임계치 초과', '1,3': '활성: 180/200 (90%)',
+          '2,0': 'was-prod-04', '2,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '2,2': '스레드 풀 임계치 초과', '2,3': '활성: 175/200 (87.5%)',
         },
       }},
       { subtitle: '활성 세션 수 초과', subtitleIcon: 'clipboard', table: {
-        rows: 2, cols: 5, headerRow: true, headerCol: false,
+        rows: 2, cols: 4, headerRow: true, headerCol: false,
         cells: {
-          '0,0': '시스템', '0,1': '점검항목', '0,2': '결과', '0,3': '요약', '0,4': '상세 메시지',
-          '1,0': 'was-prod-01', '1,1': '활성 세션 수 점검', '1,2': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,3': '세션 수 임계치 초과', '1,4': '현재: 4,820 (임계치 4,000)',
+          '0,0': '시스템', '0,1': '결과', '0,2': '요약', '0,3': '상세 메시지',
+          '1,0': 'was-prod-01', '1,1': '<span style="color:#f59e0b;font-weight:600">비정상</span>', '1,2': '세션 수 임계치 초과', '1,3': '현재: 4,820 (임계치 4,000)',
         },
       }},
     ]},

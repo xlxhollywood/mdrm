@@ -799,7 +799,7 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
             {currentTree.map(node => (
               <SidebarNode key={node.id} node={node} selectedId={selectedId} onSelect={(id: string) => {
                 setSelectedId(id);
-                if (!id.startsWith('folder-')) onOpenReport(id);
+                if (!id.startsWith('folder-') && !id.startsWith('div-')) onOpenReport(id);
               }} />
             ))}
           </div>

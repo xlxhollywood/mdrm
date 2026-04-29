@@ -102,7 +102,7 @@ export default function ReportDetailView({ reportId }: ReportDetailViewProps) {
           <div className="flex-1 overflow-y-auto px-1 pb-2">
             {sidebarTree.map(node => (
               <SidebarNode key={node.id} node={node} selectedId={reportId} onSelect={(nid: string) => {
-                if (!nid.startsWith('folder-')) router.push(`/report/${nid}`);
+                if (!nid.startsWith('folder-') && !nid.startsWith('div-')) router.push(`/report/${nid}`);
               }} />
             ))}
           </div>
