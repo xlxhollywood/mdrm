@@ -5,9 +5,9 @@ const uid = (prefix) => `id-${prefix}-${++_seq}`;
 function createWebInspBlocks() {
   return [
     // 헤더
-    { id: uid('w'), type: 'widget', title: '서버 및 WEB 점검 결과 리포트', titleSubtype: 'h1', headerItems: [
+    { id: uid('w'), type: 'widget', title: '서버 및 WEB 점검', titleSubtype: 'h1', headerItems: [
       { icon: 'clock', text: '2026-04-21', fontSize: 12 },
-      { icon: 'shield', text: '서버 및 WEB 점검', fontSize: 12 },
+      { icon: 'user', text: '김세훈', fontSize: 12 },
     ]},
 
     // 점검 결과 요약
@@ -96,9 +96,9 @@ function createWebInspBlocks() {
 function createWasInspBlocks() {
   return [
     // 헤더
-    { id: uid('w'), type: 'widget', title: 'WAS 서버 점검 결과 리포트', titleSubtype: 'h1', headerItems: [
+    { id: uid('w'), type: 'widget', title: 'WAS 서버 점검', titleSubtype: 'h1', headerItems: [
       { icon: 'clock', text: '2026-04-21', fontSize: 12 },
-      { icon: 'shield', text: 'WAS 서버 점검', fontSize: 12 },
+      { icon: 'user', text: '김세훈', fontSize: 12 },
     ]},
 
     // 점검 결과 요약
@@ -166,8 +166,6 @@ function createWasInspBlocks() {
         },
       }},
     ]},
-
-    { id: uid('t'), type: 'text', html: '' },
   ];
 }
 

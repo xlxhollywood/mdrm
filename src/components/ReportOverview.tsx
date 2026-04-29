@@ -149,6 +149,7 @@ function ReportThumbnail({ type }: { type: string }) {
 
 /* ── 트리 아이콘 ── */
 function TreeIcon({ type, status }: { type: string; status?: string }) {
+  if (type === 'division') return null; // 디비전은 텍스트만
   if (type === 'folder') return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -164,9 +165,37 @@ function TreeIcon({ type, status }: { type: string; status?: string }) {
 
 /* ── 사이드바 트리 노드 ── */
 function SidebarNode({ node, depth = 0, selectedId, onSelect }: any) {
-  const [open, setOpen] = useState(node.id === 'folder-server');
+  const [open, setOpen] = useState(node.icon === 'division' || node.id === 'folder-server');
   const hasChildren = node.children?.length > 0;
   const isSelected = node.id === selectedId;
+  const isDivision = node.icon === 'division';
+
+  if (isDivision) {
+    return (
+      <div className={depth === 0 ? 'mt-3 first:mt-0' : ''}>
+        <div className="flex items-center justify-between py-[6px] px-[10px]">
+          <div className="flex items-center gap-[6px] cursor-pointer" onClick={() => setOpen(!open)}>
+            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" className={`transition-transform shrink-0 ${open ? 'rotate-90' : ''}`}>
+              <path d="M3.5 2L6.5 5L3.5 8" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wide">{node.label}</span>
+          </div>
+          <button
+            onClick={(e) => e.stopPropagation()}
+            className="w-[18px] h-[18px] rounded-[4px] flex items-center justify-center text-[#cbd5e1] hover:bg-[#f1f5f9] hover:text-[#0056a4] transition-colors"
+            title="폴더 추가"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        </div>
+        {open && node.children.map((child: any) => (
+          <SidebarNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -763,12 +792,6 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
                 if (!id.startsWith('folder-')) onOpenReport(id);
               }} />
             ))}
-            <button className="flex items-center gap-1 text-[11px] text-[#94a3b8] hover:text-[#0056a4] transition-colors mt-1 px-[10px] py-[6px]">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              폴더 추가
-            </button>
           </div>
         </div>
 

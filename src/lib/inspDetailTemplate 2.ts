@@ -6,9 +6,9 @@ export function createInspDetailTemplate() {
 
   const blocks = [
     // 문서 헤더
-    { id: uid('w'), type: 'widget', title: '서버 및 WEB 점검 결과 보고서', titleSubtype: 'h1', headerItems: [
+    { id: uid('w'), type: 'widget', title: '서버 및 WEB 점검', titleSubtype: 'h1', headerItems: [
       { icon: 'clock', text: '2026-04-21', fontSize: 12 },
-      { icon: 'shield', text: '서버 및 WEB 점검', fontSize: 12 },
+      { icon: 'user', text: '김세훈', fontSize: 12 },
     ]},
 
     // 1. 점검 결과 요약
