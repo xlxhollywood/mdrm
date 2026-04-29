@@ -223,10 +223,116 @@ interface ReportOverviewProps {
   onOpenReport: (reportId: string) => void;
 }
 
+/* ── 멤버 설정 모달 ── */
+function MemberSettingsModal({ members, onClose }: { members: any[]; onClose: () => void }) {
+  const [list, setList] = useState(members);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('뷰어');
+
+  const handleAdd = () => {
+    if (!email.trim()) return;
+    const name = email.split('@')[0].split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+    const colors = ['#0891b2', '#7c3aed', '#d97706', '#dc2626', '#0056a4', '#16a34a'];
+    setList([...list, { id: `u-${Date.now()}`, name, email: email.trim(), role, color: colors[list.length % colors.length] }]);
+    setEmail('');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative bg-white rounded-[10px] shadow-[0_8px_30px_rgba(0,0,0,0.15)] w-[440px] max-h-[520px] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#e2e8f0]">
+          <div>
+            <div className="text-[14px] font-semibold text-[#1a222b]">멤버 관리</div>
+            <div className="text-[11px] text-[#94a3b8] mt-0.5">스페이스 멤버를 추가하거나 제거합니다</div>
+          </div>
+          <button onClick={onClose} className="w-[28px] h-[28px] rounded-[6px] flex items-center justify-center text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b] transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* 멤버 추가 */}
+        <div className="px-5 py-3 border-b border-[#e2e8f0]">
+          <div className="text-[11px] font-semibold text-[#64748b] mb-2">멤버 추가</div>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="이메일 주소 입력"
+              className="flex-1 text-[12px] border border-[#e2e8f0] rounded-[5px] px-2.5 py-[6px] outline-none focus:border-[#0056a4] text-[#334155] bg-white"
+            />
+            <select
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              className="text-[11px] border border-[#e2e8f0] rounded-[5px] px-2 py-[6px] outline-none focus:border-[#0056a4] text-[#334155] bg-white"
+            >
+              <option value="편집자">편집자</option>
+              <option value="뷰어">뷰어</option>
+            </select>
+            <button
+              onClick={handleAdd}
+              className="px-3 py-[6px] rounded-[5px] bg-[#0056a4] text-white text-[11px] font-medium hover:bg-[#004a8f] transition-colors"
+            >
+              추가
+            </button>
+          </div>
+        </div>
+
+        {/* 멤버 목록 */}
+        <div className="flex-1 overflow-y-auto px-5 py-3">
+          <div className="text-[11px] font-semibold text-[#64748b] mb-2">멤버 ({list.length})</div>
+          <div className="flex flex-col gap-1">
+            {list.map(m => (
+              <div key={m.id} className="flex items-center justify-between py-2 px-2 rounded-[5px] hover:bg-[#f8fafc] transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: m.color }}>
+                    {m.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="text-[12px] text-[#334155] font-medium">{m.name}</div>
+                    <div className="text-[10px] text-[#94a3b8]">{m.email}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] px-1.5 py-[2px] rounded-[3px] bg-[#f1f5f9] text-[#64748b]">{m.role}</span>
+                  {m.role !== '관리자' && m.role !== '소유자' && (
+                    <button
+                      onClick={() => setList(list.filter(x => x.id !== m.id))}
+                      className="w-[22px] h-[22px] rounded-[4px] flex items-center justify-center text-[#cbd5e1] hover:text-[#ef4444] hover:bg-[#fef2f2] transition-colors"
+                      title="멤버 제거"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 하단 */}
+        <div className="px-5 py-3 border-t border-[#e2e8f0] flex justify-end">
+          <button onClick={onClose} className="px-4 py-[6px] rounded-[5px] bg-[#0056a4] text-white text-[12px] font-medium hover:bg-[#004a8f] transition-colors">
+            완료
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
   const [activeSpace, setActiveSpace] = useState('space-shared');
   const [selectedId, setSelectedId] = useState('folder-server');
   const [showMembers, setShowMembers] = useState(true);
+  const [showMemberModal, setShowMemberModal] = useState(false);
   const currentTree = SPACE_TREES[activeSpace] || [];
   const currentSpace = SPACES.find(s => s.id === activeSpace)!;
   const members = SPACE_MEMBERS[activeSpace] || [];
@@ -238,17 +344,24 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* ── 좌측 사이드바 ── */}
         <div className="w-[260px] bg-white border-r border-border flex flex-col shrink-0">
-          <div className="px-3 pt-3 pb-2 border-b border-border">
-            <select
-              value={activeSpace}
-              onChange={e => { setActiveSpace(e.target.value); setSelectedId(''); }}
-              className="w-full text-[12px] font-semibold border border-[#e2e8f0] rounded-[6px] px-2.5 py-[7px] text-[#1a222b] bg-white outline-none focus:border-[#0056a4] cursor-pointer"
-            >
-              {SPACES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </select>
+          {/* 스페이스 선택 */}
+          <div className="px-3 pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-[24px] h-[24px] rounded-[6px] bg-[#0056a4] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                {currentSpace.label.charAt(0)}
+              </div>
+              <select
+                value={activeSpace}
+                onChange={e => { setActiveSpace(e.target.value); setSelectedId(''); }}
+                className="flex-1 text-[12px] font-semibold border-none outline-none text-[#1a222b] bg-transparent cursor-pointer"
+              >
+                {SPACES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </div>
           </div>
 
-          <div className="px-3 pt-3 pb-2">
+          {/* 검색 */}
+          <div className="px-3 pb-2">
             <div className="relative">
               <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#94a3b8]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -259,7 +372,10 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
 
           <div className="flex-1 overflow-y-auto px-1 pb-2">
             {currentTree.map(node => (
-              <SidebarNode key={node.id} node={node} selectedId={selectedId} onSelect={setSelectedId} />
+              <SidebarNode key={node.id} node={node} selectedId={selectedId} onSelect={(id: string) => {
+                setSelectedId(id);
+                if (id.startsWith('rpt-')) onOpenReport(id);
+              }} />
             ))}
           </div>
 
@@ -278,25 +394,9 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
           <div className="max-w-[1040px] mx-auto px-8 py-6">
 
             {/* 스페이스 헤더 */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <h1 className="text-[20px] font-bold text-[#1a222b]">{currentSpace.label}</h1>
-
-                {/* 멤버 아바타 */}
-                <div className="flex items-center -space-x-1.5 ml-1">
-                  {members.slice(0, 4).map(m => (
-                    <div key={m.id} title={`${m.name} (${m.role})`}
-                      className="w-[24px] h-[24px] rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-white"
-                      style={{ background: m.color }}>
-                      {m.name.charAt(0)}
-                    </div>
-                  ))}
-                  {members.length > 4 && (
-                    <div className="w-[24px] h-[24px] rounded-full flex items-center justify-center text-[9px] font-semibold text-[#64748b] bg-[#f1f5f9] border-2 border-white">
-                      +{members.length - 4}
-                    </div>
-                  )}
-                </div>
+                <h1 className="text-[20px] font-bold text-[#1a222b]">스페이스</h1>
               </div>
 
             </div>
@@ -306,7 +406,7 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
               <div className="mb-6 bg-white rounded-[8px] border border-[#e2e8f0] p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[11px] font-semibold text-[#64748b]">멤버 ({members.length})</span>
-                  <button className="w-[24px] h-[24px] rounded-[5px] flex items-center justify-center text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b] transition-colors" title="멤버 설정">
+                  <button onClick={() => setShowMemberModal(true)} className="w-[24px] h-[24px] rounded-[5px] flex items-center justify-center text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b] transition-colors" title="멤버 설정">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
@@ -333,7 +433,7 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
 
             {/* 리포트 유형 */}
             <div className="mb-8">
-              <h2 className="text-[15px] font-bold text-[#1a222b] mb-4">리포트 유형</h2>
+              <h2 className="text-[20px] font-bold text-[#1a222b] mb-4">리포트 유형</h2>
               <div className="grid grid-cols-3 gap-4">
                 {REPORT_TYPES.map(item => (
                   <div
@@ -355,8 +455,8 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
 
             {/* 최근 리포트 */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-[15px] font-bold text-[#1a222b]">최근 리포트</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[20px] font-bold text-[#1a222b]">최근 리포트</h2>
                 <button className="text-[11px] text-[#0056a4] hover:underline">전체 보기</button>
               </div>
 
@@ -391,6 +491,11 @@ export default function ReportOverview({ onOpenReport }: ReportOverviewProps) {
           </div>
         </div>
       </div>
+
+      {/* 멤버 설정 모달 */}
+      {showMemberModal && (
+        <MemberSettingsModal members={members} onClose={() => setShowMemberModal(false)} />
+      )}
     </div>
   );
 }

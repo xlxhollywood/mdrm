@@ -275,23 +275,26 @@ export default function ReportViewer({ reportId, onBack, onEdit }: ReportViewerP
       <div className="flex flex-1 overflow-hidden">
         {/* ── 좌측 사이드바 (트리) ── */}
         <div className="w-[260px] bg-white border-r border-border flex flex-col shrink-0">
-          <div className="px-3 pt-3 pb-2 border-b border-border">
+          {/* 스페이스 (클릭 시 오버뷰로) */}
+          <div className="px-3 pt-3 pb-2">
             <button
               onClick={onBack}
-              className="flex items-center gap-1.5 text-[12px] text-[#5b646f] hover:text-[#0056a4] transition-colors"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-              리포트 목록
+              <div className="w-[24px] h-[24px] rounded-[6px] bg-[#0056a4] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                공
+              </div>
+              <span className="text-[12px] font-semibold text-[#1a222b]">공유 스페이스</span>
             </button>
           </div>
-          <div className="px-3 pt-3 pb-2">
+
+          {/* 검색 */}
+          <div className="px-3 pb-2">
             <div className="relative">
-              <svg className="absolute left-2 top-1/2 -translate-y-1/2 text-[#94a3b8]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#94a3b8]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
-              <input type="text" placeholder="검색..." className="w-full text-[11px] border border-[#e2e8f0] rounded-[5px] pl-7 pr-2 py-[5px] outline-none focus:border-[#0056a4] text-[#334155] bg-white" />
+              <input type="text" placeholder="리포트 검색..." className="w-full text-[11px] border border-[#e2e8f0] rounded-[5px] pl-7 pr-2 py-[5px] outline-none focus:border-[#0056a4] text-[#334155] bg-white" />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-1 pb-2">
