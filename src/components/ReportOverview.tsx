@@ -70,6 +70,7 @@ const RECENT_REPORTS = [
   { id: 'rpt-6', title: 'DB 백업 점검 결과 리포트', inspName: 'DB 백업 점검', date: '2026-04-08', status: 'published' as const },
   { id: 'rpt-10', title: '방화벽 정책 점검 리포트', inspName: '방화벽 정책 점검', date: '2026-04-05', status: 'draft' as const },
   { id: 'rpt-11', title: '점검 누계 리포트 (15주차)', inspName: '주간 종합 점검', date: '2026-04-04', status: 'published' as const },
+  { id: 'tpl-word', title: '점검결과 상세 리포트 (Word ver)', inspName: '서버 및 WEB 점검', date: '2026-04-03', status: 'draft' as const },
 ];
 
 /* ── 리포트 유형 썸네일 ── */

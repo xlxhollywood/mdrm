@@ -359,7 +359,6 @@ export default function WidgetDashboard({ onBack }: { onBack?: () => void }) {
               <div className="flex flex-col gap-1.5">
                 {[
                   { fn: createInspDetailTemplate, icon: '📊', name: '점검결과 상세 보고서', desc: '위젯 기반 상세 분석' },
-                  { fn: createInspDetailWordTemplate, icon: '📝', name: '점검결과 상세 보고서 (Word ver)', desc: '순수 텍스트+테이블 구성' },
                 ].map((t, i) => (
                   <div
                     key={i}

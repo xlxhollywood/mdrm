@@ -33,11 +33,18 @@ src/
   app/
     globals.css                          Tailwind v4 @theme 토큰 정의
     layout.tsx                           Next.js 레이아웃
-    page.tsx                             Next.js 페이지 진입점
+    page.tsx                             루트 → /report 리다이렉트
+    report/
+      page.tsx                           /report 오버뷰 (초기 화면)
+      create/
+        page.tsx                         /report/create 생성 (에디터)
+      [id]/
+        page.tsx                         /report/:id 조회 (뷰어)
   lib/
     assets.ts                            이미지 import 모음 (로고·아이콘)
     inspReportTemplate.ts                인프라 점검 보고서 템플릿
-    inspDetailTemplate.ts                점검결과 상세 보고서 템플릿
+    inspDetailTemplate.ts                점검결과 상세 리포트 템플릿
+    inspDetailWordTemplate.ts            점검결과 상세 리포트 (Word ver) 템플릿
   components/
     WidgetDashboard.tsx                  메인 컨테이너 (상태 관리·좌측 템플릿·캔버스·우측 패널)
     AppHeader.tsx                        상단 헤더
